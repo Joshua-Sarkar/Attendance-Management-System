@@ -1,5 +1,5 @@
 <?php
-
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DepartmentController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +31,28 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->name('profile.destroy');
+        Route::get('/employees', [EmployeeController::class, 'index'])
+    ->name('employees.index');
+
+Route::get('/employees/create', [EmployeeController::class, 'create'])
+    ->name('employees.create');
+
+Route::post('/employees', [EmployeeController::class, 'store'])
+    ->name('employees.store');
 });
+
+Route::get('/employees/{user}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
+
+Route::put('/employees/{user}', [EmployeeController::class, 'update'])->name('employees.update');
+
+Route::delete('/employees/{user}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+Route::get('/employees/{user}/edit', [EmployeeController::class, 'edit'])
+    ->name('employees.edit');
+
+Route::put('/employees/{user}', [EmployeeController::class, 'update'])
+    ->name('employees.update');
+
+Route::delete('/employees/{user}', [EmployeeController::class, 'destroy'])
+    ->name('employees.destroy');
 
 require __DIR__.'/auth.php';
