@@ -23,6 +23,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/departments', [DepartmentController::class, 'store'])
         ->name('departments.store');
 
+    Route::get('/departments/{department}/edit', [DepartmentController::class, 'edit'])
+        ->name('departments.edit');
+
+    Route::put('/departments/{department}', [DepartmentController::class, 'update'])
+        ->name('departments.update');
+
+    Route::delete('/departments/{department}', [DepartmentController::class, 'destroy'])
+        ->name('departments.destroy');
+
     Route::get('/profile', [ProfileController::class, 'edit'])
         ->name('profile.edit');
 
@@ -31,28 +40,24 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->name('profile.destroy');
-        Route::get('/employees', [EmployeeController::class, 'index'])
-    ->name('employees.index');
 
-Route::get('/employees/create', [EmployeeController::class, 'create'])
-    ->name('employees.create');
+    Route::get('/employees', [EmployeeController::class, 'index'])
+        ->name('employees.index');
 
-Route::post('/employees', [EmployeeController::class, 'store'])
-    ->name('employees.store');
+    Route::get('/employees/create', [EmployeeController::class, 'create'])
+        ->name('employees.create');
+
+    Route::post('/employees', [EmployeeController::class, 'store'])
+        ->name('employees.store');
+
+    Route::get('/employees/{user}/edit', [EmployeeController::class, 'edit'])
+        ->name('employees.edit');
+
+    Route::put('/employees/{user}', [EmployeeController::class, 'update'])
+        ->name('employees.update');
+
+    Route::delete('/employees/{user}', [EmployeeController::class, 'destroy'])
+        ->name('employees.destroy');
 });
-
-Route::get('/employees/{user}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
-
-Route::put('/employees/{user}', [EmployeeController::class, 'update'])->name('employees.update');
-
-Route::delete('/employees/{user}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
-Route::get('/employees/{user}/edit', [EmployeeController::class, 'edit'])
-    ->name('employees.edit');
-
-Route::put('/employees/{user}', [EmployeeController::class, 'update'])
-    ->name('employees.update');
-
-Route::delete('/employees/{user}', [EmployeeController::class, 'destroy'])
-    ->name('employees.destroy');
 
 require __DIR__.'/auth.php';

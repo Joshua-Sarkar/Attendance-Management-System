@@ -1,4 +1,4 @@
-<aside class="fixed top-0 left-0 h-screen w-[260px] bg-slate-900 shadow-lg">
+<aside class="fixed top-0 left-0 h-screen w-[260px] bg-slate-900 shadow-lg z-50">
 
     <!-- Logo -->
     <div class="h-16 flex items-center justify-center border-b border-slate-800">
