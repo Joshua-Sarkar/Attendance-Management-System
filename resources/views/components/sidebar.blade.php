@@ -15,71 +15,78 @@
     <!-- Navigation -->
     <nav class="flex-1 px-stack-sm py-stack-lg space-y-unit overflow-y-auto scroll-hide">
 
-        <!-- Dashboard -->
-        <a href="{{ route('dashboard') }}"
-           class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-           {{ request()->routeIs('dashboard')
-                ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-            <!-- Home Icon -->
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h2a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h2a1 1 0 001-1V9m-9 4l4-2m0 0l4 2" />
-            </svg>
-            <span class="font-medium text-sm">Dashboard</span>
-        </a>
+        @if(auth()->user()->role === 'employee')
+            <!-- Employee Navigation -->
 
-        <!-- Employees -->
-        <a href="{{ route('employees.index') }}"
-           class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-           {{ request()->routeIs('employees.*')
-                ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-            <!-- Users Icon -->
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 8.048M9 9h6m-8 4h16M5.5 20h13a2 2 0 002-2v-1a6 6 0 00-9-5.197 6 6 0 00-9 5.197v1a2 2 0 002 2z" />
-            </svg>
-            <span class="font-medium text-sm">Employees</span>
-        </a>
+            <!-- Dashboard -->
+            <a href="{{ route('employee.dashboard') }}"
+               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
+               {{ request()->routeIs('employee.dashboard')
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
+                <!-- Home Icon -->
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h2a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h2a1 1 0 001-1V9m-9 4l4-2m0 0l4 2" />
+                </svg>
+                <span class="font-medium text-sm">Dashboard</span>
+            </a>
 
-        <!-- Departments -->
-        <a href="{{ route('departments.index') }}"
-           class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-           {{ request()->routeIs('departments.*')
-                ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-            <!-- Building Icon -->
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-            </svg>
-            <span class="font-medium text-sm">Departments</span>
-        </a>
-
-        <!-- Divider -->
-        <div class="my-stack-md border-t border-outline-variant/20"></div>
-
-        <!-- Attendance (Coming Soon) -->
-        <div class="flex items-center justify-between px-stack-md py-stack-sm rounded-md bg-surface-container-low/50 cursor-not-allowed opacity-60">
-            <div class="flex items-center gap-stack-md">
+            <!-- Attendance History -->
+            <a href="{{ route('attendance.history') }}"
+               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
+               {{ request()->routeIs('attendance.history')
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
                 <!-- Calendar Icon -->
-                <svg class="w-5 h-5 flex-shrink-0 text-on-surface-variant" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span class="font-medium text-sm text-on-surface-variant">Attendance</span>
-            </div>
-            <span class="text-xs bg-secondary/20 text-secondary px-2 py-1 rounded-full font-semibold">Coming</span>
-        </div>
+                <span class="font-medium text-sm">Attendance History</span>
+            </a>
 
-        <!-- Reports (Coming Soon) -->
-        <div class="flex items-center justify-between px-stack-md py-stack-sm rounded-md bg-surface-container-low/50 cursor-not-allowed opacity-60">
-            <div class="flex items-center gap-stack-md">
-                <!-- Chart Icon -->
-                <svg class="w-5 h-5 flex-shrink-0 text-on-surface-variant" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        @else
+            <!-- Manager/Admin Navigation -->
+
+            <!-- Dashboard -->
+            <a href="{{ route('dashboard') }}"
+               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
+               {{ request()->routeIs('dashboard')
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
+                <!-- Home Icon -->
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h2a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h2a1 1 0 001-1V9m-9 4l4-2m0 0l4 2" />
                 </svg>
-                <span class="font-medium text-sm text-on-surface-variant">Reports</span>
-            </div>
-            <span class="text-xs bg-tertiary/20 text-tertiary px-2 py-1 rounded-full font-semibold">Coming</span>
-        </div>
+                <span class="font-medium text-sm">Dashboard</span>
+            </a>
+
+            <!-- Employees -->
+            <a href="{{ route('employees.index') }}"
+               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
+               {{ request()->routeIs('employees.*')
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
+                <!-- Users Icon -->
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 8.048M9 9h6m-8 4h16M5.5 20h13a2 2 0 002-2v-1a6 6 0 00-9-5.197 6 6 0 00-9 5.197v1a2 2 0 002 2z" />
+                </svg>
+                <span class="font-medium text-sm">Employees</span>
+            </a>
+
+            <!-- Departments -->
+            <a href="{{ route('departments.index') }}"
+               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
+               {{ request()->routeIs('departments.*')
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
+                <!-- Building Icon -->
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                </svg>
+                <span class="font-medium text-sm">Departments</span>
+            </a>
+
+        @endif
 
     </nav>
 

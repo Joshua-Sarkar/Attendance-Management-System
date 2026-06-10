@@ -2,6 +2,7 @@
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\AttendanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -58,6 +59,19 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/employees/{user}', [EmployeeController::class, 'destroy'])
         ->name('employees.destroy');
+
+    // Attendance routes
+    Route::get('/employee/dashboard', [AttendanceController::class, 'employeeDashboard'])
+        ->name('employee.dashboard');
+
+    Route::post('/attendance/check-in', [AttendanceController::class, 'checkIn'])
+        ->name('attendance.check-in');
+
+    Route::post('/attendance/check-out', [AttendanceController::class, 'checkOut'])
+        ->name('attendance.check-out');
+
+    Route::get('/attendance/history', [AttendanceController::class, 'history'])
+        ->name('attendance.history');
 });
 
 require __DIR__.'/auth.php';
