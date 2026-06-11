@@ -17,20 +17,26 @@ class AttendanceService
     {
         $today = today();
 
+        // Determine check-in status (late if after configured start time threshold)
+        $now = now();
+        $startTime = config('attendance.start_time', '09:00:00');
+        $threshold = today()->setTimeFromTimeString($startTime);
+        $status = $now->greaterThan($threshold) ? 'late' : 'present';
+
         $attendance = Attendance::firstOrCreate(
             [
                 'user_id' => $user->id,
                 'date' => $today,
             ],
             [
-                'status' => 'present',
+                'status' => $status,
             ]
         );
 
         // Only set check-in time if not already checked in
         if (is_null($attendance->check_in_time)) {
-            $attendance->check_in_time = now();
-            $attendance->status = 'present';
+            $attendance->check_in_time = $now;
+            $attendance->status = $status;
             $attendance->save();
         }
 
@@ -109,5 +115,176 @@ class AttendanceService
     {
         $attendance = $this->getTodayAttendance($user);
         return $attendance && !is_null($attendance->check_out_time);
+    }
+
+    /**
+     * Get filtered list of active employees and their attendance record for a specific date.
+     */
+    public function getFilteredAttendance(string $date, ?int $departmentId = null, ?string $searchQuery = null, ?User $monitoringUser = null): \Illuminate\Support\Collection
+    {
+        $query = User::where('status', 'active')
+            ->with(['department', 'manager', 'admin']);
+
+        if ($monitoringUser && $monitoringUser->role === 'manager') {
+            // Managers only see active employees assigned to them
+            $query->where('role', 'employee')
+                  ->where('manager_id', $monitoringUser->id);
+        }
+
+        if ($departmentId) {
+            $query->where('department_id', $departmentId);
+        }
+
+        if ($searchQuery) {
+            $query->where('name', 'like', '%' . $searchQuery . '%');
+        }
+
+        $employees = $query->orderBy('name')->get();
+
+        // Eager load the attendance records for the specific date
+        $attendances = Attendance::where('date', $date)
+            ->whereIn('user_id', $employees->pluck('id'))
+            ->get()
+            ->keyBy('user_id');
+
+        // Map them together
+        return $employees->map(function ($employee) use ($attendances) {
+            $employee->today_attendance = $attendances->get($employee->id);
+            return $employee;
+        });
+    }
+
+    /**
+     * Compute overview stats for the dashboard.
+     */
+    public function getTodayStats(string $date, ?int $departmentId = null, ?User $monitoringUser = null): array
+    {
+        $employees = $this->getFilteredAttendance($date, $departmentId, null, $monitoringUser);
+
+        $present = 0;
+        $late = 0;
+        $absent = 0;
+
+        foreach ($employees as $emp) {
+            $attendance = $emp->today_attendance;
+            if ($attendance) {
+                if ($attendance->status === 'present') {
+                    $present++;
+                } elseif ($attendance->status === 'late') {
+                    $late++;
+                } elseif ($attendance->status === 'absent') {
+                    $absent++;
+                }
+            } else {
+                $absent++;
+            }
+        }
+
+        return [
+            'total' => $employees->count(),
+            'present' => $present,
+            'late' => $late,
+            'absent' => $absent,
+        ];
+    }
+
+    /**
+     * Calculate stats for an employee over the last N days.
+     */
+    public function getEmployeeStats(User $user, int $days = 30): array
+    {
+        $startDate = today()->subDays($days - 1);
+        $attendances = Attendance::where('user_id', $user->id)
+            ->where('date', '>=', $startDate)
+            ->where('date', '<=', today())
+            ->get()
+            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
+
+        $present = 0;
+        $late = 0;
+        $absent = 0;
+        $totalHours = 0.0;
+
+        for ($i = 0; $i < $days; $i++) {
+            $date = $startDate->copy()->addDays($i);
+
+            // Skip weekends for calculating absences
+            if ($date->isWeekend()) {
+                continue;
+            }
+
+            $dateStr = $date->format('Y-m-d');
+            if (isset($attendances[$dateStr])) {
+                $record = $attendances[$dateStr];
+                if ($record->status === 'present') {
+                    $present++;
+                } elseif ($record->status === 'late') {
+                    $late++;
+                } elseif ($record->status === 'absent') {
+                    $absent++;
+                }
+
+                // Add hours worked
+                if ($record->check_in_time) {
+                    $endTime = $record->check_out_time ?? now();
+                    $totalHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
+                }
+            } else {
+                // No record exists for this weekday - count as absent
+                $absent++;
+            }
+        }
+
+        return [
+            'present' => $present,
+            'late' => $late,
+            'absent' => $absent,
+            'total_hours' => $totalHours,
+        ];
+    }
+
+    /**
+     * Get recent check-in/out activity across all employees.
+     */
+    public function getRecentActivity(int $limit = 5, ?User $monitoringUser = null): \Illuminate\Support\Collection
+    {
+        $checkInQuery = Attendance::whereNotNull('check_in_time')->with('user');
+        $checkOutQuery = Attendance::whereNotNull('check_out_time')->with('user');
+
+        if ($monitoringUser && $monitoringUser->role === 'manager') {
+            $checkInQuery->whereHas('user', function($q) use ($monitoringUser) {
+                $q->where('role', 'employee')->where('manager_id', $monitoringUser->id);
+            });
+            $checkOutQuery->whereHas('user', function($q) use ($monitoringUser) {
+                $q->where('role', 'employee')->where('manager_id', $monitoringUser->id);
+            });
+        }
+
+        $recentCheckIns = $checkInQuery->orderBy('check_in_time', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(fn($att) => [
+                'employee_name' => $att->user?->name ?? 'Unknown',
+                'employee_id' => $att->user?->employee_id ?? 'N/A',
+                'action' => 'Checked In',
+                'time' => $att->check_in_time,
+                'timestamp' => $att->check_in_time->format('h:i A'),
+            ]);
+
+        $recentCheckOuts = $checkOutQuery->orderBy('check_out_time', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(fn($att) => [
+                'employee_name' => $att->user?->name ?? 'Unknown',
+                'employee_id' => $att->user?->employee_id ?? 'N/A',
+                'action' => 'Checked Out',
+                'time' => $att->check_out_time,
+                'timestamp' => $att->check_out_time->format('h:i A'),
+            ]);
+
+        return $recentCheckIns->concat($recentCheckOuts)
+            ->sortByDesc('time')
+            ->take($limit)
+            ->values();
     }
 }

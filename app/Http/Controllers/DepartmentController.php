@@ -9,6 +9,11 @@ class DepartmentController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+        if ($user->role === 'employee') {
+            abort(403, 'Unauthorized action.');
+        }
+
         $departments = Department::latest()->get();
 
         return view('departments.index', compact('departments'));
@@ -16,11 +21,21 @@ class DepartmentController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
         return view('departments.create');
     }
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'name' => 'required|max:100',
             'code' => 'required|max:10|unique:departments,code',
@@ -40,11 +55,21 @@ class DepartmentController extends Controller
 
     public function edit(Department $department)
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
         return view('departments.edit', compact('department'));
     }
 
     public function update(Request $request, Department $department)
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'name' => 'required|max:100',
             'code' => 'required|max:10|unique:departments,code,' . $department->id,
@@ -64,6 +89,11 @@ class DepartmentController extends Controller
 
     public function destroy(Department $department)
     {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
         $department->delete();
 
         return redirect()

@@ -17,11 +17,15 @@ class User extends Authenticatable
         'employee_id',
         'name',
         'email',
+        'phone',
         'password',
         'role',
         'status',
+        'joining_date',
+        'must_change_password',
         'department_id',
         'manager_id',
+        'admin_id',
     ];
 
     protected $hidden = [
@@ -34,6 +38,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'joining_date' => 'date',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -45,6 +51,11 @@ class User extends Authenticatable
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function admin(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_id');
     }
 
     public function attendances(): HasMany

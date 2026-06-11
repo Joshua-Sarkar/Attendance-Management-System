@@ -3,15 +3,17 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ManagerAttendanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
 
@@ -64,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/employee/dashboard', [AttendanceController::class, 'employeeDashboard'])
         ->name('employee.dashboard');
 
+    Route::get('/my-attendance', [AttendanceController::class, 'myAttendance'])
+        ->name('attendance.my-attendance');
+
     Route::post('/attendance/check-in', [AttendanceController::class, 'checkIn'])
         ->name('attendance.check-in');
 
@@ -72,6 +77,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/attendance/history', [AttendanceController::class, 'history'])
         ->name('attendance.history');
+
+    Route::get('/admin/attendance/employee/{user}', [ManagerAttendanceController::class, 'show'])
+        ->name('admin.attendance.employee.show');
 });
 
 require __DIR__.'/auth.php';

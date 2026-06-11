@@ -2,12 +2,12 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Employees') }}
+                {{ __('Workforce') }}
             </h2>
 
             <a href="{{ route('employees.create') }}"
                class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition">
-                Create Employee
+                Add Workforce Member
             </a>
         </div>
     </x-slot>
@@ -18,6 +18,27 @@
             @if(session('success'))
                 <div class="mb-4 rounded-md bg-green-100 border border-green-300 text-green-700 px-4 py-3">
                     {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('success_provisioned'))
+                <div class="mb-6 rounded-lg bg-indigo-50 border border-indigo-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-indigo-900 mb-2">Workforce Member Provisioned Successfully!</h3>
+                    <p class="text-sm text-indigo-700 mb-4">Please copy and communicate these temporary credentials to the new workforce member. They will only be shown once.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-4 rounded-md border border-indigo-100">
+                        <div>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</span>
+                            <p class="text-sm font-medium text-gray-950 mt-1">{{ session('success_provisioned')['name'] }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee ID (Username)</span>
+                            <p class="text-sm font-medium text-indigo-700 mt-1 select-all font-mono">{{ session('success_provisioned')['employee_id'] }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Temporary Password</span>
+                            <p class="text-sm font-medium text-indigo-700 mt-1 select-all font-mono">{{ session('success_provisioned')['password'] }}</p>
+                        </div>
+                    </div>
                 </div>
             @endif
 
@@ -54,7 +75,11 @@
                                     </th>
 
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Manager
+                                        Assigned Manager
+                                    </th>
+
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Assigned Admin
                                     </th>
 
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -81,8 +106,8 @@
                                             {{ $employee->email }}
                                         </td>
 
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            {{ ucfirst($employee->role) }}
+                                        <td class="px-6 py-4 whitespace-nowrap capitalize">
+                                            {{ $employee->role }}
                                         </td>
 
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -100,6 +125,10 @@
 
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             {{ $employee->manager?->name ?? 'N/A' }}
+                                        </td>
+
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            {{ $employee->admin?->name ?? 'N/A' }}
                                         </td>
 
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -133,8 +162,8 @@
                                 @empty
 
                                     <tr>
-                                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">
-                                            No employees found.
+                                        <td colspan="9" class="px-6 py-4 text-center text-gray-500">
+                                            No workforce members found.
                                         </td>
                                     </tr>
 

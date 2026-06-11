@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Edit Employee — {{ $user->name }}
+            Edit Workforce Member — {{ $user->name }}
         </h2>
     </x-slot>
 
@@ -80,6 +80,32 @@
                         />
                     </div>
 
+                    {{-- Phone --}}
+                    <div class="mb-4">
+                        <x-input-label for="phone" value="Phone Number" />
+                        <x-text-input
+                            id="phone"
+                            name="phone"
+                            type="text"
+                            class="mt-1 block w-full"
+                            value="{{ old('phone', $user->phone) }}"
+                        />
+                        <x-input-error :messages="$errors->get('phone')" class="mt-2" />
+                    </div>
+
+                    {{-- Joining Date --}}
+                    <div class="mb-4">
+                        <x-input-label for="joining_date" value="Joining Date" />
+                        <x-text-input
+                            id="joining_date"
+                            name="joining_date"
+                            type="date"
+                            class="mt-1 block w-full"
+                            value="{{ old('joining_date', $user->joining_date?->format('Y-m-d')) }}"
+                        />
+                        <x-input-error :messages="$errors->get('joining_date')" class="mt-2" />
+                    </div>
+
                     {{-- Department --}}
                     <div class="mb-4">
                         <x-input-label for="department_id" value="Department" />
@@ -103,26 +129,30 @@
                     </div>
 
                     {{-- Role --}}
-                    <div class="mb-4">
-                        <x-input-label for="role" value="Role" />
-                        <select
-                            id="role"
-                            name="role"
-                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                            required
-                        >
-                            <option value="">— Select Role —</option>
-                            @foreach (['admin', 'manager', 'employee'] as $role)
-                                <option
-                                    value="{{ $role }}"
-                                    {{ old('role', $user->role) === $role ? 'selected' : '' }}
-                                >
-                                    {{ ucfirst($role) }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <x-input-error :messages="$errors->get('role')" class="mt-2" />
-                    </div>
+                    @if(auth()->user()->role === 'admin')
+                        <div class="mb-4">
+                            <x-input-label for="role" value="Role" />
+                            <select
+                                id="role"
+                                name="role"
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                required
+                            >
+                                <option value="">— Select Role —</option>
+                                @foreach (['admin', 'manager', 'employee'] as $role)
+                                    <option
+                                        value="{{ $role }}"
+                                        {{ old('role', $user->role) === $role ? 'selected' : '' }}
+                                    >
+                                        {{ ucfirst($role) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('role')" class="mt-2" />
+                        </div>
+                    @else
+                        <input type="hidden" name="role" value="{{ $user->role }}">
+                    @endif
 
                     {{-- Status --}}
                     <div class="mb-4">
@@ -146,31 +176,57 @@
                         <x-input-error :messages="$errors->get('status')" class="mt-2" />
                     </div>
 
-                    {{-- Manager --}}
+                    {{-- Assigned Admin --}}
                     <div class="mb-6">
-                        <x-input-label for="manager_id" value="Manager (optional)" />
+                        <x-input-label for="admin_id" value="Assigned Admin (optional)" />
                         <select
-                            id="manager_id"
-                            name="manager_id"
+                            id="admin_id"
+                            name="admin_id"
                             class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                         >
-                            <option value="">— No Manager —</option>
-                            @foreach ($managers as $manager)
+                            <option value="">— No Admin —</option>
+                            @foreach ($admins as $admin)
                                 <option
-                                    value="{{ $manager->id }}"
-                                    {{ old('manager_id', $user->manager_id) == $manager->id ? 'selected' : '' }}
+                                    value="{{ $admin->id }}"
+                                    {{ old('admin_id', $user->admin_id) == $admin->id ? 'selected' : '' }}
                                 >
-                                    {{ $manager->name }} ({{ $manager->employee_id }})
+                                    {{ $admin->name }} ({{ $admin->employee_id }})
                                 </option>
                             @endforeach
                         </select>
-                        <x-input-error :messages="$errors->get('manager_id')" class="mt-2" />
+                        <x-input-error :messages="$errors->get('admin_id')" class="mt-2" />
                     </div>
+
+                    {{-- Assigned Manager --}}
+                    @if(auth()->user()->role === 'admin')
+                        <div class="mb-6">
+                            <x-input-label for="manager_id" value="Assigned Manager (optional)" />
+                            <select
+                                id="manager_id"
+                                name="manager_id"
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                            >
+                                <option value="">— No Manager —</option>
+                                @foreach ($managers as $manager)
+                                    <option
+                                        value="{{ $manager->id }}"
+                                        {{ old('manager_id', $user->manager_id) == $manager->id ? 'selected' : '' }}
+                                    >
+                                        {{ $manager->name }} ({{ $manager->employee_id }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('manager_id')" class="mt-2" />
+                        </div>
+                    @else
+                        <input type="hidden" name="manager_id" value="{{ $user->manager_id }}">
+                    @endif
 
                     {{-- Actions --}}
                     <div class="flex items-center gap-4">
                         <x-primary-button>Save Changes</x-primary-button>
                         
+                        <a
                             href="{{ route('employees.index') }}"
                             class="text-sm text-gray-600 hover:text-gray-900 underline"
                         >

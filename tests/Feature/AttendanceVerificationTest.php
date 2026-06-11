@@ -13,103 +13,279 @@ class AttendanceVerificationTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Test the full employee check-in, check-out, and history view flow.
+     * Test employee login redirecting to password change first, then access to dashboard.
      */
-    public function test_employee_flow(): void
+    public function test_employee_must_change_password_flow(): void
     {
-        // 1. Create employee
+        // 1. Create employee with must_change_password default true
         $employee = User::factory()->create([
             'role' => 'employee',
-            'employee_id' => 'EMP-0001',
-            'status' => 'active'
+            'employee_id' => 'EMP00001',
+            'status' => 'active',
+            'phone' => '+123456789',
+            'joining_date' => '2026-06-10',
+            'must_change_password' => true
         ]);
 
-        // 2. Login as employee and verify redirect to /employee/dashboard
+        // 2. Login as employee - verify redirect to /password/change because of CheckPasswordChange middleware
         $loginResponse = $this->post('/login', [
             'email' => $employee->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticatedAs($employee);
-        $loginResponse->assertRedirect(route('employee.dashboard', absolute: false));
+        // Should redirect to password.change
+        $loginResponse->assertRedirect(route('password.change', absolute: false));
 
-        // 3. Verify access to employee dashboard
+        // 3. Attempting to access dashboard directly should redirect to password change screen
+        $directDashboardResponse = $this->actingAs($employee)->get('/employee/dashboard');
+        $directDashboardResponse->assertRedirect(route('password.change', absolute: false));
+
+        // 4. Access password change screen successfully
+        $changeScreenResponse = $this->actingAs($employee)->get(route('password.change'));
+        $changeScreenResponse->assertStatus(200);
+        $changeScreenResponse->assertSee('Please set a new secure password to access your account.');
+
+        // 5. Change password successfully
+        $changeResponse = $this->actingAs($employee)->post(route('password.change.update'), [
+            'password' => 'new-secure-password',
+            'password_confirmation' => 'new-secure-password',
+        ]);
+
+        $changeResponse->assertRedirect(route('employee.dashboard', absolute: false));
+        
+        $employee->refresh();
+        $this->assertFalse($employee->must_change_password);
+
+        // 6. Access employee dashboard and verify phone, joining date, and other profile details are visible
         $dashboardResponse = $this->actingAs($employee)->get('/employee/dashboard');
         $dashboardResponse->assertStatus(200);
-        $dashboardResponse->assertSee('Welcome, ' . $employee->name);
+        $dashboardResponse->assertSee('EMP00001');
+        $dashboardResponse->assertSee('+123456789');
+        $dashboardResponse->assertSee('Jun 10, 2026');
+    }
 
-        // 4. Verify check-in works
-        $checkInResponse = $this->actingAs($employee)->post(route('attendance.check-in'));
+    /**
+     * Test manager/admin flows for employee provisioning (auto-gen password vs manual override).
+     */
+    public function test_manager_admin_provisioning_flow(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'employee_id' => 'ADM00001',
+            'status' => 'active',
+            'must_change_password' => false
+        ]);
+
+        $department = Department::create([
+            'name' => 'Support',
+            'code' => 'SUP',
+            'description' => 'Customer support'
+        ]);
+
+        // 1. Provision employee with Auto-Generated Password
+        $autoGenResponse = $this->actingAs($admin)->post(route('employees.store'), [
+            'name' => 'Auto Provisioned',
+            'email' => 'auto@example.com',
+            'role' => 'employee',
+            'status' => 'active',
+            'phone' => '111-222-333',
+            'joining_date' => '2026-06-10',
+            'department_id' => $department->id,
+        ]);
+
+        $autoGenResponse->assertRedirect(route('employees.index'));
+        // Verify credentials flashed in session
+        $autoGenResponse->assertSessionHas('success_provisioned');
+        
+        $newEmployee1 = User::where('email', 'auto@example.com')->first();
+        $this->assertNotNull($newEmployee1);
+        $this->assertEquals('EMP00001', $newEmployee1->employee_id); // Sequential EMP00001
+        $this->assertTrue($newEmployee1->must_change_password);
+
+        // 2. Provision employee with Manual Password Override
+        $manualResponse = $this->actingAs($admin)->post(route('employees.store'), [
+            'name' => 'Manual Provisioned',
+            'email' => 'manual@example.com',
+            'role' => 'employee',
+            'status' => 'active',
+            'password' => 'overridePassword123',
+            'password_confirmation' => 'overridePassword123',
+            'phone' => '444-555-666',
+            'joining_date' => '2026-06-10',
+            'department_id' => $department->id,
+        ]);
+
+        $manualResponse->assertRedirect(route('employees.index'));
+        $manualResponse->assertSessionHas('success');
+        $manualResponse->assertSessionMissing('success_provisioned');
+
+        $newEmployee2 = User::where('email', 'manual@example.com')->first();
+        $this->assertNotNull($newEmployee2);
+        $this->assertEquals('EMP00002', $newEmployee2->employee_id); // Sequential EMP00002
+    }
+
+    /**
+     * Test manager/admin monitoring dashboard and details view.
+     */
+    public function test_manager_monitoring_and_access_control(): void
+    {
+        // 1. Create Department
+        $dept = Department::create([
+            'name' => 'Engineering',
+            'code' => 'ENG',
+        ]);
+
+        // 2. Create Manager
+        $manager = User::factory()->create([
+            'role' => 'manager',
+            'status' => 'active',
+            'must_change_password' => false,
+        ]);
+
+        // 3. Create Employee
+        $employee = User::factory()->create([
+            'role' => 'employee',
+            'status' => 'active',
+            'department_id' => $dept->id,
+            'must_change_password' => false,
+            'manager_id' => $manager->id,
+        ]);
+
+        // 4. Employee attempts to access manager dashboard - gets redirected
+        $empDashboardResponse = $this->actingAs($employee)->get('/dashboard');
+        $empDashboardResponse->assertRedirect(route('employee.dashboard'));
+
+        // 5. Employee attempts to access employee detail view - gets 403 Forbidden
+        $empDetailResponse = $this->actingAs($employee)->get(route('admin.attendance.employee.show', $employee));
+        $empDetailResponse->assertStatus(403);
+
+        // 6. Manager accesses dashboard successfully
+        $mgrDashboardResponse = $this->actingAs($manager)->get('/dashboard');
+        $mgrDashboardResponse->assertStatus(200);
+        $mgrDashboardResponse->assertSee('Manager Attendance Dashboard');
+        $mgrDashboardResponse->assertSee($employee->name);
+
+        // 7. Employee checks in and out
+        // Create an attendance record manually for the employee
+        $attendance = Attendance::create([
+            'user_id' => $employee->id,
+            'date' => today(),
+            'check_in_time' => now()->subHours(8),
+            'check_out_time' => now(),
+            'status' => 'present'
+        ]);
+
+        // 8. Manager accesses dashboard and sees check in/out and employee details
+        $mgrDashboardWithActivity = $this->actingAs($manager)->get('/dashboard');
+        $mgrDashboardWithActivity->assertStatus(200);
+        $mgrDashboardWithActivity->assertSee($employee->name);
+        $mgrDashboardWithActivity->assertSee('checked in');
+        $mgrDashboardWithActivity->assertSee('checked out');
+
+        // 9. Manager accesses filtered dashboard
+        $filteredResponse = $this->actingAs($manager)->get('/dashboard?department_id=' . $dept->id . '&search=' . urlencode($employee->name));
+        $filteredResponse->assertStatus(200);
+        $filteredResponse->assertSee($employee->name);
+
+        // 10. Manager accesses employee detail view successfully
+        $mgrDetailResponse = $this->actingAs($manager)->get(route('admin.attendance.employee.show', $employee));
+        $mgrDetailResponse->assertStatus(200);
+        $mgrDetailResponse->assertSee($employee->name);
+        $mgrDetailResponse->assertSee('Last 30 Days Statistics');
+        $mgrDetailResponse->assertSee('Days Present');
+    }
+
+    /**
+     * Test Phase D.5: Self attendance features for all roles (Employee, Manager, Admin).
+     */
+    public function test_self_attendance_access_and_flow(): void
+    {
+        $department = Department::create([
+            'name' => 'Operations',
+            'code' => 'OPS',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+            'must_change_password' => false,
+            'department_id' => $department->id,
+        ]);
+
+        $manager = User::factory()->create([
+            'role' => 'manager',
+            'status' => 'active',
+            'must_change_password' => false,
+            'department_id' => $department->id,
+        ]);
+
+        $employee = User::factory()->create([
+            'role' => 'employee',
+            'status' => 'active',
+            'must_change_password' => false,
+            'department_id' => $department->id,
+        ]);
+
+        // 1. Verify access control: Admin can access `/my-attendance`
+        $adminResponse = $this->actingAs($admin)->get(route('attendance.my-attendance'));
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertSee('My Attendance');
+        $adminResponse->assertSee('Last 30 Days Statistics');
+        $adminResponse->assertSee($admin->name);
+
+        // 2. Verify access control: Manager can access `/my-attendance`
+        $managerResponse = $this->actingAs($manager)->get(route('attendance.my-attendance'));
+        $managerResponse->assertStatus(200);
+        $managerResponse->assertSee('My Attendance');
+        $managerResponse->assertSee($manager->name);
+
+        // 3. Verify access control: Employee can access `/my-attendance`
+        $empResponse = $this->actingAs($employee)->get(route('attendance.my-attendance'));
+        $empResponse->assertStatus(200);
+        $empResponse->assertSee('My Attendance');
+        $empResponse->assertSee($employee->name);
+
+        // 4. Test Check-in and Check-out flow for a Manager
+        $this->actingAs($manager);
+        
+        // Assert no attendance record yet
+        $this->assertDatabaseMissing('attendances', [
+            'user_id' => $manager->id,
+            'date' => today()->format('Y-m-d 00:00:00'),
+        ]);
+
+        // Check in
+        $checkInResponse = $this->post(route('attendance.check-in'));
         $checkInResponse->assertRedirect();
         
-        $attendance = Attendance::where('user_id', $employee->id)->first();
-        $this->assertNotNull($attendance);
-        $this->assertEquals('present', $attendance->status);
+        // Assert attendance record exists and status is calculated
+        $this->assertDatabaseHas('attendances', [
+            'user_id' => $manager->id,
+            'date' => today()->format('Y-m-d 00:00:00'),
+        ]);
+
+        $attendance = Attendance::where('user_id', $manager->id)->where('date', today())->first();
         $this->assertNotNull($attendance->check_in_time);
         $this->assertNull($attendance->check_out_time);
 
-        // 5. Verify check-out works
-        $checkOutResponse = $this->actingAs($employee)->post(route('attendance.check-out'));
+        // Visit `/my-attendance` and check statistics rendering and page layout
+        $myAttendanceView = $this->get(route('attendance.my-attendance'));
+        $myAttendanceView->assertStatus(200);
+        $myAttendanceView->assertSee('✓ Check Out'); // Check out form is available
+        $myAttendanceView->assertSee('Days Present');
+        $myAttendanceView->assertSee('Total Hours');
+
+        // Check out
+        $checkOutResponse = $this->post(route('attendance.check-out'));
         $checkOutResponse->assertRedirect();
 
         $attendance->refresh();
         $this->assertNotNull($attendance->check_out_time);
 
-        // 6. Verify attendance history displays records
-        $historyResponse = $this->actingAs($employee)->get(route('attendance.history'));
-        $historyResponse->assertStatus(200);
-        $historyResponse->assertSee($employee->name);
-        $historyResponse->assertSee('Attendance History');
-    }
-
-    /**
-     * Test the manager/admin flow.
-     */
-    public function test_manager_admin_flow(): void
-    {
-        // 1. Create admin user
-        $admin = User::factory()->create([
-            'role' => 'admin',
-            'employee_id' => 'ADM-0001',
-            'status' => 'active'
-        ]);
-
-        // 2. Login as admin and verify redirect to /dashboard
-        $loginResponse = $this->post('/login', [
-            'email' => $admin->email,
-            'password' => 'password',
-        ]);
-
-        $this->assertAuthenticatedAs($admin);
-        $loginResponse->assertRedirect(route('dashboard', absolute: false));
-
-        // 3. Verify department CRUD works
-        $deptData = [
-            'name' => 'Engineering',
-            'code' => 'ENG',
-            'description' => 'Software engineering team',
-        ];
-
-        $deptResponse = $this->actingAs($admin)->post(route('departments.store'), $deptData);
-        $deptResponse->assertRedirect(route('departments.index'));
-        $this->assertDatabaseHas('departments', ['code' => 'ENG']);
-
-        $department = Department::where('code', 'ENG')->first();
-
-        // 4. Verify employee CRUD works
-        $employeeData = [
-            'employee_id' => 'EMP-1234',
-            'name' => 'John Doe',
-            'email' => 'johndoe@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-            'role' => 'employee',
-            'status' => 'active',
-            'department_id' => $department->id,
-        ];
-
-        $empResponse = $this->actingAs($admin)->post(route('employees.store'), $employeeData);
-        $empResponse->assertRedirect(route('employees.index'));
-        $this->assertDatabaseHas('users', ['email' => 'johndoe@example.com']);
+        // Visit view again and verify checked-out state
+        $myAttendanceViewCheckedOut = $this->get(route('attendance.my-attendance'));
+        $myAttendanceViewCheckedOut->assertSee('✓ Checked in and out for today');
     }
 }
+

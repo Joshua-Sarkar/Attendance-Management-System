@@ -26,8 +26,18 @@
                     
                     <div class="space-y-3">
                         <div>
+                            <span class="text-on-surface-variant text-sm">Employee ID</span>
+                            <p class="text-on-surface font-medium">{{ $user->employee_id }}</p>
+                        </div>
+
+                        <div>
                             <span class="text-on-surface-variant text-sm">Email</span>
                             <p class="text-on-surface font-medium">{{ $user->email }}</p>
+                        </div>
+
+                        <div>
+                            <span class="text-on-surface-variant text-sm">Phone</span>
+                            <p class="text-on-surface font-medium">{{ $user->phone ?? 'Not Provided' }}</p>
                         </div>
                         
                         <div>
@@ -43,6 +53,13 @@
                                 {{ $user->manager?->name ?? 'Not Assigned' }}
                             </p>
                         </div>
+
+                        <div>
+                            <span class="text-on-surface-variant text-sm">Assigned Admin</span>
+                            <p class="text-on-surface font-medium">
+                                {{ $user->admin?->name ?? 'Not Assigned' }}
+                            </p>
+                        </div>
                         
                         <div>
                             <span class="text-on-surface-variant text-sm">Role</span>
@@ -55,6 +72,13 @@
                                 <span class="inline-block px-3 py-1 rounded-full text-sm @if($user->status === 'active') bg-primary/20 text-primary @else bg-error/20 text-error @endif">
                                     {{ $user->status }}
                                 </span>
+                            </p>
+                        </div>
+
+                        <div>
+                            <span class="text-on-surface-variant text-sm">Joining Date</span>
+                            <p class="text-on-surface font-medium">
+                                {{ $user->joining_date?->format('M d, Y') ?? 'Not Provided' }}
                             </p>
                         </div>
                     </div>

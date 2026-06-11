@@ -60,7 +60,20 @@
                 <span class="font-medium text-sm">Dashboard</span>
             </a>
 
-            <!-- Employees -->
+            <!-- My Attendance -->
+            <a href="{{ route('attendance.my-attendance') }}"
+               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
+               {{ request()->routeIs('attendance.my-attendance')
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
+                <!-- Calendar Icon -->
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="font-medium text-sm">My Attendance</span>
+            </a>
+
+            <!-- Workforce -->
             <a href="{{ route('employees.index') }}"
                class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
                {{ request()->routeIs('employees.*')
@@ -70,7 +83,7 @@
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 8.048M9 9h6m-8 4h16M5.5 20h13a2 2 0 002-2v-1a6 6 0 00-9-5.197 6 6 0 00-9 5.197v1a2 2 0 002 2z" />
                 </svg>
-                <span class="font-medium text-sm">Employees</span>
+                <span class="font-medium text-sm">Workforce</span>
             </a>
 
             <!-- Departments -->
