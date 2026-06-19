@@ -692,19 +692,19 @@
                                 </div>
                                 <div>
                                     <label for="previous_year_experience" class="block text-sm font-medium text-gray-700">Previous Experience (Years)</label>
-                                    <input type="number" step="0.01" name="previous_year_experience" id="previous_year_experience" value="{{ old('previous_year_experience', $user->employeeProfile?->previous_year_experience) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <input type="text" name="previous_year_experience" id="previous_year_experience" value="{{ old('previous_year_experience', $user->employeeProfile?->previous_year_experience) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     @error('previous_year_experience') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label for="years_completed" class="block text-sm font-medium text-gray-700">Years Completed</label>
-                                    <input type="number" step="0.01" name="years_completed" id="years_completed" value="{{ old('years_completed', $user->employeeProfile?->years_completed) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                    @error('years_completed') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label for="overall_year_experience" class="block text-sm font-medium text-gray-700">Overall Experience (Years)</label>
-                                    <input type="number" step="0.01" name="overall_year_experience" id="overall_year_experience" value="{{ old('overall_year_experience', $user->employeeProfile?->overall_year_experience) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                    @error('overall_year_experience') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                </div>
+                                 </div>
+                                 <div>
+                                     <label for="years_completed" class="block text-sm font-medium text-gray-700">Years Completed</label>
+                                     <input type="text" name="years_completed" id="years_completed" value="{{ old('years_completed', $user->employeeProfile?->years_completed) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                     @error('years_completed') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                 </div>
+                                 <div>
+                                     <label for="overall_year_experience" class="block text-sm font-medium text-gray-700">Overall Experience (Years)</label>
+                                     <input type="text" name="overall_year_experience" id="overall_year_experience" value="{{ old('overall_year_experience', $user->employeeProfile?->overall_year_experience) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                     @error('overall_year_experience') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                 </div>
                             </div>
                         </details>
                     </div>

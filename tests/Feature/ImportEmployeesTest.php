@@ -122,9 +122,9 @@ test('it imports employees and updates profiles correctly from xlsx', function (
             'PROBATION CONFIRM_DATE' => '2015-07-01',
             'SEPRATE DATE' => '',
             'LWD' => '',
-            'PREVIOUS YEAR_EXPERIENCE' => '3.0',
-            'NUMBER OF_YEAR_COMPLETED' => '5.0',
-            'OVERALL YEAR_EXPERIENCE' => '8.0',
+            'PREVIOUS YEAR_EXPERIENCE' => '6 Year, 7 Month, 12 Days',
+            'NUMBER OF_YEAR_COMPLETED' => '5 Year, 3 Month',
+            'OVERALL YEAR_EXPERIENCE' => '11 Year, 10 Month, 12 Days',
         ],
         // Row 3: Create with Reporting Manager
         [
@@ -198,6 +198,9 @@ test('it imports employees and updates profiles correctly from xlsx', function (
     expect($profile1->father_name)->toBe('Father One');
     expect($profile1->city_type)->toBe('Metro');
     expect($profile1->notice_days)->toBe(30);
+    expect($profile1->previous_year_experience)->toBe('6 Year, 7 Month, 12 Days');
+    expect($profile1->years_completed)->toBe('5 Year, 3 Month');
+    expect($profile1->overall_year_experience)->toBe('11 Year, 10 Month, 12 Days');
 
     // User Two should be created and linked to User One as manager
     $user2 = User::where('employee_id', 'EMP00002')->first();

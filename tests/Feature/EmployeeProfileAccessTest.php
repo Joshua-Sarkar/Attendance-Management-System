@@ -51,6 +51,10 @@ test('admin can create an employee with profile fields across multiple sections 
         // Bank Details section
         'bank_name' => 'Chase Bank',
         'account_no' => '1234567890',
+        // Experience section
+        'previous_year_experience' => '6 Year, 7 Month, 12 Days',
+        'years_completed' => '5 Year, 3 Month',
+        'overall_year_experience' => '11 Year, 10 Month, 12 Days',
     ];
 
     $response = $this->actingAs($admin)
@@ -72,6 +76,9 @@ test('admin can create an employee with profile fields across multiple sections 
     $responseView->assertSee('Current Ave 99');
     $responseView->assertSee('Chase Bank');
     $responseView->assertSee('1234567890');
+    $responseView->assertSee('6 Year, 7 Month, 12 Days');
+    $responseView->assertSee('5 Year, 3 Month');
+    $responseView->assertSee('11 Year, 10 Month, 12 Days');
 });
 
 test('logged-in non-admin employee visiting GET /employees/{their own id} gets a 200, without Edit Profile button', function () {

@@ -257,9 +257,9 @@ class EmployeeImportService
                     'probation_confirm_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'PROBATION CONFIRM_DATE')),
                     'separation_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'SEPRATE DATE')),
                     'last_working_day' => $this->parseExcelDate($this->getVal($row, $headersMap, 'LWD')),
-                    'previous_year_experience' => $this->parseNumeric($this->getVal($row, $headersMap, 'PREVIOUS YEAR_EXPERIENCE')),
-                    'years_completed' => $this->parseNumeric($this->getVal($row, $headersMap, 'NUMBER OF_YEAR_COMPLETED')),
-                    'overall_year_experience' => $this->parseNumeric($this->getVal($row, $headersMap, 'OVERALL YEAR_EXPERIENCE')),
+                    'previous_year_experience' => $this->trimVal($this->getVal($row, $headersMap, 'PREVIOUS YEAR_EXPERIENCE')),
+                    'years_completed' => $this->trimVal($this->getVal($row, $headersMap, 'NUMBER OF_YEAR_COMPLETED')),
+                    'overall_year_experience' => $this->trimVal($this->getVal($row, $headersMap, 'OVERALL YEAR_EXPERIENCE')),
                     'city_type' => $this->getVal($row, $headersMap, 'City Type'),
                     'notice_days' => $this->parseInteger($this->getVal($row, $headersMap, 'Notice Days')),
                     'joining_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'Joining Date')),
@@ -395,5 +395,13 @@ class EmployeeImportService
         }
         $cleaned = preg_replace('/[^0-9-]/', '', $value);
         return is_numeric($cleaned) ? (int) $cleaned : null;
+    }
+
+    private function trimVal($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return trim($value);
     }
 }

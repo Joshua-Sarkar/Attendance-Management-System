@@ -178,9 +178,9 @@ class EmployeeController extends Controller
             'probation_confirm_date' => ['nullable', 'date'],
             'separation_date' => ['nullable', 'date'],
             'last_working_day' => ['nullable', 'date'],
-            'previous_year_experience' => ['nullable', 'numeric', 'min:0'],
-            'years_completed' => ['nullable', 'numeric', 'min:0'],
-            'overall_year_experience' => ['nullable', 'numeric', 'min:0'],
+            'previous_year_experience' => ['nullable', 'string', 'max:255'],
+            'years_completed' => ['nullable', 'string', 'max:255'],
+            'overall_year_experience' => ['nullable', 'string', 'max:255'],
         ];
 
         $rules = array_merge($rules, $profileRules);
@@ -445,9 +445,9 @@ class EmployeeController extends Controller
             'probation_confirm_date' => ['nullable', 'date'],
             'separation_date' => ['nullable', 'date'],
             'last_working_day' => ['nullable', 'date'],
-            'previous_year_experience' => ['nullable', 'numeric', 'min:0'],
-            'years_completed' => ['nullable', 'numeric', 'min:0'],
-            'overall_year_experience' => ['nullable', 'numeric', 'min:0'],
+            'previous_year_experience' => ['nullable', 'string', 'max:255'],
+            'years_completed' => ['nullable', 'string', 'max:255'],
+            'overall_year_experience' => ['nullable', 'string', 'max:255'],
         ];
 
         $rules = array_merge($rules, $profileRules);
