@@ -84,6 +84,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/import-employees', [ImportController::class, 'showUploadForm'])->name('admin.import.show');
         Route::post('/admin/import-employees', [ImportController::class, 'handleUpload'])->name('admin.import.handle');
     });
+
+    // Profile Correction Requests Routes
+    Route::post('/employee/correction-requests', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'store'])
+        ->name('employee.corrections.store');
+
+    Route::middleware('admin')->group(function () {
+        Route::get('/admin/correction-requests', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'adminIndex'])
+            ->name('admin.corrections.index');
+        Route::post('/admin/correction-requests/{correctionRequest}/resolve', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'adminResolve'])
+            ->name('admin.corrections.resolve');
+    });
 });
 
 require __DIR__.'/auth.php';

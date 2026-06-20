@@ -40,6 +40,7 @@ class DashboardController extends Controller
                 'admins' => (clone $metricsQuery)->where('role', 'admin')->count(),
                 'managers' => (clone $metricsQuery)->where('role', 'manager')->count(),
                 'employees' => (clone $metricsQuery)->where('role', 'employee')->count(),
+                'pending_corrections' => \App\Models\ProfileCorrectionRequest::where('status', 'pending')->count(),
             ];
         }
 

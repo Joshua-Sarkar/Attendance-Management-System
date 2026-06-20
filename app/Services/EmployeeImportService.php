@@ -158,7 +158,6 @@ class EmployeeImportService
                         continue;
                     }
 
-                    $tempPassword = Str::random(10);
                     $user = new User();
                     $user->employee_id = $standardizedId;
                     $user->name = $fullName;
@@ -169,7 +168,7 @@ class EmployeeImportService
                     $user->joining_date = $this->parseExcelDate($this->getVal($row, $headersMap, 'Joining Date'));
                     $user->department_id = $department->id;
                     $user->must_change_password = true;
-                    $user->password = bcrypt($tempPassword);
+                    $user->password = \Illuminate\Support\Facades\Hash::make(env('DEFAULT_EMPLOYEE_PASSWORD'));
                     $user->save();
 
                     $usersCreatedCount++;

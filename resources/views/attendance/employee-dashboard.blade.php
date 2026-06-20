@@ -22,7 +22,10 @@
 
                 <!-- Employee Details Card -->
                 <div class="glass-panel p-6 rounded-lg border border-outline-variant/30">
-                    <h4 class="text-lg font-semibold text-on-surface mb-4">Employee Details</h4>
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-semibold text-on-surface">Employee Details</h4>
+                        <a href="{{ route('employees.show', $user) }}" class="text-primary hover:text-primary/80 text-sm font-medium">View Full Profile →</a>
+                    </div>
                     
                     <div class="space-y-3">
                         <div>

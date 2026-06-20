@@ -264,8 +264,8 @@ class AttendanceService
         for ($i = 0; $i < $days; $i++) {
             $date = $startDate->copy()->addDays($i);
 
-            // Skip weekends for calculating absences
-            if ($date->isWeekend()) {
+            // Skip Sundays for calculating absences
+            if ($date->isSunday()) {
                 continue;
             }
 

@@ -1,21 +1,46 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Employee Profile — ') }} {{ $user->name }}
-            </h2>
-            
-            @if(auth()->user()->role === 'admin')
-                <a href="{{ route('employees.edit', $user) }}"
-                   class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition duration-150">
-                    Edit Profile
-                </a>
-            @endif
-        </div>
-    </x-slot>
+    <div x-data="{ openCorrectionModal: false }" @open-profile-correction-modal.window="openCorrectionModal = true">
+        <x-slot name="header">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    {{ __('Employee Profile — ') }} {{ $user->name }}
+                </h2>
+                
+                <div class="flex gap-2">
+                    @if(auth()->user()->role === 'admin')
+                        <a href="{{ route('employees.edit', $user) }}"
+                           class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition duration-150">
+                            Edit Profile
+                        </a>
+                    @endif
+
+                    @if(auth()->user()->id === $user->id && auth()->user()->role === 'employee')
+                        <button x-data @click="$dispatch('open-profile-correction-modal')"
+                                class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest transition duration-150">
+                            Report Incorrect Information
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </x-slot>
 
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            @if(session('success'))
+                <div class="rounded-md bg-green-50 border border-green-200 text-green-800 px-4 py-3 shadow-sm text-sm">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="rounded-md bg-red-50 border border-red-200 text-red-800 px-4 py-3 shadow-sm text-sm">
+                    <ul class="list-disc pl-5">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             
             <!-- Core Information Summary Card -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200">
@@ -267,7 +292,118 @@
                 </div>
 
             </div>
+            </div>
+
+            <!-- Profile Correction Requests Section -->
+            @if(auth()->user()->id === $user->id || auth()->user()->role === 'admin')
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-200 mt-6 space-y-4">
+                    <h4 class="text-lg font-semibold text-indigo-900 mb-2 flex items-center">
+                        <span class="bg-indigo-100 p-1.5 rounded-md mr-2">
+                            <svg class="w-5 h-5 text-indigo-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </span>
+                        Profile Correction Requests
+                    </h4>
+
+                    @php
+                        $correctionRequests = \App\Models\ProfileCorrectionRequest::where('user_id', $user->id)->latest()->get();
+                    @endphp
+
+                    @if($correctionRequests->isEmpty())
+                        <p class="text-sm text-gray-500">No correction requests submitted yet.</p>
+                    @else
+                        <div class="space-y-4">
+                            @foreach($correctionRequests as $req)
+                                <div class="p-4 rounded-lg border {{ $req->status === 'pending' ? 'bg-amber-50/50 border-amber-200' : 'bg-green-50/50 border-green-200' }}">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-semibold text-gray-500">
+                                            Submitted on {{ $req->created_at->format('Y-m-d h:i A') }}
+                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[11px] font-bold">{{ $req->field }}</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize {{ $req->status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800' }}">
+                                                {{ $req->status }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-800 whitespace-pre-line font-medium">{{ $req->message }}</p>
+                                    
+                                    @if($req->status === 'resolved')
+                                        <div class="mt-2 pt-2 border-t border-dashed border-green-200">
+                                            <span class="block text-xs font-semibold text-gray-600">Admin Note:</span>
+                                            <p class="text-sm text-gray-700 whitespace-pre-line italic">{{ $req->admin_note ?? 'None' }}</p>
+                                            <span class="block text-[10px] text-gray-500 mt-1">
+                                                Resolved by {{ $req->resolver?->name ?? 'Admin' }} on {{ $req->resolved_at?->format('Y-m-d h:i A') }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <!-- Correction Request Modal -->
+            <div x-show="openCorrectionModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;" x-transition>
+                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <!-- Background overlay -->
+                    <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="openCorrectionModal = false"></div>
+
+                    <!-- Modal panel -->
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <form method="POST" action="{{ route('employee.corrections.store') }}">
+                            @csrf
+                            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div class="sm:flex sm:items-start">
+                                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                        <h3 class="text-lg leading-6 font-semibold text-indigo-900 mb-4" id="modal-title">
+                                            Report Incorrect Profile Information
+                                        </h3>
+                                        
+                                        <!-- Field Dropdown -->
+                                        <div class="mb-4">
+                                            <label for="field" class="block text-sm font-medium text-gray-700 mb-1">Field to Correct</label>
+                                            <select name="field" id="field" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200">
+                                                <option value="">Select a field...</option>
+                                                <option value="Phone Number">Phone Number</option>
+                                                <option value="Personal Email">Personal Email</option>
+                                                <option value="Official Email">Official Email</option>
+                                                <option value="Department">Department</option>
+                                                <option value="Designation">Designation</option>
+                                                <option value="Reporting Manager">Reporting Manager</option>
+                                                <option value="Joining Date">Joining Date</option>
+                                                <option value="Address">Address</option>
+                                                <option value="Bank Details">Bank Details</option>
+                                                <option value="Emergency Contact">Emergency Contact</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Message Details -->
+                                        <div class="mb-4">
+                                            <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Correction Details (Be specific)</label>
+                                            <textarea name="message" id="message" rows="4" required minlength="5" maxlength="1000"
+                                                      placeholder="Please specify what needs correction and supply the correct values..."
+                                                      class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                    Submit Request
+                                </button>
+                                <button type="button" @click="openCorrectionModal = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
+</div>
 </x-app-layout>
