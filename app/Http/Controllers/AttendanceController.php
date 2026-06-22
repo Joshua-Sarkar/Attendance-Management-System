@@ -24,6 +24,171 @@ class AttendanceController extends Controller
         $recent_history = $this->attendanceService->getAttendanceHistory($user, days: 7);
         $hours_today = $this->attendanceService->calculateTodayHours($user);
         
+        // Month's attendance rate (%)
+        $startOfMonth = today()->startOfMonth();
+        $today = today();
+        
+        $monthAttendances = \App\Models\Attendance::where('user_id', $user->id)
+            ->where('date', '>=', $startOfMonth)
+            ->where('date', '<=', $today)
+            ->get()
+            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
+            
+        $monthLeaves = \App\Models\LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $today->format('Y-m-d') . ' 23:59:59')
+            ->where('end_date', '>=', $startOfMonth->format('Y-m-d') . ' 00:00:00')
+            ->get();
+            
+        $monthPresent = 0;
+        $monthAbsent = 0;
+        $monthLeave = 0;
+        $monthWfh = 0;
+        $monthHours = 0.0;
+        
+        $diffDays = $today->diffInDays($startOfMonth) + 1;
+        for ($i = 0; $i < $diffDays; $i++) {
+            $date = $startOfMonth->copy()->addDays($i);
+            if ($date->isSunday()) {
+                continue;
+            }
+            $dateStr = $date->format('Y-m-d');
+            
+            $dayLeave = $monthLeaves->first(function($leave) use ($date) {
+                $dateStr = $date->format('Y-m-d');
+                $leaveStartStr = $leave->start_date->format('Y-m-d');
+                $leaveEndStr = $leave->end_date->format('Y-m-d');
+                return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
+            });
+            
+            if (isset($monthAttendances[$dateStr])) {
+                $record = $monthAttendances[$dateStr];
+                if ($record->status === 'present' || $record->status === 'late') {
+                    $monthPresent++;
+                } elseif ($record->status === 'wfh') {
+                    $monthWfh++;
+                } elseif ($record->status === 'on_leave') {
+                    $monthLeave++;
+                } else {
+                    $monthAbsent++;
+                }
+                
+                if ($record->check_in_time) {
+                    $endTime = $record->check_out_time ?? ($date->isToday() ? now() : null);
+                    if ($endTime) {
+                        $monthHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
+                    }
+                }
+            } else {
+                if ($dayLeave) {
+                    if ($dayLeave->leave_type === 'work_from_home') {
+                        $monthWfh++;
+                    } else {
+                        $monthLeave++;
+                    }
+                } else {
+                    $monthAbsent++;
+                }
+            }
+        }
+        
+        $totalMonthWorkingDays = $monthPresent + $monthAbsent + $monthLeave + $monthWfh;
+        $monthAttendanceRate = $totalMonthWorkingDays > 0
+            ? round((($monthPresent + $monthWfh) / $totalMonthWorkingDays) * 100, 1)
+            : 100.0;
+            
+        // Leaves remaining (calculated via monthly accrual)
+        $now = \Carbon\Carbon::now();
+        $currentYear = $now->year;
+        $joiningDate = $user->joining_date ? \Carbon\Carbon::parse($user->joining_date) : null;
+        if ($joiningDate && $joiningDate->year === $currentYear) {
+            $accrualStart = $joiningDate->copy()->startOfDay();
+        } else {
+            $accrualStart = \Carbon\Carbon::create($currentYear, 1, 1, 0, 0, 0);
+        }
+        
+        $leavesEarned = 0;
+        $monthlyRate = config('attendance.leave_monthly_accrual_rate', 2);
+        for ($m = 1; $m <= $now->month; $m++) {
+            $monthStart = \Carbon\Carbon::create($currentYear, $m, 1, 0, 0, 0);
+            if ($monthStart->greaterThanOrEqualTo($accrualStart)) {
+                $leavesEarned += $monthlyRate;
+            }
+        }
+        
+        $annualAllocation = config('attendance.leave_annual_allocation', 24);
+        $leavesEarned = min($annualAllocation, $leavesEarned);
+        
+        $leavesTaken = \App\Models\LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('start_date', '>=', $accrualStart)
+            ->sum('total_days');
+            
+        $leavesRemaining = max(0, $leavesEarned - $leavesTaken);
+        
+        // Current on-time streak
+        $historyDays = 90;
+        $streakStartDate = today()->subDays($historyDays);
+        
+        $allAttendances = \App\Models\Attendance::where('user_id', $user->id)
+            ->where('date', '>=', $streakStartDate)
+            ->where('date', '<=', today())
+            ->get()
+            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
+            
+        $allLeaves = \App\Models\LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', today()->format('Y-m-d') . ' 23:59:59')
+            ->where('end_date', '>=', $streakStartDate->format('Y-m-d') . ' 00:00:00')
+            ->get();
+            
+        $streak = 0;
+        $startTime = config('attendance.start_time', '09:00');
+        $graceMinutes = config('attendance.grace_minutes', 15);
+        $threshold = today()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);
+        
+        $todayIsSunday = today()->isSunday();
+        $todayStr = today()->format('Y-m-d');
+        $todayHasLeave = $allLeaves->first(function($l) use ($todayStr) {
+            return $todayStr >= $l->start_date->format('Y-m-d') && $todayStr <= $l->end_date->format('Y-m-d');
+        }) !== null;
+        
+        $todayHasAttendance = isset($allAttendances[$todayStr]);
+        
+        $evalDate = today();
+        if (!$todayHasAttendance && !$todayIsSunday && !$todayHasLeave) {
+            if ($now->lessThanOrEqualTo($threshold)) {
+                $evalDate = today()->subDay();
+            }
+        }
+        
+        for ($d = 0; $d < $historyDays; $d++) {
+            $date = $evalDate->copy()->subDays($d);
+            if ($date->isSunday()) {
+                continue;
+            }
+            $dateStr = $date->format('Y-m-d');
+            
+            $dayLeave = $allLeaves->first(function($l) use ($dateStr) {
+                return $dateStr >= $l->start_date->format('Y-m-d') && $dateStr <= $l->end_date->format('Y-m-d');
+            });
+            
+            if ($dayLeave) {
+                continue;
+            }
+            
+            if (isset($allAttendances[$dateStr])) {
+                $record = $allAttendances[$dateStr];
+                if ($record->status === 'present') {
+                    $streak++;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        
         return view('attendance.employee-dashboard', [
             'user' => $user,
             'today_attendance' => $today_attendance,
@@ -31,6 +196,10 @@ class AttendanceController extends Controller
             'hours_today' => $hours_today,
             'is_checked_in' => $this->attendanceService->isCheckedInToday($user),
             'is_checked_out' => $this->attendanceService->hasCheckedOutToday($user),
+            'month_attendance_rate' => $monthAttendanceRate,
+            'leaves_remaining' => $leavesRemaining,
+            'on_time_streak' => $streak,
+            'month_hours' => $monthHours,
         ]);
     }
 
@@ -153,7 +322,7 @@ class AttendanceController extends Controller
         $history = $this->attendanceService->getAttendanceHistory($user, days: 30);
         
         // Calculate monthly stats
-        $present_count = $history->where('status', 'present')->count();
+        $present_count = $history->filter(fn($att) => in_array($att->status, ['present', 'late']))->count();
         $absent_count = $history->where('status', 'absent')->count();
         $late_count = $history->where('status', 'late')->count();
         

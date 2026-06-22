@@ -47,7 +47,7 @@ class DashboardController extends Controller
         // Fetch stats and lists for the dashboard
         $stats = $this->attendanceService->getTodayStats($date, $departmentId, $request->user());
         $employees = $this->attendanceService->getFilteredAttendance($date, $departmentId, $search, $request->user());
-        $recentActivity = $this->attendanceService->getRecentActivity(5, $request->user());
+        $recentActivity = $this->attendanceService->getRecentActivity(10, $request->user());
         $departments = Department::orderBy('name')->get();
 
         return view('dashboard', compact(

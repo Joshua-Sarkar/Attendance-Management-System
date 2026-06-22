@@ -7,10 +7,14 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ManagerAttendanceController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\AttendanceAuditController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -83,6 +87,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/admin/import-employees', [ImportController::class, 'showUploadForm'])->name('admin.import.show');
         Route::post('/admin/import-employees', [ImportController::class, 'handleUpload'])->name('admin.import.handle');
+        Route::post('/admin/employees/{user}/reset-password', [EmployeeController::class, 'resetPassword'])->name('admin.employees.reset-password');
+        Route::get('/admin/attendance-logs', [AttendanceAuditController::class, 'index'])->name('admin.attendance.logs');
     });
 
     // Profile Correction Requests Routes

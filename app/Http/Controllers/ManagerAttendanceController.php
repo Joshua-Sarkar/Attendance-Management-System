@@ -90,6 +90,11 @@ class ManagerAttendanceController extends Controller
             ];
         }
 
-        return view('attendance.show', compact('user', 'stats', 'history'));
+        $totalWorkingDays = $stats['present'] + $stats['absent'] + $stats['on_leave'] + $stats['wfh'];
+        $attendancePercentage = $totalWorkingDays > 0 
+            ? round(($stats['present'] / $totalWorkingDays) * 100, 1) 
+            : 0;
+
+        return view('attendance.show', compact('user', 'stats', 'history', 'attendancePercentage'));
     }
 }

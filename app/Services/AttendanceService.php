@@ -17,11 +17,17 @@ class AttendanceService
     {
         $today = today();
 
-        // Determine check-in status (late if after configured start time threshold)
+        // Determine check-in status (late if after configured start time + grace threshold)
         $now = now();
-        $startTime = config('attendance.start_time', '09:00:00');
-        $threshold = today()->setTimeFromTimeString($startTime);
-        $status = $now->greaterThan($threshold) ? 'late' : 'present';
+        $startTime = config('attendance.start_time', '09:00');
+        $graceMinutes = config('attendance.grace_minutes', 15);
+
+        $threshold = today()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);
+
+        $nowMin = $now->copy()->second(0)->microsecond(0);
+        $thresholdMin = $threshold->copy()->second(0)->microsecond(0);
+
+        $status = $nowMin->greaterThan($thresholdMin) ? 'late' : 'present';
 
         $attendance = Attendance::firstOrCreate(
             [
@@ -156,7 +162,10 @@ class AttendanceService
         }
 
         if ($searchQuery) {
-            $query->where('name', 'like', '%' . $searchQuery . '%');
+            $query->where(function($q) use ($searchQuery) {
+                $q->where('name', 'like', '%' . $searchQuery . '%')
+                  ->orWhere('employee_id', 'like', '%' . $searchQuery . '%');
+            });
         }
 
         $employees = $query->orderBy('name')->get();
@@ -207,24 +216,68 @@ class AttendanceService
         $onLeave = 0;
         $wfh = 0;
 
+        $lateArrivals = [];
+        $exceptions = [
+            'on_leave' => [],
+            'wfh' => [],
+            'late' => [],
+        ];
+        $totalLateMinutes = 0;
+
+        $isSunday = \Carbon\Carbon::parse($date)->isSunday();
+
         foreach ($employees as $emp) {
             $attendance = $emp->today_attendance;
             if ($attendance) {
                 if ($attendance->status === 'present') {
                     $present++;
                 } elseif ($attendance->status === 'late') {
+                    // Note: 'Present Today' includes 'Late Today' employees because late employees
+                    // are physically present at work. 'Late Today' acts as a subset metric of 'Present Today'
+                    // rather than a separate attendance category.
                     $late++;
+                    $present++;
+                    
+                    $lateMinutes = $attendance->late_minutes;
+                    $totalLateMinutes += $lateMinutes;
+                    $lateArrivals[] = [
+                        'name' => $emp->name,
+                        'employee_id' => $emp->employee_id,
+                        'check_in_time' => $attendance->check_in_time,
+                        'late_minutes' => $lateMinutes,
+                    ];
+                    
+                    $exceptions['late'][] = [
+                        'name' => $emp->name,
+                        'employee_id' => $emp->employee_id,
+                        'check_in_time' => $attendance->check_in_time,
+                        'late_minutes' => $lateMinutes,
+                    ];
                 } elseif ($attendance->status === 'absent') {
-                    $absent++;
+                    if (!$isSunday) {
+                        $absent++;
+                    }
                 } elseif ($attendance->status === 'on_leave') {
                     $onLeave++;
+                    $exceptions['on_leave'][] = [
+                        'name' => $emp->name,
+                        'employee_id' => $emp->employee_id,
+                    ];
                 } elseif ($attendance->status === 'wfh') {
                     $wfh++;
+                    $exceptions['wfh'][] = [
+                        'name' => $emp->name,
+                        'employee_id' => $emp->employee_id,
+                    ];
                 }
             } else {
-                $absent++;
+                if (!$isSunday) {
+                    $absent++;
+                }
             }
         }
+
+        $averageLateMinutes = $late > 0 ? round($totalLateMinutes / $late, 1) : 0;
 
         return [
             'total' => $employees->count(),
@@ -233,6 +286,9 @@ class AttendanceService
             'absent' => $absent,
             'on_leave' => $onLeave,
             'wfh' => $wfh,
+            'late_arrivals' => $lateArrivals,
+            'average_late_minutes' => $averageLateMinutes,
+            'exceptions' => $exceptions,
         ];
     }
 
@@ -283,7 +339,10 @@ class AttendanceService
                 if ($record->status === 'present') {
                     $present++;
                 } elseif ($record->status === 'late') {
+                    // Note: 'Present' includes 'Late' records because the employee did check in and attend.
+                    // 'Late' is treated as a subset flag of the 'Present' count, not a separate standalone category.
                     $late++;
+                    $present++;
                 } elseif ($record->status === 'absent') {
                     $absent++;
                 }

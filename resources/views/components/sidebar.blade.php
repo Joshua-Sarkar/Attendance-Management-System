@@ -1,201 +1,171 @@
-<aside class="fixed top-0 left-0 h-screen w-64 bg-surface dark:bg-surface glass-panel rounded-none border-r border-primary/10 z-50 flex flex-col">
+@php
+    $user = Auth::user();
+    $role = $user->role;
+    
+    // Resolve user initials for the avatar
+    $words = explode(' ', $user->name);
+    $initials = '';
+    foreach ($words as $word) {
+        $initials .= strtoupper(substr($word, 0, 1));
+    }
+    $initials = substr($initials, 0, 2);
+@endphp
 
-    <!-- Logo Section -->
-    <div class="h-16 flex items-center px-gutter border-b border-outline-variant/30">
-        <div class="flex items-center gap-stack-sm">
-            <div class="w-8 h-8 rounded-md bg-gradient-to-br from-primary to-primary-fixed flex items-center justify-center">
-                <span class="text-white font-bold text-sm">AMS</span>
-            </div>
-            <h1 class="text-on-surface font-semibold text-lg tracking-tight">
-                AMS
-            </h1>
+<aside class="sidebar w-[232px] shrink-0 bg-surface border-r border-hairline flex flex-col py-7 sticky top-0 h-screen">
+    <!-- Crest Section -->
+    <div class="crest flex items-center gap-3 px-6 pb-7 mb-2 border-b border-hairline">
+        <div class="crest-mark w-[38px] h-[38px] border border-brass-dim rounded-full flex items-center justify-center font-display font-semibold text-[15px] text-brass tracking-wider">
+            VQ
+        </div>
+        <div class="crest-text leading-tight">
+            <div class="top font-display text-[15px] font-semibold text-vellum tracking-wide">Workforce</div>
+            <div class="bottom text-[11px] text-vellum-faint tracking-[1.5px] uppercase mt-0.5">Ledger</div>
         </div>
     </div>
 
-    <!-- Navigation -->
-    <nav class="flex-1 px-stack-sm py-stack-lg space-y-unit overflow-y-auto scroll-hide">
+    <!-- Navigation List -->
+    <nav class="flex-1 px-3.5 py-5 space-y-[2px]">
+        <!-- Dashboard Link (All Roles) -->
+        @php
+            $dashboardRoute = ($role === 'employee') ? route('employee.dashboard') : route('dashboard');
+            $isDashboardActive = request()->routeIs('dashboard') || request()->routeIs('employee.dashboard');
+        @endphp
+        <a href="{{ $dashboardRoute }}" 
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+           {{ $isDashboardActive 
+               ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+               : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isDashboardActive ? 'opacity-100' : 'opacity-75' }}">
+                <rect x="3" y="3" width="8" height="8" rx="1.5"/>
+                <rect x="13" y="3" width="8" height="8" rx="1.5"/>
+                <rect x="3" y="13" width="8" height="8" rx="1.5"/>
+                <rect x="13" y="13" width="8" height="8" rx="1.5"/>
+            </svg>
+            Dashboard
+        </a>
 
-        @if(auth()->user()->role === 'employee')
-            <!-- Employee Navigation -->
+        <!-- My Attendance Link (All Roles) -->
+        @php
+            $isAttendanceActive = request()->routeIs('attendance.my-attendance');
+        @endphp
+        <a href="{{ route('attendance.my-attendance') }}" 
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+           {{ $isAttendanceActive 
+               ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+               : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isAttendanceActive ? 'opacity-100' : 'opacity-75' }}">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3.5 2"/>
+            </svg>
+            My Attendance
+        </a>
 
-            <!-- Dashboard -->
-            <a href="{{ route('employee.dashboard') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('employee.dashboard')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- Home Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h2a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h2a1 1 0 001-1V9m-9 4l4-2m0 0l4 2" />
+        <!-- Workforce Link (Admins and Managers) -->
+        @if($role === 'admin' || $role === 'manager')
+            @php
+                $isWorkforceActive = request()->routeIs('employees.*');
+            @endphp
+            <a href="{{ route('employees.index') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               {{ $isWorkforceActive 
+                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isWorkforceActive ? 'opacity-100' : 'opacity-75' }}">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                <span class="font-medium text-sm">Dashboard</span>
+                Workforce
             </a>
-
-            <!-- My Profile -->
-            <a href="{{ route('employees.show', auth()->user()) }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('employees.show')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- User Profile Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span class="font-medium text-sm">My Profile</span>
-            </a>
-
-            <!-- Attendance History -->
-            <a href="{{ route('attendance.history') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('attendance.history')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- Calendar Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="font-medium text-sm">Attendance History</span>
-            </a>
-
-            <!-- Leaves -->
-            <a href="{{ route('leaves.index') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('leaves.*')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                <span class="font-medium text-sm">Leaves</span>
-            </a>
-
-        @else
-            <!-- Manager/Admin Navigation -->
-
-            <!-- Dashboard -->
-            <a href="{{ route('dashboard') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('dashboard')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- Home Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h2a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h2a1 1 0 001-1V9m-9 4l4-2m0 0l4 2" />
-                </svg>
-                <span class="font-medium text-sm">Dashboard</span>
-            </a>
-
-            <!-- My Attendance -->
-            <a href="{{ route('attendance.my-attendance') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('attendance.my-attendance')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- Calendar Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="font-medium text-sm">My Attendance</span>
-            </a>
-
-            <!-- Workforce -->
-            <a href="{{ route('employees.index') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('employees.*')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- Users Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 8.048M9 9h6m-8 4h16M5.5 20h13a2 2 0 002-2v-1a6 6 0 00-9-5.197 6 6 0 00-9 5.197v1a2 2 0 002 2z" />
-                </svg>
-                <span class="font-medium text-sm">Workforce</span>
-            </a>
-
-            <!-- Departments -->
-            <a href="{{ route('departments.index') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('departments.*')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <!-- Building Icon -->
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                </svg>
-                <span class="font-medium text-sm">Departments</span>
-            </a>
-
-            <!-- Leaves -->
-            <a href="{{ route('leaves.index') }}"
-               class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-               {{ request()->routeIs('leaves.*')
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                <span class="font-medium text-sm">Leaves</span>
-            </a>
-
-            @if(auth()->user()->role === 'admin')
-                <!-- Import Employees -->
-                <a href="{{ route('admin.import.show') }}"
-                   class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-                   {{ request()->routeIs('admin.import.*')
-                        ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                        : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span class="font-medium text-sm">Import Employees</span>
-                </a>
-
-                <!-- Correction Requests -->
-                <a href="{{ route('admin.corrections.index') }}"
-                   class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200
-                   {{ request()->routeIs('admin.corrections.*')
-                        ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]'
-                        : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface' }}">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    @php
-                        $pendingCorrectionsCount = \App\Models\ProfileCorrectionRequest::where('status', 'pending')->count();
-                    @endphp
-                    <span class="font-medium text-sm">
-                        Correction Requests
-                        @if($pendingCorrectionsCount > 0)
-                            ({{ $pendingCorrectionsCount }})
-                        @endif
-                    </span>
-                </a>
-            @endif
         @endif
 
+        <!-- Departments Link (Admins and Managers) -->
+        @if($role === 'admin' || $role === 'manager')
+            @php
+                $isDepartmentsActive = request()->routeIs('departments.*');
+            @endphp
+            <a href="{{ route('departments.index') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               {{ $isDepartmentsActive 
+                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isDepartmentsActive ? 'opacity-100' : 'opacity-75' }}">
+                    <path d="M3 21h18M3 7v14M21 7v14M16 3H8v4h8V3zM12 11h.01M12 15h.01M16 11h.01M16 15h.01M8 11h.01M8 15h.01"/>
+                </svg>
+                Departments
+            </a>
+        @endif
+
+        <!-- Leaves Link (All Roles) -->
+        @php
+            $isLeavesActive = request()->routeIs('leaves.*');
+        @endphp
+        <a href="{{ route('leaves.index') }}" 
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+           {{ $isLeavesActive 
+               ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+               : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isLeavesActive ? 'opacity-100' : 'opacity-75' }}">
+                <rect x="3" y="4" width="18" height="17" rx="1.5"/>
+                <path d="M3 9h18M8 2v4M16 2v4"/>
+            </svg>
+            Leaves
+        </a>
+
+        <!-- Import Employees Link (Admin Only) -->
+        @if($role === 'admin')
+            @php
+                $isImportActive = request()->routeIs('admin.import.*');
+            @endphp
+            <a href="{{ route('admin.import.show') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               {{ $isImportActive 
+                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isImportActive ? 'opacity-100' : 'opacity-75' }}">
+                    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                Import Employees
+            </a>
+        @endif
+
+        <!-- Correction Requests Link (Admin Only) -->
+        @if($role === 'admin')
+            @php
+                $isCorrectionsActive = request()->routeIs('admin.corrections.*');
+            @endphp
+            <a href="{{ route('admin.corrections.index') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               {{ $isCorrectionsActive 
+                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
+                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isCorrectionsActive ? 'opacity-100' : 'opacity-75' }}">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Correction Requests
+            </a>
+        @endif
     </nav>
 
-    <!-- Settings Section -->
-    <div class="px-stack-sm py-stack-md border-t border-outline-variant/30">
-        <a href="{{ route('profile.edit') }}"
-           class="flex items-center gap-stack-md px-stack-md py-stack-sm rounded-md transition-all duration-200 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface
-           {{ request()->routeIs('profile.*') ? 'bg-primary text-white shadow-[0_0_10px_rgba(255,45,120,0.3)]' : '' }}">
-            <!-- Settings Icon -->
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span class="font-medium text-sm">Settings</span>
-        </a>
+    <!-- User Information & Logout Chip -->
+    <div class="sidebar-foot mt-auto border-t border-hairline pt-4 px-6 flex items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <div class="avatar w-[30px] h-[30px] rounded-full bg-surface-raised border border-hairline-strong flex items-center justify-center font-display text-[12px] text-brass shrink-0">
+                {{ $initials }}
+            </div>
+            <div class="min-w-0">
+                <div class="name text-[12.5px] font-medium text-vellum leading-tight truncate">{{ $user->name }}</div>
+                <div class="role text-[10.5px] text-vellum-faint leading-none mt-0.5 capitalize">{{ $role }}</div>
+            </div>
+        </div>
+        <form method="POST" action="{{ route('logout') }}" class="shrink-0 ml-auto">
+            @csrf
+            <button type="submit" class="text-vellum-muted hover:text-burgundy transition-colors p-1" title="Log Out">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+            </button>
+        </form>
     </div>
-
 </aside>
-
-<!-- Mobile Menu Toggle (Alpine.js ready for future) -->
-<div class="md:hidden fixed top-4 left-4 z-40">
-    <button id="mobile-menu-toggle"
-            class="p-2 rounded-md bg-surface-container text-secondary hover:bg-surface-container-high transition-colors">
-        <!-- Menu Icon -->
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-    </button>
-</div>

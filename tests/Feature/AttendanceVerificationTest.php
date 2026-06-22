@@ -83,7 +83,8 @@ class AttendanceVerificationTest extends TestCase
             'description' => 'Customer support'
         ]);
 
-        // 1. Provision employee with Auto-Generated Password
+        // 1. Provision employee - verify it assigns DEFAULT_EMPLOYEE_PASSWORD from env
+        $defaultPassword = env('DEFAULT_EMPLOYEE_PASSWORD');
         $autoGenResponse = $this->actingAs($admin)->post(route('employees.store'), [
             'name' => 'Auto Provisioned',
             'email' => 'auto@example.com',
@@ -95,34 +96,42 @@ class AttendanceVerificationTest extends TestCase
         ]);
 
         $autoGenResponse->assertRedirect(route('employees.index'));
-        // Verify credentials flashed in session
+        // Verify credentials flashed in session match the default password
         $autoGenResponse->assertSessionHas('success_provisioned');
+        $provisionedData = session('success_provisioned');
+        $this->assertEquals('Auto Provisioned', $provisionedData['name']);
+        $this->assertEquals('EMP00001', $provisionedData['employee_id']);
+        $this->assertEquals($defaultPassword, $provisionedData['password']);
         
         $newEmployee1 = User::where('email', 'auto@example.com')->first();
         $this->assertNotNull($newEmployee1);
-        $this->assertEquals('EMP00001', $newEmployee1->employee_id); // Sequential EMP00001
+        $this->assertEquals('EMP00001', $newEmployee1->employee_id);
         $this->assertTrue($newEmployee1->must_change_password);
+        // Verify hashed password matches DEFAULT_EMPLOYEE_PASSWORD
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check($defaultPassword, $newEmployee1->password));
 
-        // 2. Provision employee with Manual Password Override
+        // 2. Try passing manual password parameters and verify they are IGNORED, assigning DEFAULT_EMPLOYEE_PASSWORD instead
         $manualResponse = $this->actingAs($admin)->post(route('employees.store'), [
-            'name' => 'Manual Provisioned',
+            'name' => 'Manual Ignored',
             'email' => 'manual@example.com',
             'role' => 'employee',
             'status' => 'active',
-            'password' => 'overridePassword123',
-            'password_confirmation' => 'overridePassword123',
+            'password' => 'someCustomPassword123',
+            'password_confirmation' => 'someCustomPassword123',
             'phone' => '444-555-666',
             'joining_date' => '2026-06-10',
             'department_id' => $department->id,
         ]);
 
         $manualResponse->assertRedirect(route('employees.index'));
-        $manualResponse->assertSessionHas('success');
-        $manualResponse->assertSessionMissing('success_provisioned');
+        $manualResponse->assertSessionHas('success_provisioned');
+        $provisionedData2 = session('success_provisioned');
+        $this->assertEquals($defaultPassword, $provisionedData2['password']);
 
         $newEmployee2 = User::where('email', 'manual@example.com')->first();
         $this->assertNotNull($newEmployee2);
-        $this->assertEquals('EMP00002', $newEmployee2->employee_id); // Sequential EMP00002
+        $this->assertEquals('EMP00002', $newEmployee2->employee_id);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check($defaultPassword, $newEmployee2->password));
     }
 
     /**
@@ -193,7 +202,7 @@ class AttendanceVerificationTest extends TestCase
         $mgrDetailResponse->assertStatus(200);
         $mgrDetailResponse->assertSee($employee->name);
         $mgrDetailResponse->assertSee('Last 30 Days Statistics');
-        $mgrDetailResponse->assertSee('Days Present');
+        $mgrDetailResponse->assertSee('Present Days');
     }
 
     /**

@@ -169,3 +169,38 @@ test('submitting create form with same_as_current_address checked saves matching
     expect($profile->permanent_city)->toBe('New York');
     expect($profile->permanent_zip)->toBe('10001');
 });
+
+test('manually created employee receives DEFAULT_EMPLOYEE_PASSWORD and redirects with success_provisioned', function () {
+    $department = Department::create([
+        'name' => 'HR',
+        'code' => 'HRD',
+    ]);
+
+    $admin = User::factory()->create([
+        'role' => 'admin',
+        'status' => 'active',
+        'department_id' => $department->id,
+    ]);
+
+    $employeeData = [
+        'name' => 'Test Default Pass',
+        'email' => 'defaultpass@example.com',
+        'role' => 'employee',
+        'status' => 'active',
+        'department_id' => $department->id,
+    ];
+
+    $response = $this->actingAs($admin)
+        ->post(route('employees.store'), $employeeData);
+
+    $response->assertRedirect(route('employees.index'));
+    $response->assertSessionHas('success_provisioned');
+    
+    $provisioned = session('success_provisioned');
+    expect($provisioned['name'])->toBe('Test Default Pass');
+    expect($provisioned['password'])->toBe(env('DEFAULT_EMPLOYEE_PASSWORD'));
+
+    $user = User::where('email', 'defaultpass@example.com')->first();
+    expect($user->must_change_password)->toBeTrue();
+    expect(Illuminate\Support\Facades\Hash::check(env('DEFAULT_EMPLOYEE_PASSWORD'), $user->password))->toBeTrue();
+});

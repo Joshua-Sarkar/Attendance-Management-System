@@ -241,40 +241,7 @@
                                 <input type="hidden" name="manager_id" value="{{ auth()->user()->id }}">
                             @endif
 
-                            <!-- Password -->
-                            <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700">
-                                    Password (Optional)
-                                </label>
 
-                                <input
-                                    type="password"
-                                    name="password"
-                                    id="password"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    placeholder="Leave blank to auto-generate"
-                                >
-                                <p class="mt-1 text-xs text-gray-500">If left blank, a secure temporary password will be auto-generated.</p>
-
-                                @error('password')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Password Confirmation -->
-                            <div>
-                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700">
-                                    Confirm Password (Optional)
-                                </label>
-
-                                <input
-                                    type="password"
-                                    name="password_confirmation"
-                                    id="password_confirmation"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    placeholder="Confirm new password"
-                                >
-                            </div>
 
                         </div>
 

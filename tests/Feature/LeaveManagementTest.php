@@ -489,18 +489,18 @@ class LeaveManagementTest extends TestCase
 
         $attendanceService = resolve(\App\Services\AttendanceService::class);
 
-        // Before check-in: Dashboard metrics counts 1 on_leave, 0 present/late
+        // Before check-in: Dashboard metrics counts 1 on_leave, 0 present
         $statsBefore = $attendanceService->getTodayStats($targetDateStr, null, $this->manager);
         $this->assertEquals(1, $statsBefore['on_leave']);
-        $this->assertEquals(0, $statsBefore['present'] + $statsBefore['late']);
+        $this->assertEquals(0, $statsBefore['present']);
 
         // Check in
         $attendanceService->checkIn($this->employee);
 
-        // After check-in: Dashboard metrics counts 0 on_leave, 1 present/late (depending on time of day)
+        // After check-in: Dashboard metrics counts 0 on_leave, 1 present
         $statsAfter = $attendanceService->getTodayStats($targetDateStr, null, $this->manager);
         $this->assertEquals(0, $statsAfter['on_leave']);
-        $this->assertEquals(1, $statsAfter['present'] + $statsAfter['late']);
+        $this->assertEquals(1, $statsAfter['present']);
 
         // Workforce Attendance Details should display attendance status (present/late) rather than on_leave
         $employees = $attendanceService->getFilteredAttendance($targetDateStr, null, null, $this->manager);
@@ -528,18 +528,18 @@ class LeaveManagementTest extends TestCase
 
         $attendanceService = resolve(\App\Services\AttendanceService::class);
 
-        // Before check-in: Dashboard metrics counts 1 wfh, 0 present/late
+        // Before check-in: Dashboard metrics counts 1 wfh, 0 present
         $statsBefore = $attendanceService->getTodayStats($targetDateStr, null, $this->manager);
         $this->assertEquals(1, $statsBefore['wfh']);
-        $this->assertEquals(0, $statsBefore['present'] + $statsBefore['late']);
+        $this->assertEquals(0, $statsBefore['present']);
 
         // Check in
         $attendanceService->checkIn($this->employee);
 
-        // After check-in: Dashboard metrics counts 0 wfh, 1 present/late
+        // After check-in: Dashboard metrics counts 0 wfh, 1 present
         $statsAfter = $attendanceService->getTodayStats($targetDateStr, null, $this->manager);
         $this->assertEquals(0, $statsAfter['wfh']);
-        $this->assertEquals(1, $statsAfter['present'] + $statsAfter['late']);
+        $this->assertEquals(1, $statsAfter['present']);
 
         // Workforce Attendance Details should display attendance status rather than wfh
         $employees = $attendanceService->getFilteredAttendance($targetDateStr, null, null, $this->manager);

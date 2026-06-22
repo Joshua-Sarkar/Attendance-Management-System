@@ -21,6 +21,11 @@ class EmployeeImportService
      */
     public function import(string $filePath): array
     {
+        $defaultPassword = env('DEFAULT_EMPLOYEE_PASSWORD');
+        if (empty($defaultPassword)) {
+            throw new \Exception("The DEFAULT_EMPLOYEE_PASSWORD environment variable is not configured. Please set it before importing.");
+        }
+
         if (!file_exists($filePath)) {
             throw new \Exception("File not found: {$filePath}");
         }

@@ -92,7 +92,6 @@ class EmployeeController extends Controller
         $rules = [
             'name'          => ['required', 'string', 'max:100'],
             'email'         => ['required', 'email',  'max:150', 'unique:users,email'],
-            'password'      => ['nullable', 'confirmed', 'min:8'],
             'status'        => ['required', 'string', 'in:active,inactive,resigned'],
             'phone'         => ['nullable', 'string', 'max:20'],
             'joining_date'  => ['nullable', 'date'],
@@ -208,13 +207,10 @@ class EmployeeController extends Controller
         // Auto-generate employee ID
         $validated['employee_id'] = $this->generateEmployeeId();
 
-        // Optional password override
-        $manuallySet = false;
-        if (!empty($validated['password'])) {
-            $tempPassword = $validated['password'];
-            $manuallySet = true;
-        } else {
-            $tempPassword = Str::random(10);
+        // Automatically assign the default employee password
+        $tempPassword = env('DEFAULT_EMPLOYEE_PASSWORD');
+        if (empty($tempPassword)) {
+            return back()->withErrors(['password' => 'The DEFAULT_EMPLOYEE_PASSWORD environment variable is not configured.'])->withInput();
         }
         $validated['password'] = $tempPassword;
         $validated['must_change_password'] = true;
@@ -261,12 +257,6 @@ class EmployeeController extends Controller
         }
 
         $employee = $this->employeeService->create($validated);
-
-        if ($manuallySet) {
-            return redirect()
-                ->route('employees.index')
-                ->with('success', "Member {$employee->name} ({$employee->employee_id}) created successfully.");
-        }
 
         return redirect()
             ->route('employees.index')
@@ -548,5 +538,26 @@ class EmployeeController extends Controller
         $this->employeeService->delete($user);
 
         return redirect()->route('employees.index')->with('success', 'Member deleted.');
+    }
+
+    /**
+     * Reset the employee's password to the default password.
+     */
+    public function resetPassword(User $user): RedirectResponse
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $defaultPassword = env('DEFAULT_EMPLOYEE_PASSWORD');
+        if (empty($defaultPassword)) {
+            return back()->withErrors(['password' => 'The DEFAULT_EMPLOYEE_PASSWORD environment variable is not configured.']);
+        }
+
+        $user->password = \Illuminate\Support\Facades\Hash::make($defaultPassword);
+        $user->must_change_password = true;
+        $user->save();
+
+        return back()->with('success', "Password for {$user->name} has been reset to default successfully. They will be forced to change it on next login.");
     }
 }

@@ -13,6 +13,32 @@ export default {
     theme: {
         extend: {
             colors: {
+                // Design Reference Mockup Tokens
+                'canvas': '#0F0D0B',
+                'surface': '#17130F',
+                'surface-raised': '#1C1712',
+                'hairline': 'rgba(201,162,75,0.14)',
+                'hairline-strong': 'rgba(201,162,75,0.28)',
+                'vellum': '#ECE4D3',
+                'vellum-muted': '#9C9180',
+                'vellum-faint': '#6B6457',
+                'brass': '#C9A24B',
+                'brass-dim': 'rgba(201,162,75,0.55)',
+                'emerald': '#1F4034',
+                'emerald-bg': 'rgba(31, 64, 52, 0.12)',
+                'oxblood': '#5C1A30',
+                'oxblood-bg': 'rgba(92, 26, 48, 0.12)',
+                'forest': '#1F4034',
+                'forest-bg': 'rgba(31, 64, 52, 0.12)',
+                'burgundy': '#5C1A30',
+                'burgundy-bg': 'rgba(92, 26, 48, 0.12)',
+                'cognac': '#9C5A33',
+                'cognac-bg': 'rgba(156, 90, 51, 0.12)',
+                'walnut': '#3A2A1D',
+                'walnut-bg': 'rgba(58, 42, 29, 0.12)',
+                'slate': '#6E8AA8',
+                'slate-bg': 'rgba(110,138,168,0.12)',
+
                 // Primary accents
                 'primary': '#ff2d78',
                 'primary-fixed': '#ffe0ec',
@@ -50,7 +76,7 @@ export default {
                 'on-error-container': '#ffa0a0',
 
                 // Surface layers
-                'surface': '#0f0f1a',
+                // 'surface': '#0f0f1a', // commented to avoid conflict with design reference
                 'surface-dim': '#0f0f1a',
                 'surface-bright': '#1a1a2e',
                 'surface-container-lowest': '#0a0a12',
@@ -76,7 +102,9 @@ export default {
                 'outline-variant': '#302840',
             },
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                display: ['Fraunces', 'serif'],
+                sans: ['IBM Plex Sans', ...defaultTheme.fontFamily.sans],
+                mono: ['IBM Plex Mono', ...defaultTheme.fontFamily.mono],
             },
             spacing: {
                 'unit': '4px',
