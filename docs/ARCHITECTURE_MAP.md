@@ -80,4 +80,13 @@ graph TD
 
 ---
 
+### Attendance Tracking & Auditing Relationships
+* **Attendance Tracking → Authentication & Security:**
+  * Endpoint authentication is enforced globally by standard `auth` middleware. Role limits are enforced inside the controllers (e.g. `EnsureUserIsAdmin` restricts access to the global audit logs dashboard `/admin/attendance-logs`).
+* **Attendance Tracking → Leave Request Management (Rule B Overrides):**
+  * When executing dashboard status filters, the `AttendanceService` queries [LeaveRequest](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveRequest.php) to determine if an employee has an approved leave or WFH request. If no check-in exists, the status automatically shows as `on_leave` or `wfh` rather than `absent`.
+  * If the employee physically clocks in (creating an active check-in row), the physical check-in overrides the approved leave, setting the day's status to `present` or `late`.
+
+---
+
 *(Subsystem relationships for other domains will be detailed in respective phase commits)*

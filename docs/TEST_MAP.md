@@ -74,4 +74,33 @@ This document indexes all verification suites, automated test files, and asserti
 
 ---
 
+## 4. Attendance Tracking & Auditing Testing
+
+### Automated Test Files
+* **[AttendanceVerificationTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceVerificationTest.php)**
+  * *Coverage Focus:* Validates core employee clock-in and clock-out controller endpoints.
+  * *Scenarios Verified:*
+    1. Employees can check in successfully and have a database record created with active timestamps.
+    2. Employees can check out, which updates the same record with the end timestamp.
+    3. Prevents duplicate clock-ins by returning error validations if a record already exists for the day.
+* **[AttendanceMetricsTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceMetricsTest.php)**
+  * *Coverage Focus:* Verifies shift start rules, grace thresholds, and late minutes math.
+  * *Scenarios Verified:*
+    1. Checks status as `present` if clock-in is on or before the grace end (e.g. 09:15 under old rules, or 09:45 under new rules).
+    2. Checks status as `late` if clock-in is after the grace end (e.g. at or after 09:16).
+    3. Asserts the correct late arrival minute calculations (e.g., checking in at 09:30 AM logs exactly 15 late minutes under a 09:00 AM shift start with a 15-minute grace period).
+* **[AttendanceAuditTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceAuditTest.php)**
+  * *Coverage Focus:* HR search filters and exception aggregates inside the Punctuality Audit console.
+  * *Scenarios Verified:*
+    1. HR can query attendance records by date, name, status, or department.
+    2. The audit center calculates the average delay minutes correctly.
+    3. Restricted visibility prevents unauthorized roles from querying global audit tables.
+* **[WorkingDaysTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/WorkingDaysTest.php)**
+  * *Coverage Focus:* Weekend definitions.
+  * *Scenarios Verified:*
+    1. Verifies that Saturdays are treated as standard working days.
+    2. Verifies that Sundays are flagged as weekends and are excluded from absence calculation reports.
+
+---
+
 *(Other domain tests detailed in respective phase commits)*

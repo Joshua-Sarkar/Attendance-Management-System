@@ -41,11 +41,29 @@ erDiagram
     users ||--o| users : "reports_to manager_id / admin_id"
     users ||--o| departments : "belongs_to department_id"
     users ||--|| employee_profiles : "1:1 profile user_id"
+    attendances }o--|| users : "belongs_to user_id"
 ```
 
 ---
 
 ## 2. Table Definitions
+
+### Table: `attendances`
+Tracks daily physical clock-in and clock-out logs and stores punctuality status flags.
+
+* **Columns:**
+  * `id` (`bigint unsigned`, Primary Key, Auto Increment): Unique identifier.
+  * `user_id` (`bigint unsigned`, Foreign Key -> `users.id`): Links to the employee.
+  * `date` (`date`): Calendar date of the workday (records are constrained to one per user per day).
+  * `check_in_time` (`timestamp`, Nullable): Clock-in timestamp.
+  * `check_out_time` (`timestamp`, Nullable): Clock-out timestamp.
+  * `status` (`enum('present', 'absent', 'late', 'on_leave', 'wfh')`, Default: `'absent'`): Status assigned by the parser.
+  * `created_at` / `updated_at` (`timestamp`): Database timestamps.
+
+* **Indexes & Keys:**
+  * `PRIMARY KEY (id)`
+  * `UNIQUE KEY attendances_user_id_date_unique (user_id, date)` (prevents double clock-in records)
+  * `FOREIGN KEY attendances_user_id_foreign (user_id) REFERENCES users(id) ON DELETE CASCADE`
 
 ### Table: `employee_profiles`
 Stores extended personal, emergency, address, education, experience, and banking details.

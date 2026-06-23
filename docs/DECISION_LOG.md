@@ -116,4 +116,30 @@ Create database migration `2026_06_19_084725_change_experience_columns_to_string
 
 ---
 
+## ADR 5: Configurable Historical Shift Rules Transition Strategy (09:00 vs 09:30 Shift Start)
+
+### Problem
+When shift start rules change (e.g., from 09:00 AM start to 09:30 AM start), applying the new rule retroactively to historical logs will alter existing clock-in records, falsely changing employee attendance histories (e.g. changing past status from `late` to `present`). We must maintain the integrity of historical logs while enforcing the new rule going forward.
+
+### Context
+Laravel databases store clock-in times as raw timestamps. If the application dynamically calculates "late minutes" on the fly using a single static configuration value, historical reports will fluctuate whenever the config changes. We need a way to support rules transitions at a specific point in time.
+
+### Alternatives Considered
+* **Option A: Write late minutes into the database:** Save `late_minutes` as a static column on the `attendances` table at the moment of clock-in.
+  * *Trade-off:* High redundancy; database fields can go out of sync if cleanups/corrections are applied, and does not support retroactive fixes if the grace duration itself needs correcting.
+* **Option B: Date-threshold config mapping (Chosen):** Define a `new_rules_start_date` parameter in `config/attendance.php` and dynamically evaluate the date of the record.
+
+### Chosen Solution
+In the `Attendance` model, retrieve the `attendance.new_rules_start_date` configuration. If the record's `date` is greater than or equal to this threshold date, calculate delay minutes relative to the new 09:30 shift start time. If it is prior to the threshold, fallback to the old 09:00 shift start baseline.
+
+### Consequences
+* **Positive:** Complete protection of historical payroll and compliance records. Changes to future shift hours do not corrupt historical data.
+* **Negative:** Requires mapping the configuration parameter `new_rules_start_date` in the `.env` file of all environments. If it is omitted, the model defaults to the historical fallback rules (09:00 AM start) to ensure safety.
+* **Related Files:**
+  * [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (dynamic late minutes getter)
+  * [attendance.php](file:///c:/Users/Lenovo/AMS-V1/config/attendance.php) (configuration settings)
+* **Related Release:** Phase 4.5 (`v1.1-phase-4.5` completion commit `b599f5a`)
+
+---
+
 *(Subsequent ADRs documented in respective phase commits)*

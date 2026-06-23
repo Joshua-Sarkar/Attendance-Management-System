@@ -122,8 +122,45 @@ To store extended employee metadata (addresses, education, bank accounts, emerge
 
 ---
 
-## 4. Attendance Tracking
-*(Reconciled in attendance phase)*
+## 4. Attendance Tracking & Auditing
+
+### Business Purpose
+To log employee daily check-in and check-out timestamps, evaluate check-in delays against configurable start times and grace periods, bypass Sunday weekend runs, integrate active leave request status overrides, and present HR with a queryable punctuality audit center.
+
+### Architecture Lineage
+* **Original Business Problem:** Inaccurate manual spreadsheets, lacks grace calculations, absent flags assigned to employees who were actually on authorized leave, and no unified view of late arrivals.
+* **Phase Introduced:** Phase C (Foundation), Phase E (Leave overrides), Phase 4.4 (Audit Center), and Phase 4.5 (Shift rules transition).
+* **Major Evolutions:**
+  * *Phase C (Commit `9ddd786`):* Created `attendances` schema, added check-in/out actions, set default shift time to 09:00 AM with 15-minute grace, and generated employee personal logs.
+  * *Phase E (Commit `125e72e`):* Integrated Rule B: if an employee is absent but has an approved leave request, their daily status resolves to `on_leave` or `wfh`. If they physically check in, the physical record overrides the leave.
+  * *Phase 4.4 (Commit `82fd54a`):* Built the HR Punctuality Audit Center with search, status, department, and date filters, listing late exceptions and calculating delay averages.
+  * *Phase 4.5 (Commit `b599f5a`):* Shift configurations updated to transition start times from 09:00 AM to 09:30 AM (retaining 15-minute grace) using `new_rules_start_date` flag to safeguard older records.
+* **Current Implementation:** Daily check-ins are logged in `AttendanceService.php`. The `Attendance` model dynamically calculates late arrival minutes using a custom attribute accessor that evaluates the date against `new_rules_start_date` to decide which grace threshold applies.
+
+### Codebase Mappings
+* **Controllers:**
+  * [AttendanceController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceController.php) (clock buttons, dashboard queries)
+  * [ManagerAttendanceController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/ManagerAttendanceController.php) (roster views)
+  * [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php) (HR console log filters)
+* **Models:**
+  * [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (late minutes attribute)
+* **Services:**
+  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (computes statuses, average delays, and exceptions lists)
+* **Routes:**
+  * `attendance.check-in` / `attendance.check-out`
+  * `admin.attendance.logs` (Punctuality Audit panel)
+* **Views:**
+  * `resources/views/attendance/employee-dashboard.blade.php`
+  * `resources/views/admin/attendance-logs.blade.php`
+* **Migrations:**
+  * `2026_06_10_000000_create_attendances_table.php` (sets up unique index on `[user_id, date]` to prevent concurrent double check-ins)
+* **Feature Tests:**
+  * [AttendanceVerificationTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceVerificationTest.php) (clock inputs)
+  * [AttendanceMetricsTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceMetricsTest.php) (delay thresholds math)
+  * [AttendanceAuditTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceAuditTest.php) (global filter queries)
+  * [WorkingDaysTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/WorkingDaysTest.php) (Sunday exclusions)
+* **Release Introduced:** `v1.0-phase-c` (Foundation) and `v1.1-phase-4.4` (Audit Center)
+* **Current Operational Status:** Fully operational. Saturday is processed as a standard workday; Sunday is marked as `weekend` and skipped from absent aggregations.
 
 ---
 
