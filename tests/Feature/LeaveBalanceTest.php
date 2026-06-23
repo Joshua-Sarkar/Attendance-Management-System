@@ -145,7 +145,7 @@ class LeaveBalanceTest extends TestCase
 
         // 1. Try to request 3 days (insufficient)
         $response = $this->post(route('leaves.store'), [
-            'leave_type' => 'casual_leave',
+            'leave_type' => 'paid_leave',
             'start_date' => today()->format('Y-m-d'),
             'end_date' => today()->addDays(2)->format('Y-m-d'), // 3 days
             'reason' => 'Testing validation',
@@ -157,7 +157,7 @@ class LeaveBalanceTest extends TestCase
 
         // 2. Request 1 day (sufficient)
         $response = $this->post(route('leaves.store'), [
-            'leave_type' => 'casual_leave',
+            'leave_type' => 'paid_leave',
             'start_date' => today()->format('Y-m-d'),
             'end_date' => today()->format('Y-m-d'), // 1 day
             'reason' => 'Testing validation',
@@ -188,7 +188,7 @@ class LeaveBalanceTest extends TestCase
         // Create pending 2-day leave request
         $leaveRequest = LeaveRequest::create([
             'user_id' => $employee->id,
-            'leave_type' => 'casual_leave',
+            'leave_type' => null,
             'start_date' => today(),
             'end_date' => today()->addDay(), // 2 days
             'total_days' => 2,
@@ -199,7 +199,9 @@ class LeaveBalanceTest extends TestCase
         $this->actingAs($admin);
 
         // 1. Attempt to approve (should fail due to insufficient balance)
-        $response = $this->post(route('leaves.approve', $leaveRequest));
+        $response = $this->post(route('leaves.approve', $leaveRequest), [
+            'approval_type' => 'paid_leave',
+        ]);
         $response->assertSessionHas('error');
         $employee->refresh();
         $this->assertEquals(1.00, $employee->leave_balance);
@@ -208,7 +210,9 @@ class LeaveBalanceTest extends TestCase
         $employee->leave_balance = 3.00;
         $employee->save();
 
-        $response = $this->post(route('leaves.approve', $leaveRequest));
+        $response = $this->post(route('leaves.approve', $leaveRequest), [
+            'approval_type' => 'paid_leave',
+        ]);
         $response->assertRedirect(route('leaves.index'));
         
         $employee->refresh();
@@ -236,7 +240,7 @@ class LeaveBalanceTest extends TestCase
 
         $leaveRequest = LeaveRequest::create([
             'user_id' => $employee->id,
-            'leave_type' => 'casual_leave',
+            'leave_type' => 'paid_leave',
             'start_date' => today(),
             'end_date' => today()->addDay(), // 2 days
             'total_days' => 2,
@@ -276,7 +280,7 @@ class LeaveBalanceTest extends TestCase
 
         $leaveRequest = LeaveRequest::create([
             'user_id' => $employee->id,
-            'leave_type' => 'casual_leave',
+            'leave_type' => null,
             'start_date' => today(),
             'end_date' => today()->addDay(), // 2 days
             'total_days' => 2,
@@ -288,7 +292,7 @@ class LeaveBalanceTest extends TestCase
 
         // 1. Override from pending to approved (should deduct 2 days)
         $response = $this->post(route('leaves.override', $leaveRequest), [
-            'override_status' => 'approved',
+            'override_status' => 'approved_paid',
             'override_notes' => 'Approved via override',
         ]);
 
@@ -311,5 +315,131 @@ class LeaveBalanceTest extends TestCase
 
         $this->assertEquals('rejected', $leaveRequest->status);
         $this->assertEquals(3.00, $employee->leave_balance);
+    }
+
+    /**
+     * Test that Unpaid leave approval does not deduct balance.
+     */
+    public function test_unpaid_leave_approval_does_not_deduct_balance(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $employee = User::factory()->create([
+            'role' => 'employee',
+            'leave_balance' => 3.00,
+        ]);
+
+        $leaveRequest = LeaveRequest::create([
+            'user_id' => $employee->id,
+            'leave_type' => null,
+            'start_date' => today(),
+            'end_date' => today()->addDay(), // 2 days
+            'total_days' => 2,
+            'reason' => 'Vacation',
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($admin);
+
+        $response = $this->post(route('leaves.approve', $leaveRequest), [
+            'approval_type' => 'unpaid_leave',
+        ]);
+
+        $response->assertRedirect(route('leaves.index'));
+        $employee->refresh();
+        $leaveRequest->refresh();
+
+        $this->assertEquals('approved', $leaveRequest->status);
+        $this->assertEquals('unpaid_leave', $leaveRequest->leave_type);
+        $this->assertEquals(3.00, $employee->leave_balance); // remains 3.00
+
+        // Verify no ledger deduction
+        $this->assertFalse(LeaveLedgerEntry::where('user_id', $employee->id)
+            ->where('type', 'deduction')
+            ->exists());
+    }
+
+    /**
+     * Test that overriding an approved paid leave to unpaid refunds the balance.
+     */
+    public function test_override_approved_paid_to_unpaid_refunds_balance(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $employee = User::factory()->create([
+            'role' => 'employee',
+            'leave_balance' => 1.00, // already deducted down to 1.00
+        ]);
+
+        $leaveRequest = LeaveRequest::create([
+            'user_id' => $employee->id,
+            'leave_type' => 'paid_leave',
+            'start_date' => today(),
+            'end_date' => today()->addDay(), // 2 days
+            'total_days' => 2,
+            'reason' => 'Vacation',
+            'status' => 'approved',
+        ]);
+
+        $this->actingAs($admin);
+
+        $response = $this->post(route('leaves.override', $leaveRequest), [
+            'override_status' => 'approved_unpaid',
+            'override_notes' => 'Change to unpaid leave',
+        ]);
+
+        $response->assertRedirect(route('leaves.index'));
+        $employee->refresh();
+        $leaveRequest->refresh();
+
+        $this->assertEquals('approved', $leaveRequest->status);
+        $this->assertEquals('unpaid_leave', $leaveRequest->leave_type);
+        $this->assertEquals(3.00, $employee->leave_balance); // 1.00 + 2.00 refunded
+
+        // Verify ledger entry for refund
+        $this->assertTrue(LeaveLedgerEntry::where('user_id', $employee->id)
+            ->where('type', 'refund')
+            ->exists());
+    }
+
+    /**
+     * Test that overriding an approved unpaid leave to paid checks and deducts balance.
+     */
+    public function test_override_approved_unpaid_to_paid_deducts_balance(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $employee = User::factory()->create([
+            'role' => 'employee',
+            'leave_balance' => 3.00,
+        ]);
+
+        $leaveRequest = LeaveRequest::create([
+            'user_id' => $employee->id,
+            'leave_type' => 'unpaid_leave',
+            'start_date' => today(),
+            'end_date' => today()->addDay(), // 2 days
+            'total_days' => 2,
+            'reason' => 'Vacation',
+            'status' => 'approved',
+        ]);
+
+        $this->actingAs($admin);
+
+        $response = $this->post(route('leaves.override', $leaveRequest), [
+            'override_status' => 'approved_paid',
+            'override_notes' => 'Change to paid leave',
+        ]);
+
+        $response->assertRedirect(route('leaves.index'));
+        $employee->refresh();
+        $leaveRequest->refresh();
+
+        $this->assertEquals('approved', $leaveRequest->status);
+        $this->assertEquals('paid_leave', $leaveRequest->leave_type);
+        $this->assertEquals(1.00, $employee->leave_balance); // 3.00 - 2.00 deducted
+
+        // Verify ledger entry for deduction
+        $this->assertTrue(LeaveLedgerEntry::where('user_id', $employee->id)
+            ->where('type', 'deduction')
+            ->where('amount', -2.00)
+            ->exists());
     }
 }

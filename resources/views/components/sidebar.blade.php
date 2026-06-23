@@ -134,16 +134,24 @@
         @if($role === 'admin')
             @php
                 $isCorrectionsActive = request()->routeIs('admin.corrections.*');
+                $pendingCorrectionsCount = \App\Models\ProfileCorrectionRequest::where('status', 'pending')->count();
             @endphp
             <a href="{{ route('admin.corrections.index') }}" 
-               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               class="nav-item flex items-center justify-between px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
                {{ $isCorrectionsActive 
                    ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
                    : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isCorrectionsActive ? 'opacity-100' : 'opacity-75' }}">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                Correction Requests
+                <div class="flex items-center gap-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isCorrectionsActive ? 'opacity-100' : 'opacity-75' }}">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    <span>Correction Requests</span>
+                </div>
+                @if($pendingCorrectionsCount > 0)
+                    <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full bg-burgundy text-vellum border border-hairline-strong">
+                        {{ $pendingCorrectionsCount }}
+                    </span>
+                @endif
             </a>
         @endif
     </nav>

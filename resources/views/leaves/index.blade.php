@@ -278,7 +278,7 @@
                                                     View Details
                                                 </a>
                                                 @if(auth()->user()->role === 'admin' && $request->user_id !== auth()->id())
-                                                    <button onclick="openOverrideModal({{ $request->id }}, '{{ $request->status }}')" class="bg-brass hover:bg-brass/90 text-canvas font-semibold py-1 px-2.5 rounded text-xs transition shadow-sm uppercase tracking-wider">
+                                                    <button onclick="openOverrideModal({{ $request->id }}, '{{ $request->status }}', '{{ $request->leave_type }}')" class="bg-brass hover:bg-brass/90 text-canvas font-semibold py-1 px-2.5 rounded text-xs transition shadow-sm uppercase tracking-wider">
                                                         Override
                                                     </button>
                                                 @endif
@@ -307,11 +307,14 @@
                                   class="w-full bg-surface-raised border border-hairline rounded-md text-vellum px-3 py-2 placeholder-vellum-faint focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none"></textarea>
                     </div>
                     <div class="flex justify-end gap-3 pt-2">
-                        <button type="button" onclick="closeModal('approveModal')" class="bg-surface-raised hover:bg-surface-raised/80 text-vellum font-semibold py-2 px-4 rounded-md transition duration-200 border border-hairline">
+                        <button type="button" onclick="closeModal('approveModal')" class="bg-surface-raised hover:bg-surface-raised/80 text-vellum font-semibold py-2 px-4 rounded-md transition duration-200 border border-hairline text-xs uppercase tracking-wider">
                             Cancel
                         </button>
-                        <button type="submit" class="bg-forest hover:bg-forest/90 text-canvas font-bold py-2 px-4 rounded-md transition duration-200 shadow-md uppercase tracking-wider text-xs">
-                            Confirm Approve
+                        <button type="submit" name="approval_type" value="paid_leave" class="bg-forest hover:bg-forest/90 text-canvas font-bold py-2 px-4 rounded-md transition duration-200 shadow-md uppercase tracking-wider text-xs">
+                            Approve as Paid
+                        </button>
+                        <button type="submit" name="approval_type" value="unpaid_leave" class="bg-brass hover:bg-brass/90 text-canvas font-bold py-2 px-4 rounded-md transition duration-200 shadow-md uppercase tracking-wider text-xs">
+                            Approve as Unpaid
                         </button>
                     </div>
                 </div>
@@ -355,7 +358,8 @@
                         <label for="override_status" class="block text-sm font-medium text-vellum-muted mb-1">Override Status</label>
                         <select name="override_status" id="override_status" required
                                 class="w-full bg-surface-raised border border-hairline rounded-md text-vellum px-3 py-2 focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
-                            <option value="approved" class="bg-surface text-vellum">Approved</option>
+                            <option value="approved_paid" class="bg-surface text-vellum">Approved as Paid Leave</option>
+                            <option value="approved_unpaid" class="bg-surface text-vellum">Approved as Unpaid Leave</option>
                             <option value="rejected" class="bg-surface text-vellum">Rejected</option>
                         </select>
                     </div>
@@ -365,7 +369,7 @@
                                   class="w-full bg-surface-raised border border-hairline rounded-md text-vellum px-3 py-2 placeholder-vellum-faint focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none"></textarea>
                     </div>
                     <div class="flex justify-end gap-3 pt-2">
-                        <button type="button" onclick="closeModal('overrideModal')" class="bg-surface-raised hover:bg-surface-raised/80 text-vellum font-semibold py-2 px-4 rounded-md transition duration-200 border border-hairline">
+                        <button type="button" onclick="closeModal('overrideModal')" class="bg-surface-raised hover:bg-surface-raised/80 text-vellum font-semibold py-2 px-4 rounded-md transition duration-200 border border-hairline text-xs uppercase tracking-wider">
                             Cancel
                         </button>
                         <button type="submit" class="bg-brass text-canvas font-bold py-2 px-4 rounded-md transition duration-200 shadow-md uppercase tracking-wider text-xs">
@@ -388,10 +392,14 @@
             document.getElementById('rejectModal').classList.remove('hidden');
         }
 
-        function openOverrideModal(id, currentStatus) {
+        function openOverrideModal(id, currentStatus, leaveType) {
             document.getElementById('overrideForm').action = '/leaves/' + id + '/override';
             const statusSelect = document.getElementById('override_status');
-            statusSelect.value = currentStatus === 'approved' ? 'rejected' : 'approved';
+            if (currentStatus === 'approved') {
+                statusSelect.value = (leaveType === 'unpaid_leave') ? 'approved_paid' : 'rejected';
+            } else {
+                statusSelect.value = 'approved_paid';
+            }
             document.getElementById('overrideModal').classList.remove('hidden');
         }
 

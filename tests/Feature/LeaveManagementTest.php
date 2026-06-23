@@ -98,7 +98,6 @@ class LeaveManagementTest extends TestCase
         $endDate = Carbon::today()->addDays(7)->format('Y-m-d');
 
         $response = $this->actingAs($this->employee)->post(route('leaves.store'), [
-            'leave_type' => 'sick_leave',
             'start_date' => $startDate,
             'end_date' => $endDate,
             'reason' => 'Recovery from fever.',
@@ -107,7 +106,7 @@ class LeaveManagementTest extends TestCase
         $response->assertRedirect(route('leaves.index'));
         $this->assertDatabaseHas('leave_requests', [
             'user_id' => $this->employee->id,
-            'leave_type' => 'sick_leave',
+            'leave_type' => null,
             'status' => 'pending',
             'total_days' => 3,
             'reason' => 'Recovery from fever.',
@@ -128,7 +127,7 @@ class LeaveManagementTest extends TestCase
     {
         $leave = LeaveRequest::create([
             'user_id' => $this->employee->id,
-            'leave_type' => 'casual_leave',
+            'leave_type' => null,
             'start_date' => Carbon::today()->addDays(2),
             'end_date' => Carbon::today()->addDays(4),
             'total_days' => 3,
@@ -137,6 +136,7 @@ class LeaveManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->manager)->post(route('leaves.approve', $leave), [
+            'approval_type' => 'paid_leave',
             'notes' => 'Approved, have a nice time.',
         ]);
 
@@ -240,7 +240,7 @@ class LeaveManagementTest extends TestCase
     {
         $leave = LeaveRequest::create([
             'user_id' => $this->manager->id,
-            'leave_type' => 'paid_leave',
+            'leave_type' => null,
             'start_date' => Carbon::today()->addDays(2),
             'end_date' => Carbon::today()->addDays(4),
             'total_days' => 3,
@@ -248,7 +248,9 @@ class LeaveManagementTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $response = $this->actingAs($this->manager)->post(route('leaves.approve', $leave));
+        $response = $this->actingAs($this->manager)->post(route('leaves.approve', $leave), [
+            'approval_type' => 'paid_leave',
+        ]);
         $response->assertSessionHas('error', 'You cannot approve your own leave request.');
     }
 
@@ -257,7 +259,7 @@ class LeaveManagementTest extends TestCase
     {
         $leave = LeaveRequest::create([
             'user_id' => $this->manager->id,
-            'leave_type' => 'paid_leave',
+            'leave_type' => null,
             'start_date' => Carbon::today()->addDays(2),
             'end_date' => Carbon::today()->addDays(4),
             'total_days' => 3,
@@ -266,11 +268,14 @@ class LeaveManagementTest extends TestCase
         ]);
 
         // Other managers cannot approve
-        $response1 = $this->actingAs($this->otherManager)->post(route('leaves.approve', $leave));
+        $response1 = $this->actingAs($this->otherManager)->post(route('leaves.approve', $leave), [
+            'approval_type' => 'paid_leave',
+        ]);
         $response1->assertStatus(403);
 
         // Admin can approve
         $response2 = $this->actingAs($this->admin)->post(route('leaves.approve', $leave), [
+            'approval_type' => 'paid_leave',
             'notes' => 'Approved for management tier.',
         ]);
         $response2->assertRedirect(route('leaves.index'));
@@ -278,13 +283,15 @@ class LeaveManagementTest extends TestCase
     }
 
     /** @test */
-    public function admin_requests_are_automatically_approved()
+    public function admin_can_create_paid_leave_and_receive_automatic_approval_with_deduction()
     {
         $startDate = Carbon::today()->addDays(2)->format('Y-m-d');
         $endDate = Carbon::today()->addDays(4)->format('Y-m-d');
 
+        $originalBalance = $this->admin->leave_balance;
+
         $response = $this->actingAs($this->admin)->post(route('leaves.store'), [
-            'leave_type' => 'emergency_leave',
+            'leave_type' => 'paid_leave',
             'start_date' => $startDate,
             'end_date' => $endDate,
             'reason' => 'Urgent matter.',
@@ -294,10 +301,12 @@ class LeaveManagementTest extends TestCase
 
         $this->assertDatabaseHas('leave_requests', [
             'user_id' => $this->admin->id,
-            'leave_type' => 'emergency_leave',
+            'leave_type' => 'paid_leave',
             'status' => 'approved',
             'approver_id' => $this->admin->id,
         ]);
+
+        $this->assertEquals($originalBalance - 3, $this->admin->fresh()->leave_balance);
 
         $leave = LeaveRequest::where('user_id', $this->admin->id)->first();
         // Assert audit trail records applied & approved
@@ -312,13 +321,39 @@ class LeaveManagementTest extends TestCase
     }
 
     /** @test */
+    public function admin_can_create_unpaid_leave_and_receive_automatic_approval_without_deduction()
+    {
+        $startDate = Carbon::today()->addDays(2)->format('Y-m-d');
+        $endDate = Carbon::today()->addDays(4)->format('Y-m-d');
+
+        $originalBalance = $this->admin->leave_balance;
+
+        $response = $this->actingAs($this->admin)->post(route('leaves.store'), [
+            'leave_type' => 'unpaid_leave',
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'reason' => 'Urgent matter.',
+        ]);
+
+        $response->assertRedirect(route('leaves.index'));
+
+        $this->assertDatabaseHas('leave_requests', [
+            'user_id' => $this->admin->id,
+            'leave_type' => 'unpaid_leave',
+            'status' => 'approved',
+            'approver_id' => $this->admin->id,
+        ]);
+
+        $this->assertEquals($originalBalance, $this->admin->fresh()->leave_balance);
+    }
+
+    /** @test */
     public function start_date_cannot_be_in_the_past()
     {
         $pastDate = Carbon::yesterday()->format('Y-m-d');
         $futureDate = Carbon::today()->addDays(2)->format('Y-m-d');
 
         $response = $this->actingAs($this->employee)->post(route('leaves.store'), [
-            'leave_type' => 'sick_leave',
             'start_date' => $pastDate,
             'end_date' => $futureDate,
             'reason' => 'Sick.',
@@ -334,7 +369,6 @@ class LeaveManagementTest extends TestCase
         $endDate = Carbon::today()->addDays(2)->format('Y-m-d');
 
         $response = $this->actingAs($this->employee)->post(route('leaves.store'), [
-            'leave_type' => 'sick_leave',
             'start_date' => $startDate,
             'end_date' => $endDate,
             'reason' => 'Sick.',
@@ -358,7 +392,6 @@ class LeaveManagementTest extends TestCase
 
         // Attempting to apply on overlapping range: 6th to 8th
         $response = $this->actingAs($this->employee)->post(route('leaves.store'), [
-            'leave_type' => 'casual_leave',
             'start_date' => Carbon::today()->addDays(6)->format('Y-m-d'),
             'end_date' => Carbon::today()->addDays(8)->format('Y-m-d'),
             'reason' => 'Overlapping.',
@@ -383,7 +416,6 @@ class LeaveManagementTest extends TestCase
 
         // Overlapping date range is fine since the previous is cancelled
         $response = $this->actingAs($this->employee)->post(route('leaves.store'), [
-            'leave_type' => 'casual_leave',
             'start_date' => Carbon::today()->addDays(6)->format('Y-m-d'),
             'end_date' => Carbon::today()->addDays(8)->format('Y-m-d'),
             'reason' => 'Not blocked.',
