@@ -8,8 +8,8 @@ This document represents the live, production-ready operational state of the Att
 
 * **Current Version:** `v1.2-phase-4.6`
 * **Latest Functional Tag:** `v1.2-phase-4.6` (pointing to commit `2385dbb`)
-* **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to Phase 4.7 consolidation commit)
-* **Latest Commit:** `Phase 4.7 Architecture Traceability baseline`
+* **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to commit `e00d32b` / baseline refinements)
+* **Latest Commit:** `docs(audit): remediate duplicates, add ADR-13, map framework tables, and link migrations` (`e00d32b`)
 * **Current Branch:** `main`
 * **Production Environment:** Hostinger Linux Shared Server (cPanel setup)
 * **Production Database Engine:** MySQL 8.0 (utilizing transactional row locks; local runs use SQLite in-memory)
