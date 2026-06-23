@@ -16,6 +16,7 @@ Manages user sessions, role checks, default credentials reset, and password modi
   * [ConfirmablePasswordController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/Auth/ConfirmablePasswordController.php)
 * **Primary Middleware:**
   * [CheckPasswordChange.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Middleware/CheckPasswordChange.php) (forces reset if password is unconfigured)
+  * [EnsureUserIsAdmin.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Middleware/EnsureUserIsAdmin.php) (restricts administrative routes)
 * **Primary Models:**
   * [User.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/User.php)
 * **Database Tables:**
