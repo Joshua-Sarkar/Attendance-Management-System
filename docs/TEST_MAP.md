@@ -121,4 +121,20 @@ This document indexes all verification suites, automated test files, and asserti
 
 ---
 
+## 6. Leave Balance Ledger & Accruals Testing
+
+### Automated Test Files
+* **[LeaveBalanceTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveBalanceTest.php)**
+  * *Coverage Focus:* Transaction safety, opening balance initialization, monthly accruals, refunds, and administrative adjustments.
+  * *Scenarios Verified:*
+    1. **Automatic Profile Initialization:** Asserts that manual creation of employees initializes a default credit of 2.00 in the ledger and users table.
+    2. **Opening Balance Idempotency:** Verifies the `leaves:initialize-balances` console command backfills opening credits, and double execution does not add duplicate records.
+    3. **Monthly Accrual credits:** Validates the `leaves:accrue` cron command adds 2.00 credits to all active employees and logs matching ledger lines.
+    4. **Accrual Idempotency:** Checks that running the accrual command multiple times in the same calendar month is blocked (idempotent guard).
+    5. **Deductions:** Checks that paid leave approvals deduct days from balance and log deduction records, while unpaid leave approvals bypass balance modifications.
+    6. **Refunds:** Verifies that cancelling an approved paid leave triggers a credit refund and records a refund ledger row.
+    7. **Admin Overrides Balance correction:** Checks all transitions in the override matrix (e.g. changing an approved paid request to unpaid/rejected refunds the days; changing unpaid to paid checks and deducts balance).
+
+---
+
 *(Other domain tests detailed in respective phase commits)*

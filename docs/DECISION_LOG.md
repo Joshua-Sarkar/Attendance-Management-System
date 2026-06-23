@@ -169,4 +169,56 @@ Create database migration `2026_06_23_184204_make_leave_type_nullable_in_leave_r
 
 ---
 
+## ADR 7: Double-Entry Ledger Ledger for Leave Balances
+
+### Problem
+Storing user leave balance solely as a single mutable column on the `users` table makes it impossible to trace the balance's historical changes. If balance calculations are corrupted or edited directly by HR, there is no audit log to diagnose the discrepancy or verify whether accruals and refunds were applied.
+
+### Context
+We must ensure complete accountability. Every single change to an employee's leave balance (whether it is an opening credit, monthly accrual addition, manager approval deduction, cancellation refund, or administrative override adjustment) must be verified and logged with an unalterable audit trail.
+
+### Alternatives Considered
+* **Option A: Detailed User History Logs:** Log text descriptions in a separate generic activity log table.
+  * *Trade-off:* activity tables are formatted as strings, making automated recalculation audits difficult.
+* **Option B: Numeric Transaction Ledger (Chosen):** Model balance updates after banking ledgers, where the current balance represents the mathematical sum of all ledger entries.
+
+### Chosen Solution
+Create the `leave_ledger_entries` table. Whenever a balance update is performed, write a matching log row containing the `amount` of change, the `type` classification, and the corresponding user ID.
+
+### Consequences
+* **Positive:** Complete visibility and auditability. If a balance check fails, running `SELECT SUM(amount) FROM leave_ledger_entries WHERE user_id = ?` returns the precise current balance, allowing self-correcting audits.
+* **Negative:** Requires double-write logic in the application (save the User's aggregate balance column and save the ledger entry), which must be wrapped in transactions to prevent inconsistencies.
+* **Related Files:**
+  * [LeaveLedgerEntry.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveLedgerEntry.php) (ledger model)
+  * `database/migrations/2026_06_23_000000_add_leave_balance_and_ledger_tables.php` (table schema)
+* **Related Release:** Phase 4.5 (`v1.1-phase-4.5` completion commit `b599f5a`)
+
+---
+
+## ADR 8: Pessimistic Row Locking (lockForUpdate) for Leave Balance Modifications
+
+### Problem
+In high-concurrency scenarios (such as a manager clicking "Approve Leave" multiple times in rapid succession, or two supervisors reviewing leaves for the same user concurrently), multiple threads execute the check-and-deduct logic. This creates race conditions where the system checks the balance, proceeds to deduct, but before the first thread commits, the second thread reads the old balance, resulting in double deductions or negative balances.
+
+### Context
+Standard Laravel Eloquent reads and writes are non-blocking. To prevent double-clicks or concurrent writes from bypassing validation bounds, we must enforce serialized updates at the database level.
+
+### Alternatives Considered
+* **Option A: Optimistic Locking:** Use a version column on the `users` table.
+  * *Trade-off:* Throws exceptions back to the user, forcing them to retry manually. Less seamless for rapid clicks.
+* **Option B: UI-level Button Disabling:** Disable buttons in Javascript after the first click.
+  * *Trade-off:* Flawed security; does not prevent direct API command line hits or automated script executions.
+* **Option C: Pessimistic Row-level Database Locking (Chosen):** Use `lockForUpdate()` during User query retrieval inside transactions.
+
+### Chosen Solution
+Wrap the approval, cancellation, and override controller logic in a database transaction (`DB::transaction()`). Query the user record using the query chain: `User::where('id', ...)->lockForUpdate()->firstOrFail()`. This locks the matching database row until the transaction commits or rolls back, forcing subsequent updates to block and wait.
+
+### Consequences
+* **Positive:** Complete protection against duplicate deductions and race conditions. Concurrency feature tests confirm zero balance bypass.
+* **Related Files:**
+  * [LeaveRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/LeaveRequestController.php) (implements locks)
+* **Related Release:** Phase 4.5 (`v1.1-phase-4.5` completion commit `b599f5a`)
+
+---
+
 *(Subsequent ADRs documented in respective phase commits)*

@@ -201,7 +201,34 @@ To allow employees to submit leave applications, route requests to designated su
 ---
 
 ## 6. Leave Accrual & Balance Ledger
-*(Reconciled in ledger phase)*
+
+### Business Purpose
+To manage employee leave balance accounts under a transaction audit model, utilize database concurrency locks to prevent race conditions during rapid reviews, and credit monthly balances using automated console tasks.
+
+### Architecture Lineage
+* **Original Business Problem:** User leave balances were updated directly without change logs. Double-clicking approval buttons rapidly caused database race conditions, resulting in duplicate deductions and negative balances.
+* **Phase Introduced:** Phase 4.5 (Leave Balance Ledger & Concurrency).
+* **Major Evolutions:**
+  * *Phase 4.5 (Commit `b599f5a`):* Replaced direct model updates with a double-entry ledger system using the `leave_ledger_entries` table. Configured pessimistic locking (`lockForUpdate()`) and database transactions (`DB::transaction()`) during approvals, cancellations, and overrides. Built commands to backfill opening balances and execute monthly accruals.
+* **Current Implementation:** Balance alterations (deductions, refunds, accruals, adjustments) are transactionally written to the ledger database. Approvals retrieve user rows using pessimistic locks to block concurrent writes.
+
+### Codebase Mappings
+* **Controllers:**
+  * [LeaveRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/LeaveRequestController.php) (applies pessimistic locks and transaction wrappers during approvals/cancellations)
+* **Models:**
+  * [LeaveLedgerEntry.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveLedgerEntry.php) (ledger table log model)
+  * [User.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/User.php) (tracks `leave_balance` column)
+* **Services:**
+  * [LeaveBalanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/LeaveBalanceService.php) (initializes employee on creation)
+* **Console Commands:**
+  * [InitializeBalancesCommand.php](file:///c:/Users/Lenovo/AMS-V1/app/Console/Commands/InitializeBalancesCommand.php) (`leaves:initialize-balances`)
+  * [AccrueLeavesCommand.php](file:///c:/Users/Lenovo/AMS-V1/app/Console/Commands/AccrueLeavesCommand.php) (`leaves:accrue`)
+* **Migrations:**
+  * `2026_06_23_000000_add_leave_balance_and_ledger_tables.php` (adds `leave_balance` column to `users` and creates `leave_ledger_entries` table)
+* **Feature Tests:**
+  * [LeaveBalanceTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveBalanceTest.php) (checks balance initialization, monthly credits accrual, paid leave deductions, refunds, and admin override balance corrections)
+* **Release Introduced:** `v1.1-phase-4.5`
+* **Current Operational Status:** Fully operational. Accrual commands check for entries within the current month to prevent duplicate credits (idempotent validation).
 
 ---
 

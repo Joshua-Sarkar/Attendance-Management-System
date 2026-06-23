@@ -98,4 +98,14 @@ graph TD
 
 ---
 
+### Leave Balance Ledger Relationships
+* **Leave Balance Ledger → Authentication & Security (Concurrency Safeguards):**
+  * Approving requests runs inside database transactions with pessimistic locks (`lockForUpdate()`), holding user records until updates are committed. This blocks concurrent login sessions from performing duplicate balance alterations.
+* **Leave Balance Ledger → Zimyo Import Engine:**
+  * When bulk importing new employees, the import pipeline directly calls [LeaveBalanceService](file:///c:/Users/Lenovo/AMS-V1/app/Services/LeaveBalanceService.php) to initialize their opening balance ledger line.
+* **Leave Balance Ledger → Operations & Cron Schedule:**
+  * The monthly accrual task is run as an automated cron command. The command checks for matching ledger logs in the current calendar month to guarantee idempotency.
+
+---
+
 *(Subsystem relationships for other domains will be detailed in respective phase commits)*

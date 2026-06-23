@@ -46,11 +46,30 @@ erDiagram
     leave_requests }o--|| users : "approved_by approver_id"
     leave_request_logs }o--|| leave_requests : "logs_changes_of leave_request_id"
     leave_request_logs }o--|| users : "action_taken_by user_id"
+    leave_ledger_entries }o--|| users : "updates_balance_of user_id"
+    leave_ledger_entries }o--o| leave_requests : "references_request leave_request_id"
 ```
 
 ---
 
 ## 2. Table Definitions
+
+### Table: `leave_ledger_entries`
+Stores transactional, double-entry adjustment records tracking employee leave balance changes.
+
+* **Columns:**
+  * `id` (`bigint unsigned`, Primary Key, Auto Increment): Unique identifier.
+  * `user_id` (`bigint unsigned`, Foreign Key -> `users.id`): Target employee.
+  * `leave_request_id` (`bigint unsigned`, Nullable, Foreign Key -> `leave_requests.id`): Associated request (null for accruals/initializations).
+  * `amount` (`decimal(8,2)`): Credit (+ve) or debit (-ve) amount (e.g. `-1.00`).
+  * `type` (`varchar(255)`): Transaction type (`opening_balance`, `accrual`, `deduction`, `refund`, `adjustment`).
+  * `description` (`varchar(255)`, Nullable): Descriptive log message.
+  * `created_at` / `updated_at` (`timestamp`): Database timestamps.
+
+* **Indexes & Keys:**
+  * `PRIMARY KEY (id)`
+  * `FOREIGN KEY leave_ledger_entries_user_id_foreign (user_id) REFERENCES users(id) ON DELETE CASCADE`
+  * `FOREIGN KEY leave_ledger_entries_leave_request_id_foreign (leave_request_id) REFERENCES leave_requests(id) ON DELETE CASCADE`
 
 ### Table: `leave_requests`
 Stores employee leave request applications and approval status classifications.
