@@ -37,6 +37,7 @@ class LeaveManagementTest extends TestCase
             'role' => 'admin',
             'status' => 'active',
             'department_id' => $this->department->id,
+            'leave_balance' => 10.00,
         ]);
 
         $this->manager = User::create([
@@ -48,6 +49,7 @@ class LeaveManagementTest extends TestCase
             'status' => 'active',
             'department_id' => $this->department->id,
             'admin_id' => $this->admin->id,
+            'leave_balance' => 10.00,
         ]);
 
         $this->otherManager = User::create([
@@ -59,6 +61,7 @@ class LeaveManagementTest extends TestCase
             'status' => 'active',
             'department_id' => $this->department->id,
             'admin_id' => $this->admin->id,
+            'leave_balance' => 10.00,
         ]);
 
         $this->employee = User::create([
@@ -71,6 +74,7 @@ class LeaveManagementTest extends TestCase
             'department_id' => $this->department->id,
             'manager_id' => $this->manager->id,
             'admin_id' => $this->admin->id,
+            'leave_balance' => 10.00,
         ]);
 
         $this->unrelatedEmployee = User::create([
@@ -83,6 +87,7 @@ class LeaveManagementTest extends TestCase
             'department_id' => $this->department->id,
             'manager_id' => $this->otherManager->id,
             'admin_id' => $this->admin->id,
+            'leave_balance' => 10.00,
         ]);
     }
 

@@ -92,6 +92,12 @@
                         <span class="block text-xs font-semibold text-vellum-faint uppercase tracking-wider">Assigned Admin</span>
                         <span class="text-sm font-medium text-vellum">{{ $user->admin?->name ?? 'N/A' }}</span>
                     </div>
+                    @if($user->role !== 'admin')
+                    <div>
+                        <span class="block text-xs font-semibold text-vellum-faint uppercase tracking-wider">Leave Balance</span>
+                        <span class="text-sm font-medium text-brass font-semibold">{{ number_format($user->leave_balance, 2) }} days</span>
+                    </div>
+                    @endif
                 </div>
             </div>
 

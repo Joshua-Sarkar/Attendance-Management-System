@@ -22,6 +22,7 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'leave_balance',
         'joining_date',
         'must_change_password',
         'department_id',
@@ -72,5 +73,10 @@ class User extends Authenticatable
     public function employeeProfile(): HasOne
     {
         return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function leaveLedgerEntries(): HasMany
+    {
+        return $this->hasMany(LeaveLedgerEntry::class);
     }
 }

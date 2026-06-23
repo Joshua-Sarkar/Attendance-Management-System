@@ -176,6 +176,8 @@ class EmployeeImportService
                     $user->password = \Illuminate\Support\Facades\Hash::make(env('DEFAULT_EMPLOYEE_PASSWORD'));
                     $user->save();
 
+                    \App\Services\LeaveBalanceService::initializeUser($user);
+
                     $usersCreatedCount++;
                 } else {
                     // Update mode - ONLY update status, department_id, and phone/joining_date if needed

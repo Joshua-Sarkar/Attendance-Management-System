@@ -34,8 +34,20 @@ class Attendance extends Model
             return 0;
         }
 
-        $startTime = config('attendance.start_time', '09:00');
-        $graceMinutes = config('attendance.grace_minutes', 15);
+        $transitionDate = config('attendance.new_rules_start_date');
+        $useNewRules = false;
+
+        if ($transitionDate) {
+            $useNewRules = $this->date->format('Y-m-d') >= $transitionDate;
+        }
+
+        if ($useNewRules) {
+            $startTime = config('attendance.start_time', '09:30');
+            $graceMinutes = config('attendance.grace_minutes', 15);
+        } else {
+            $startTime = '09:00';
+            $graceMinutes = 15;
+        }
 
         $checkIn = \Carbon\Carbon::parse($this->check_in_time);
         $graceEnd = $checkIn->copy()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);

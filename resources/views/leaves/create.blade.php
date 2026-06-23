@@ -14,6 +14,13 @@
                 </a>
             </div>
 
+            @if(auth()->user()->role !== 'admin')
+            <div class="p-4 rounded-lg bg-surface-container-high border border-outline-variant/30 text-on-surface flex justify-between items-center">
+                <span class="text-sm font-semibold">Available Leave Balance:</span>
+                <span class="text-lg font-bold text-brass">{{ number_format(auth()->user()->leave_balance, 2) }} days</span>
+            </div>
+            @endif
+
             <form action="{{ route('leaves.store') }}" method="POST" class="space-y-6">
                 @csrf
 

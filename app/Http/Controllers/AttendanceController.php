@@ -97,34 +97,9 @@ class AttendanceController extends Controller
             ? round((($monthPresent + $monthWfh) / $totalMonthWorkingDays) * 100, 1)
             : 100.0;
             
-        // Leaves remaining (calculated via monthly accrual)
         $now = \Carbon\Carbon::now();
-        $currentYear = $now->year;
-        $joiningDate = $user->joining_date ? \Carbon\Carbon::parse($user->joining_date) : null;
-        if ($joiningDate && $joiningDate->year === $currentYear) {
-            $accrualStart = $joiningDate->copy()->startOfDay();
-        } else {
-            $accrualStart = \Carbon\Carbon::create($currentYear, 1, 1, 0, 0, 0);
-        }
-        
-        $leavesEarned = 0;
-        $monthlyRate = config('attendance.leave_monthly_accrual_rate', 2);
-        for ($m = 1; $m <= $now->month; $m++) {
-            $monthStart = \Carbon\Carbon::create($currentYear, $m, 1, 0, 0, 0);
-            if ($monthStart->greaterThanOrEqualTo($accrualStart)) {
-                $leavesEarned += $monthlyRate;
-            }
-        }
-        
-        $annualAllocation = config('attendance.leave_annual_allocation', 24);
-        $leavesEarned = min($annualAllocation, $leavesEarned);
-        
-        $leavesTaken = \App\Models\LeaveRequest::where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->where('start_date', '>=', $accrualStart)
-            ->sum('total_days');
-            
-        $leavesRemaining = max(0, $leavesEarned - $leavesTaken);
+        // Leaves remaining (stored as leave_balance in users table)
+        $leavesRemaining = $user->leave_balance;
         
         // Current on-time streak
         $historyDays = 90;

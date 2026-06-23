@@ -63,6 +63,7 @@
                                 <th class="py-3 px-4">Department</th>
                                 <th class="py-3 px-4">Assigned Manager</th>
                                 <th class="py-3 px-4">Assigned Admin</th>
+                                <th class="py-3 px-4">Leave Balance</th>
                                 <th class="py-3 px-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -95,6 +96,9 @@
                                     <td class="py-3 px-4 text-vellum-muted">
                                         {{ $employee->admin?->name ?? 'N/A' }}
                                     </td>
+                                    <td class="py-3 px-4 text-vellum-muted font-mono">
+                                        {{ $employee->role !== 'admin' ? number_format($employee->leave_balance, 2) : 'N/A' }}
+                                    </td>
                                     <td class="py-3 px-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('employees.show', $employee) }}"
@@ -123,7 +127,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="py-8 px-4 text-center text-vellum-faint border border-dashed border-hairline-strong rounded-lg mt-1 text-[12px]">
+                                    <td colspan="10" class="py-8 px-4 text-center text-vellum-faint border border-dashed border-hairline-strong rounded-lg mt-1 text-[12px]">
                                         No workforce members found.
                                     </td>
                                 </tr>

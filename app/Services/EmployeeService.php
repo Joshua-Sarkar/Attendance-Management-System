@@ -26,6 +26,10 @@ class EmployeeService
         $profileData['user_id'] = $user->id;
         $user->employeeProfile()->create($profileData);
 
+        if ($user->role !== 'admin') {
+            \App\Services\LeaveBalanceService::initializeUser($user);
+        }
+
         return $user;
     }
 
