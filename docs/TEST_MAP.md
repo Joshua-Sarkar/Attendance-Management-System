@@ -41,4 +41,18 @@ This document indexes all verification suites, automated test files, and asserti
 
 ---
 
+## 2. Department & Workforce Management Testing
+
+### Automated Test Files
+* **[HierarchySplitTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/HierarchySplitTest.php)**
+  * *Coverage Focus:* Scopes user queries based on active session roles to verify department security and manager boundaries.
+  * *Scenarios Verified:*
+    1. **Department Access Control:** Checks that general staff can only view employees in their own department (if rules apply) and managers cannot perform operations outside direct reports.
+    2. **Admin Creation Constraints:** Asserts that Admins can provision other Admins, but Managers cannot provision Admins or Managers.
+    3. **Circular Mappings Block:** Verifies that a user cannot report to themselves, and Admins cannot be assigned a manager.
+    4. **Assigned Employee Scopes:** Confirms that Managers are restricted to employees reporting directly to them and cannot view other managers' staff.
+    5. **Unassigned Employees:** Verifies the visibility of employees with no manager.
+
+---
+
 *(Other domain tests detailed in respective phase commits)*

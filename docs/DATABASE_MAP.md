@@ -29,12 +29,36 @@ erDiagram
         timestamp updated_at
     }
 
+    departments {
+        bigint id PK
+        string name
+        string code UK "nullable"
+        text description "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+
     users ||--o| users : "reports_to manager_id / admin_id"
+    users ||--o| departments : "belongs_to department_id"
 ```
 
 ---
 
 ## 2. Table Definitions
+
+### Table: `departments`
+Groups employees into business units to structure queries and gate access.
+
+* **Columns:**
+  * `id` (`bigint unsigned`, Primary Key, Auto Increment): Unique identifier.
+  * `name` (`varchar(255)`): Friendly department name (e.g. `Engineering`).
+  * `code` (`varchar(10)`, Unique, Nullable): Short identifier code (e.g. `ENG`).
+  * `description` (`text`, Nullable): Business scope notes.
+  * `created_at` / `updated_at` (`timestamp`): Database timestamps.
+
+* **Indexes & Keys:**
+  * `PRIMARY KEY (id)`
+  * `UNIQUE KEY departments_code_unique (code)`
 
 ### Table: `users`
 Tracks employee login credentials, role assignments, system statuses, and reporting hierarchies.

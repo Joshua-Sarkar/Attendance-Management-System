@@ -60,4 +60,14 @@ graph TD
 
 ---
 
+### Department & Workforce Management Relationships
+* **Workforce Management → Employee Profiles:**
+  * When a new User is created under the workforce management controllers, a corresponding 1:1 mapped `employee_profiles` record is automatically initialized by the service layer.
+* **Workforce Management → Attendance:**
+  * Daily check-in lists and late audits use the department filters (`department_id`) and name search inputs from users to display roster attendance.
+* **Workforce Management → Leave Management:**
+  * When a standard employee applies for a leave request, the system checks their `manager_id` reporting chain to route approval actions to their direct supervisor.
+
+---
+
 *(Subsystem relationships for other domains will be detailed in respective phase commits)*

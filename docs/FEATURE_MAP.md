@@ -50,7 +50,40 @@ To secure personnel records and operations by regulating application access base
 ---
 
 ## 2. Department & Workforce Management
-*(Reconciled in workforce phase)*
+
+### Business Purpose
+To partition the workforce into distinct business units (departments), manage primary employee user accounts, configure reporting chains (managers and administrators), and prevent security violations by isolating records based on active roles.
+
+### Architecture Lineage
+* **Original Business Problem:** The organization lacked structured department boundaries. General staff lists were fully visible to all registered accounts, and managers could view and manage personnel records outside their teams.
+* **Phase Introduced:** Phase C.1 (CRUD directory) and Phase D (manager hierarchy scope).
+* **Major Evolutions:**
+  * *Phase C.1 (Commit `e37dd81`):* Developed the basic CRUD routes, controllers, and views for managing department models and staff records. Created default seed tables.
+  * *Phase D (Commit `14a6f80`):* Integrated self-referential reporting chains using `manager_id` on the `users` table. Modified queries in `EmployeeController.php` index action so that Managers can only view employees where `manager_id = auth()->id()`.
+* **Current Implementation:** Managers and Administrators can perform CRUD operations on employees, but Managers are restricted to employees reporting directly to them and cannot create Admin or Manager roles. Employee IDs are auto-generated sequentially under the format `EMP` + 5 digits (e.g. `EMP00001`).
+
+### Codebase Mappings
+* **Controllers:**
+  * [DepartmentController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/DepartmentController.php) (CRUD for departments)
+  * [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php) (CRUD for workforce users, validation limits)
+* **Models:**
+  * [Department.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Department.php)
+  * [User.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/User.php) (contains primary employee fields: status, role, manager_id, department_id)
+* **Services:**
+  * [EmployeeService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeService.php) (delegates database updates)
+* **Routes:**
+  * `departments` resources (standard Laravel endpoints)
+  * `employees` resource routes
+* **Views:**
+  * `resources/views/departments/index.blade.php`, `create.blade.php`, `edit.blade.php`
+  * `resources/views/employees/index.blade.php`, `create.blade.php`, `edit.blade.php`, `show.blade.php`
+* **Migrations:**
+  * `2026_06_09_142514_create_departments_table.php`
+  * `2026_06_09_141744_modify_users_table_for_ams.php` (role, status, employee_id keys)
+* **Feature Tests:**
+  * [HierarchySplitTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/HierarchySplitTest.php) (checks department boundaries, active workforce metrics, role-based visibility, and blocks managers from creating admin profiles)
+* **Release Introduced:** `v1.0-phase-c.1` (CRUD baseline) and `v1.0-phase-d` (hierarchy controls)
+* **Current Operational Status:** Fully operational. Sequential employee ID auto-generation is managed inside `EmployeeController@generateEmployeeId`. Circular manager assignments are blocked during validation.
 
 ---
 

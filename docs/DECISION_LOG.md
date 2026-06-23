@@ -37,4 +37,31 @@ Implement the `CheckPasswordChange` route middleware, registered globally on the
 
 ---
 
+## ADR 2: Sequential Alphanumeric Employee ID Auto-Generation
+
+### Problem
+Exposing internal auto-increment database primary keys (`users.id`) directly in views, URLs, or export files exposes business metrics (employee volume) and creates insecure direct object reference (IDOR) vulnerabilities. We need a standardized corporate identifier that is unique, sequential, and formatted for corporate accounting.
+
+### Context
+Manual keying of employee codes leads to duplicates, formatting inconsistencies (e.g., mixing `EMP-1`, `emp_01`, and `EMP00001`), and data import mapping failures. The system must automatically suggest a formatted ID on user creation while validating uniqueness.
+
+### Alternatives Considered
+* **Option A: UUIDs:** Use random 36-character identifiers (e.g. `d3b07384d113...`).
+  * *Trade-off:* High security, but impossible for HR and payroll staff to communicate verbally or print on ID badges.
+* **Option B: Manual Input Only:** Force administrators to type unique codes.
+  * *Trade-off:* High risk of duplicate key exceptions and typing fatigue.
+* **Option C: Sequential suger prefix mapping (Chosen):** suggestion of alphanumeric codes starting at `EMP00001`, incrementing based on the highest existing code in the database.
+
+### Chosen Solution
+Create a helper method `generateEmployeeId()` inside [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php) that queries the maximum existing `employee_id` in the database, extracts the numeric suffix, increments it, and formats the output with a left zero pad of size 5, pre-pended with the `EMP` token.
+
+### Consequences
+* **Positive:** Consistent formatting (`EMP00001` to `EMP99999`), zero manual overhead for administrators, easy alignment with Zimyo imports.
+* **Negative:** Relies on retrieving the highest ID which could create a race condition if two admins click create at the exact same millisecond. Since the database unique index on `employee_id` is active, it throws a query exception rather than saving duplicates, making it safe.
+* **Related Files:**
+  * [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php) (suggestion and creation handler)
+* **Related Release:** Phase C.1 (`v1.0-phase-c.1` completion commit `e37dd81`)
+
+---
+
 *(Subsequent ADRs documented in respective phase commits)*
