@@ -194,36 +194,10 @@ Refer to these documentation files inside the `/docs` directory:
 
 ## 11. Recovery & Rollback Quick Guide
 
-### 1. View Git Tags & Releases
-```bash
-git tag -n
-```
-
-### 2. Rollback Code to Target Tag
-```bash
-git fetch --tags
-git checkout v1.2-phase-4.6
-composer install --no-dev --optimize-autoloader
-npm run build
-```
-
-### 3. Rollback Last Migration Step
-```bash
-php artisan migrate:rollback --step=1
-```
-
-### 4. Restore Database Backup (phpMyAdmin)
-1. Select the database and drop all tables.
-2. Click the **Import** tab, upload the backup snapshot, and click **Go**.
-
-### 5. Production Deploy Steps
-```bash
-git checkout main && git pull origin main
-composer install --no-dev --optimize-autoloader
-npm install && npm run build
-php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache
-```
+For the standard deploy routines, configuration cache optimizations, code releases checkout instructions, database rollbacks, and recovery snapshots workflows, refer directly to:
+* [DEPLOYMENT.md: Section 2 (Hostinger Deployment Workflow)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md#2-hostinger-deployment-workflow)
+* [DEPLOYMENT.md: Section 6 (Rollback Procedures)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md#6-rollback-procedures)
+* [DEPLOYMENT.md: Section 7 (Emergency Recovery Procedures)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md#7-emergency-recovery-procedures)
 
 ---
 

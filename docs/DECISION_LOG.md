@@ -324,3 +324,34 @@ Define `main` as the single source of truth and deployment branch. Document lega
 * **Related Files:**
   * [VERSIONING.md](file:///c:/Users/Lenovo/AMS-V1/docs/VERSIONING.md) (standards documentation)
 * **Related Release:** Phase 4.7 (`v1.2-docs-baseline` tag)
+
+---
+
+## ADR 13: Application-Wide Timezone Configuration Locking (Asia/Kolkata)
+
+### Problem
+In initial deployment checks on Hostinger Linux Shared hosting, daily attendance records and clock-in delays math were recorded with inconsistent offsets. Because the remote web servers and database instances defaults to Coordinated Universal Time (UTC), standard check-in actions computed clock-in delays based on UTC, resulting in a 5.5-hour delay offset relative to Indian Standard Time (IST) and assigning incorrect attendance statuses (e.g. marking present employees as absent or late).
+
+### Context
+We must ensure complete temporal consistency for attendance audits and payroll computations:
+1. Daily clock-in timelines operate exclusively under the IST timezone (UTC+05:30).
+2. Local developer environments (which may use different OS settings) must behave identically to the production server.
+3. Automated test assertions must validate timezone alignment on startup.
+
+### Alternatives Considered
+* **Option A: Query-level Conversion:** Apply timezone conversion offsets (e.g., `date_add(check_in_time, INTERVAL 330 MINUTE)`) in raw database queries.
+  * *Trade-off:* High query complexity, engine-specific SQL commands (MySQL vs SQLite), prone to developer oversight.
+* **Option B: Application-level Timezone locking (Chosen):** Set configuration variables in the core PHP container setup.
+
+### Chosen Solution
+In [config/app.php](file:///c:/Users/Lenovo/AMS-V1/config/app.php), configure the default timezone parameter strictly to `'Asia/Kolkata'`:
+`'timezone' => env('APP_TIMEZONE', 'Asia/Kolkata')`
+Additionally, write a dedicated regression check inside [TimezoneTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/TimezoneTest.php) to verify that `date_default_timezone_get()` resolves strictly to `Asia/Kolkata` under all test runner runs.
+
+### Consequences
+* **Positive:** Consistent delay calculations across all environments, clean database timestamps representation, and complete safety against varying server default values.
+* **Related Files:**
+  * [app.php](file:///c:/Users/Lenovo/AMS-V1/config/app.php) (application configuration)
+  * [TimezoneTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/TimezoneTest.php) (verification suite)
+* **Related Release:** Phase 4.7 (`v1.2-docs-baseline` tag)
+

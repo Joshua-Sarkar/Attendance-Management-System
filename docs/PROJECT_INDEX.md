@@ -46,8 +46,8 @@ Manages user sessions, role checks, default credentials reset, and password modi
   * Laravel Breeze (core authentication stack)
   * BCRYPT hashing algorithm (12 rounds)
 * **Related Migrations:**
-  * `0001_01_01_000000_create_users_table.php`
-  * `2026_06_10_104616_add_provisioning_columns_to_users_table.php` (adds `must_change_password`)
+  * [0001_01_01_000000_create_users_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/0001_01_01_000000_create_users_table.php)
+  * [2026_06_10_104616_add_provisioning_columns_to_users_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_10_104616_add_provisioning_columns_to_users_table.php) (adds `must_change_password`)
 
 ---
 
@@ -73,7 +73,7 @@ Manages organizational business units and grouping classifications for employees
 * **Tests:**
   * `tests/Feature/HierarchySplitTest.php` (verifies scoped visibility filters)
 * **Related Migrations:**
-  * `2026_06_09_142514_create_departments_table.php`
+  * [2026_06_09_142514_create_departments_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_09_142514_create_departments_table.php)
 
 ---
 
@@ -110,8 +110,8 @@ Governs personnel records, manager-employee mappings, emergency contacts, and se
 * **Dependencies:**
   * Laravel Eloquent model encryption (`casts` layer handles bank/ID attributes automatically)
 * **Related Migrations:**
-  * `2026_06_18_093324_create_employee_profiles_table.php`
-  * `2026_06_19_084725_change_experience_columns_to_strings_in_employee_profiles.php`
+  * [2026_06_18_093324_create_employee_profiles_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_18_093324_create_employee_profiles_table.php)
+  * [2026_06_19_084725_change_experience_columns_to_strings_in_employee_profiles.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_19_084725_change_experience_columns_to_strings_in_employee_profiles.php)
 
 ---
 
@@ -151,7 +151,7 @@ Logs employee check-in and check-out logs, evaluates delay metrics, and aggregat
   * Carbon (date calculations)
   * Config parameters `attendance.start_time` and `attendance.grace_minutes`
 * **Related Migrations:**
-  * `2026_06_10_000000_create_attendances_table.php`
+  * [2026_06_10_000000_create_attendances_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_10_000000_create_attendances_table.php)
 
 ---
 
@@ -192,10 +192,10 @@ Governs employee leave logs, manager validation checks, admin override updates, 
 * **Dependencies:**
   * MySQL Pessimistic Locks (`lockForUpdate()`) and transactions (`DB::transaction()`) to prevent race conditions during balance updates.
 * **Related Migrations:**
-  * `2026_06_11_153000_create_leave_requests_table.php`
-  * `2026_06_11_153500_create_leave_request_logs_table.php`
-  * `2026_06_23_000000_add_leave_balance_and_ledger_tables.php`
-  * `2026_06_23_184204_make_leave_type_nullable_in_leave_requests_table.php`
+  * [2026_06_11_153000_create_leave_requests_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_11_153000_create_leave_requests_table.php)
+  * [2026_06_11_153500_create_leave_request_logs_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_11_153500_create_leave_request_logs_table.php)
+  * [2026_06_23_000000_add_leave_balance_and_ledger_tables.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_23_000000_add_leave_balance_and_ledger_tables.php)
+  * [2026_06_23_184204_make_leave_type_nullable_in_leave_requests_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_23_184204_make_leave_type_nullable_in_leave_requests_table.php)
 
 ---
 
@@ -222,7 +222,7 @@ Bulk Excel parsing pipeline to import employees, configure profiles, map manager
   * `PhpOffice\PhpSpreadsheet` library
   * Environment variable `DEFAULT_EMPLOYEE_PASSWORD`
 * **Related Migrations:**
-  * `2026_06_18_193234_create_import_logs_table.php`
+  * [2026_06_18_193234_create_import_logs_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_18_193234_create_import_logs_table.php)
 
 ---
 
@@ -245,7 +245,7 @@ Allows employees to submit profile corrections, prompting review notifications f
 * **Tests:**
   * `tests/Feature/ProfileCorrectionRequestTest.php`
 * **Related Migrations:**
-  * `2026_06_19_090000_create_profile_correction_requests_table.php`
+  * [2026_06_19_090000_create_profile_correction_requests_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_19_090000_create_profile_correction_requests_table.php)
 
 ---
 

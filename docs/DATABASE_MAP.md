@@ -248,7 +248,34 @@ These fields are encrypted using Laravel's standard AES-256-CBC encryption ciphe
 
 ---
 
+## 4. Framework Infrastructure
+
+In addition to custom business application tables, AMS-V1 utilizes Laravel's default boilerplate tables to manage sessions, configuration caching, pessimistic resource locks, and background job queues:
+
+### Table: `sessions`
+Stores session payloads for authenticated users, tracking active connections, IP addresses, user agent details, and idle timeouts:
+* `id` (`varchar(255)`, Primary Key): Unique session token.
+* `user_id` (`bigint unsigned`, Nullable, Foreign Key -> `users.id`): References the logged-in user.
+* `ip_address` (`varchar(45)`, Nullable): Client machine IP address.
+* `user_agent` (`text`, Nullable): Browser platform metadata.
+* `payload` (`longtext`): Encoded session state variables.
+* `last_activity` (`integer`): UNIX timestamp of the user's last action.
+
+### Tables: `cache` & `cache_locks`
+Used by Laravel's database cache driver to store application state variables and serialise resources:
+* **`cache`**: Stores transient key-value pairs (`key`, `value`, `expiration`).
+* **`cache_locks`**: Used to orchestrate atomic locks across tasks, preventing concurrent executions (`key`, `owner`, `expiration`).
+
+### Tables: `jobs`, `job_batches`, & `failed_jobs`
+Orchestrates task queues, asynchronous mailer events, and Excel import reports:
+* **`jobs`**: Holds queued tasks waiting for consumer dispatch (`queue`, `payload`, `attempts`, `reserved_at`, `available_at`, `created_at`).
+* **`job_batches`**: Manages batches of parallel jobs, monitoring progress and errors (`name`, `total_jobs`, `pending_jobs`, `failed_jobs`, `failed_job_ids`, `options`, `cancelled_at`, `finished_at`).
+* **`failed_jobs`**: Audits and stores failed queue jobs for developer diagnostics (`connection`, `queue`, `payload`, `exception`, `failed_at`).
+
+---
+
 ## 5. Database Engine Parity
+
 AMS-V1 maintains database engine parity between development, testing, and production environments:
 
 * **Local/Testing Environment (SQLite):**

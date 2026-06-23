@@ -107,78 +107,10 @@ Hotfixes address issues in production that cannot wait for a scheduled release c
 ---
 
 ## 6. Rollback Procedures
-
-If a deployment fails, use the following guidelines to restore service.
-
-### 1. Code Rollback
-To return the code to a previous release tag:
-```bash
-# Fetch latest repository state
-git fetch --tags
-
-# Force checkout the target tag
-git checkout v1.2-phase-4.6
-
-# Re-run build and dependency setup to match this release state
-composer install --no-dev --optimize-autoloader
-npm run build
-```
-
-### 2. Database Migration Rollback (Extremely Critical)
-If a deployment fails due to a migration issue, rollback the last migration:
-```bash
-# Rollback the last migration step
-php artisan migrate:rollback --step=1
-```
-
-> [!CAUTION]
-> **Data Loss Prevention:** Do not run `migrate:reset` or `migrate:fresh` in production, as this will clear the database. If a migration dropped a column or altered data types, restore the database from the last backup instead of running automated rollback scripts.
-
-### 3. Production Backups (Hostinger cPanel)
-* **Automatic Backups:** Enforce daily automatic MySQL backups in cPanel.
-* **Manual Snapshot:** Take a database snapshot via phpMyAdmin before running any migrations during deployment:
-  * Log in to cPanel -> **phpMyAdmin**.
-  * Select `ams_db`, click **Export**, and save the SQL file locally.
-* **Recovery Steps:**
-  * Import the backup SQL file via phpMyAdmin if a database migration error occurs.
+For detailed step-by-step instructions on rolling back the codebase, restoring MySQL backup snapshots, and reversing migrations safely on the Hostinger production server, refer to [DEPLOYMENT.md: Section 6 (Rollback Procedures)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md#6-rollback-procedures).
 
 ---
 
 ## 7. Deployment Procedures
+For the pre-deployment checklist, server execution steps, and post-deployment validation protocols, refer directly to [DEPLOYMENT.md: Section 2 (Hostinger Deployment Workflow)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md#2-hostinger-deployment-workflow) and [Section 3 (Production Migration Checklist)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md#3-production-migration-checklist).
 
-Use these steps for deployments to Hostinger Shared Linux Servers:
-
-### Phase A: Pre-deployment Checklist
-1. Verify that the local test suite is passing: `php artisan test` (must return 100% success).
-2. Export a backup snapshot of the production database using cPanel phpMyAdmin.
-3. Verify that the `.env` configuration file on the production server is correct (e.g. `APP_ENV=production`, `APP_DEBUG=false`, correct database credentials, `DEFAULT_EMPLOYEE_PASSWORD`).
-
-### Phase B: Execution Steps
-Run these commands from the terminal on the target hosting environment:
-
-```bash
-# 1. Pull code changes
-git checkout main
-git pull origin main
-
-# 2. Update dependencies
-composer install --no-dev --optimize-autoloader
-
-# 3. Compile asset packages
-npm install
-npm run build
-
-# 4. Run database migrations
-php artisan migrate --force
-
-# 5. Clear and optimize application caches
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
-
-### Phase C: Post-deployment Validation
-1. Access the application login screen and verify that the pages load correctly.
-2. Log in using test credentials for each user role (`admin`, `manager`, and `employee`) to verify role-based layouts.
-3. Verify that the live clock ticker on the dashboard shows the correct timezone: `Asia/Kolkata` (IST).
-4. Run a test import sheet or submit a test leave request to verify transaction logic.
