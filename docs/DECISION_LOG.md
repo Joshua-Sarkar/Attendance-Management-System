@@ -322,7 +322,7 @@ Define `main` as the single source of truth and deployment branch. Document lega
 ### Consequences
 * **Positive:** Simple release logic, clean linear git history, and transparent branch maps.
 * **Related Files:**
-  * [VERSIONING.md](file:///c:/Users/Lenovo/AMS-V1/docs/VERSIONING.md) (standards documentation)
+  * [DEPLOYMENT_GUIDE.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md) (standards documentation)
 * **Related Release:** Phase 4.7 (`v1.2-docs-baseline` tag)
 
 ---

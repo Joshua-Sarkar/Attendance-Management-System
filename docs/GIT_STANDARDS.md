@@ -37,7 +37,7 @@ Every meaningful commit must contain a detailed body answering:
 2. **Why did it change?** (The business rationale or bug trigger)
 3. **Which subsystem changed?** (The code layers affected)
 4. **What business requirement was addressed?** (e.g. Phase objective)
-5. **Which documentation was updated?** (e.g. `FEATURE_MAP.md`, `DECISION_LOG.md`)
+5. **Which documentation was updated?** (e.g. `TECHNICAL_MAP.md`, `DECISION_LOG.md`)
 6. **Which tests were affected?** (List of new or modified test cases)
 
 ### C. Granularity & Scope Guards
@@ -68,7 +68,7 @@ Why:
 - Restores editorial visual aesthetics without resorting to bright pastel colors.
 
 Subsystems: Theme, Layout views.
-Docs Updated: CURRENT_STATE.md, FEATURE_MAP.md, RELEASE_MAP.md.
+Docs Updated: CURRENT_STATE.md, TECHNICAL_MAP.md, AMS_HISTORY.md.
 Tests Affected: Executed Pest test suite to verify zero markup regressions.
 ```
 
@@ -80,13 +80,13 @@ Implementation changes and documentation must evolve together in the same commit
 
 | Event Type | Mandatory Documentation Updates Required | Affected Files |
 | :--- | :--- | :--- |
-| **Feature Additions** | Update subsystem purpose, layout components, and codebase file indexes. | [FEATURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/FEATURE_MAP.md), [PROJECT_INDEX.md](file:///c:/Users/Lenovo/AMS-V1/docs/PROJECT_INDEX.md) |
-| **Feature Removals** | Remove indexes and update capabilities matrices. | [FEATURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/FEATURE_MAP.md), [PROJECT_INDEX.md](file:///c:/Users/Lenovo/AMS-V1/docs/PROJECT_INDEX.md) |
-| **Architecture Changes** | Log the decision, trace alternatives considered, and update interaction diagrams. | [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md) (New ADR), [ARCHITECTURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/ARCHITECTURE_MAP.md) |
-| **Database Changes** | Add schema details, column types, keys, and relational constraints. | [DATABASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/DATABASE_MAP.md), [AMS_CHRONICLE.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_CHRONICLE.md) |
-| **Test Additions** | Document new verification scopes and test class details. | [TEST_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TEST_MAP.md) |
-| **Deployment Changes** | Log new setup configurations, runtime settings, or clear cache steps. | [DEPLOYMENT.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md) |
-| **Release Completions** | Append timeline logs, update version references, and handoff snapshot summaries. | [RELEASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/RELEASE_MAP.md), [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md), [HANDOVER.md](file:///c:/Users/Lenovo/AMS-V1/docs/HANDOVER.md) |
+| **Feature Additions** | Update subsystem purpose, layout components, and codebase file indexes. | [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md) |
+| **Feature Removals** | Remove indexes and update capabilities matrices. | [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md) |
+| **Architecture Changes** | Log the decision, trace alternatives considered, and update interaction diagrams. | [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md) (New ADR) |
+| **Database Changes** | Add schema details, column types, keys, and relational constraints. | [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md), [AMS_HISTORY.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_HISTORY.md) |
+| **Test Additions** | Document new verification scopes and test class details. | [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md) |
+| **Deployment Changes** | Log new setup configurations, runtime settings, or clear cache steps. | [DEPLOYMENT_GUIDE.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md) |
+| **Release Completions** | Append timeline logs, update version references, and handoff snapshot summaries. | [AMS_HISTORY.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_HISTORY.md), [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md), [HANDOVER.md](file:///c:/Users/Lenovo/AMS-V1/docs/HANDOVER.md) |
 
 ---
 
@@ -140,7 +140,7 @@ graph TD
     C --> D[4. Execute Documentation Link Audit]
     D --> E[5. Generate Release Completion Report]
     E --> F[6. Create Annotated Git Tag]
-    F --> G[7. Update RELEASE_MAP.md with Commit ID]
+    F --> G[7. Update AMS_HISTORY.md with Commit ID]
     G --> H[8. Update CURRENT_STATE.md Stats]
     H --> I[9. Update HANDOVER.md Snapshots]
     I --> J[10. Deploy & Verify Production Build]
@@ -183,17 +183,17 @@ Traceability is maintained through a clear mapping chain. Every business require
 
 Use this repeatable audit checklist before certifying the completion of any phase:
 * **ADR Compliance:** Does the change introduce architectural abstractions or model additions? If yes, is there a matching entry in [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md)?
-* **Relational Schema Sync:** Do database table changes match the tables detailed in [DATABASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/DATABASE_MAP.md)?
+* **Relational Schema Sync:** Do database table changes match the tables detailed in [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md)?
 * **Broken Link Scans:** Verify that all markdown links using the `file:///` scheme are valid and resolve correctly in the workspace.
 * **Test Coverage Verification:** Are new features covered by corresponding Pest test cases? Run `vendor/bin/pest` to verify 100% green status.
-* **Accrued Commits Mapping:** Check that the completion commit hash is recorded in [RELEASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/RELEASE_MAP.md) and version references are updated in [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md).
+* **Accrued Commits Mapping:** Check that the completion commit hash is recorded in [AMS_HISTORY.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_HISTORY.md) and version references are updated in [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md).
 
 ---
 
 ## 8. AI Continuation Rules
 
 Future AI development subagents or new sessions must adhere to these instructions:
-1. **Mandatory Documentation Reading:** Before changing any source code, read `docs/GIT_STANDARDS.md`, `docs/CURRENT_STATE.md`, and the target module index in `docs/PROJECT_INDEX.md`.
+1. **Mandatory Documentation Reading:** Before changing any source code, read `docs/GIT_STANDARDS.md`, `docs/CURRENT_STATE.md`, and the target module index in `docs/TECHNICAL_MAP.md`.
 2. **Concurrent Updates:** Modify related documentation files within the *same* tool execution chunks as the code modifications.
 3. **Verify Before Declaring Complete:** Propose compilation builds (`npm run build`) and run Pest test suites to verify system integrity before requesting final user sign-off.
 4. **Historical Handovers:** Provide a comprehensive Release Completion Report at the end of the phase to support immediate handover.
