@@ -31,8 +31,8 @@ AMS-V1 was developed to own the workforce data, eliminate spreadsheet chaos, and
 
 ### Current Production Status
 * **Hosting Environment:** Active in production on a Linux Shared Hosting server (Hostinger) via cPanel, utilizing SQLite locally and MySQL 8.0 in production.
-* **Version:** `v1.2-phase-4.6`
-* **Codebase Health:** 98 tests, 534 assertions (100% passing).
+* **Version:** `v1.2-phase-4.7.3`
+* **Codebase Health:** 102 tests, 546 assertions (100% passing).
 
 ---
 
@@ -766,8 +766,9 @@ The test suite validates roles, security, attendance rules, imports, and balance
 6. **ImportEmployeesTest:** Validates bulk importing, manager mappings, and validations.
 7. **PasswordStrategySecurityTest:** Validates password update redirects and resets.
 8. **WorkingDaysTest:** Validates weekend exclusions.
+9. **LeaveAuthorizationModelTest:** Validates planned and unplanned leave approvals/rejections, birthday leave credit sync/expiry, leap year birth dates, auto-approvals, and override restorations.
 
-* **Current Status:** 98 tests, 534 assertions (100% passing).
+* **Current Status:** 102 tests, 546 assertions (100% passing).
 
 ---
 

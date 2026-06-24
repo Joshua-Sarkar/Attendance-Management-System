@@ -7,9 +7,9 @@ This document represents the live, production-ready operational state of the Att
 ## 1. System Metadata
 
 * **Current Version:** `v1.2-phase-4.7.3`
-* **Latest Functional Tag:** `v1.2-phase-4.7.2` (completed backend leave authorization features)
+* **Latest Functional Tag:** `v1.2-phase-4.7.3` (completed readability and usability enhancements)
 * **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to commit `e00d32b` / baseline refinements)
-* **Latest Commit:** `feat(leave): implement reusable leave credit database schema and dynamic birthday credits sync`
+* **Latest Commit:** `716bd4a` (`docs(release): reconcile metadata, build Phase 4.8 readiness report, and prepare tag`)
 * **Current Branch:** `main`
 * **Production Environment:** Hostinger Linux Shared Server (cPanel setup)
 * **Production Database Engine:** MySQL 8.0 (utilizing transactional row locks; local runs use SQLite in-memory)
@@ -87,6 +87,5 @@ This document represents the live, production-ready operational state of the Att
 
 ## 5. Development Timeline
 
-* **Active Phase:** Phase 4.7.3 (in progress).
-* **Next Planned Phase:** **Phase 4.8 — Executive UI Overhaul** (redesigning layout wrappers, dashboard widgets, and dropdown overlays).
-* **Deferred Phase:** **Phase 5 — Payroll Integration** (calculating monthly salary components based on clock-in records, late arrival logs, and unpaid leaves).
+* **Active Phase:** Phase 4.8 — Executive UI Overhaul (in progress).
+* **Next Planned Phase:** **Phase 5 — Payroll Integration** (calculating monthly salary components based on clock-in records, late arrival logs, and unpaid leaves - Deferred).

@@ -20,10 +20,10 @@ This document serves as the primary entry point for developers, maintainers, aud
 ## 2. Current Snapshot
 
 * **Current Version:** `v1.2-phase-4.7.3`
-* **Latest Release Tag:** `v1.2-phase-4.7.2`
+* **Latest Release Tag:** `v1.2-phase-4.7.3`
 * **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to Phase 4.7 consolidation commit)
 * **Current Branch:** `main`
-* **Latest Commit:** `feat(leave): implement reusable leave credit database schema and dynamic birthday credits sync`
+* **Latest Commit:** `716bd4a` (`docs(release): reconcile metadata, build Phase 4.8 readiness report, and prepare tag`)
 * **Production URL:** Hostinger production directory root (cPanel mappings active)
 * **Production Database:** MySQL 8.0
 * **Current Deployment Environment:** Linux Shared Web Server (Hostinger PHP 8.2 runtime)
@@ -159,9 +159,9 @@ Currently, there are no known critical issues. The application has 100% test cov
 
 ---
 
-* **Active Phase:** Phase 4.7.3 (in progress).
-* **Last Completed Phase:** Phase 4.7.2 (Leave authorization system, reusable credits engine, planned/unplanned categories, birthday leave credits sync/expire, approval-driven attendance resolution).
-* **Next Planned Phase:** **Phase 4.8 — Executive UI Overhaul**.
+* **Active Phase:** Phase 4.8 — Executive UI Overhaul (in progress).
+* **Last Completed Phase:** Phase 4.7.3 (Readability & Usability Pass).
+* **Next Planned Phase:** **Phase 5 — Payroll Integration** (Deferred).
 
 ---
 
@@ -214,5 +214,5 @@ Then, review these files in order:
 
 Treat the project documentation inside `/docs` as the source of truth for the codebase.
 
-The current target task is to initiate Phase 5 — Payroll Integration. Review the handover roadmap and wait for further instructions.
+The current target task is to initiate Phase 4.8 — Executive UI Overhaul. Review the handover roadmap and wait for further instructions.
 ```

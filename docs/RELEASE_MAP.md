@@ -79,8 +79,7 @@ git tag -a v1.2-docs-baseline -m "Phase 4.7 complete - Retrospective architectur
 # Phase 4.7.2 (Leave Authorization System & Credits Engine)
 git tag -a v1.2-phase-4.7.2 70cd6cc -m "Phase 4.7.2 complete - Reusable leave credits engine, planned/unplanned categories, birthday leave credits sync, and approval-driven attendance resolution"
 
-# Phase 4.7.3 (Readability & Usability Pass)
-# git tag -a v1.2-phase-4.7.3 <commit_hash> -m "Phase 4.7.3 complete - Readability & Usability Pass"
+git tag -a v1.2-phase-4.7.3 716bd4a -m "Phase 4.7.3 complete - Readability & Usability Pass"
 ```
 
 ---
