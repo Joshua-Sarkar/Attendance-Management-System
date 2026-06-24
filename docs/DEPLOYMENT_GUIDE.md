@@ -1,10 +1,10 @@
-# AMS-V1 — Deployment and Recovery Guide
+# AMS-V1 — Deployment & Versioning Operations Guide
 
-This document defines the deployment procedures, migration checklists, caching rules, emergency recovery steps, and backup protocols for the Attendance Management System Version 1 (AMS-V1).
+This document defines the deployment workflows, server configurations, backup protocols, versioning structures, branching strategies, and emergency rollback procedures for the Attendance Management System Version 1 (AMS-V1).
 
 ---
 
-## 1. Local Deployment Workflow
+## 1. Local Development Setup
 
 Follow these steps to set up AMS-V1 in a local development environment:
 
@@ -33,7 +33,7 @@ Follow these steps to set up AMS-V1 in a local development environment:
    *Verify that `.env` is configured to use SQLite:*
    ```env
    DB_CONNECTION=sqlite
-   # Leave DB_DATABASE empty for local auto-generation or point to database.sqlite
+   # Leave DB_DATABASE empty for local auto-generation or point to database/database.sqlite
    ```
 4. **Run Database Migrations & Seeds:**
    ```bash
@@ -55,7 +55,7 @@ Follow these steps to set up AMS-V1 in a local development environment:
 
 ---
 
-## 2. Hostinger Deployment Workflow
+## 2. Hostinger Production Deployment Workflow
 
 Deploying to Hostinger Shared Linux Servers using cPanel access:
 
@@ -145,12 +145,12 @@ Run these commands if the application displays outdated views, layout elements, 
 
 ## 5. Database Backup Procedures
 
-### 1. Automatic Scheduled Backups (Hostinger cPanel)
+### A. Automatic Scheduled Backups (Hostinger cPanel)
 * Log in to the Hostinger cPanel.
 * Navigate to **Files -> Backups**.
 * Select **Database Backups** and verify that daily backups are active.
 
-### 2. Manual Backup Snapshot (phpMyAdmin)
+### B. Manual Backup Snapshot (phpMyAdmin)
 Perform a manual snapshot before making code changes or running database migrations:
 1. Log in to cPanel and open **phpMyAdmin**.
 2. Select the `ams_db` database in the left sidebar.
@@ -164,21 +164,21 @@ Perform a manual snapshot before making code changes or running database migrati
 
 If a deployment fails, use the following guidelines to restore service.
 
-### 1. Code Rollback
+### A. Code Rollback
 To return the code to a previous release tag:
 ```bash
 # Fetch latest repository state
 git fetch --tags
 
 # Force checkout the target tag
-git checkout v1.2-phase-4.6
+git checkout v1.2-phase-4.7.3
 
 # Re-run build and dependency setup to match this release state
 composer install --no-dev --optimize-autoloader
 npm run build
 ```
 
-### 2. Database Migration Rollback (Extremely Critical)
+### B. Database Migration Rollback (Extremely Critical)
 If a deployment fails due to a migration issue, rollback the last migration:
 ```bash
 # Rollback the last migration step
@@ -188,13 +188,8 @@ php artisan migrate:rollback --step=1
 > [!CAUTION]
 > **Data Loss Prevention:** Do not run `migrate:reset` or `migrate:fresh` in production, as this will clear the database. If a migration dropped a column or altered data types, restore the database from the last backup instead of running automated rollback scripts.
 
-### 3. Production Backups (Hostinger cPanel)
-* **Automatic Backups:** Enforce daily automatic MySQL backups in cPanel.
-* **Manual Snapshot:** Take a database snapshot via phpMyAdmin before running any migrations during deployment:
-  * Log in to cPanel -> **phpMyAdmin**.
-  * Select `ams_db`, click **Export**, and save the SQL file locally.
-* **Recovery Steps:**
-  * Import the backup SQL file via phpMyAdmin if a database migration error occurs.
+### C. phpMyAdmin Recovery Steps
+* Import the backup SQL file via phpMyAdmin if a database migration error occurs.
 
 ---
 
@@ -216,3 +211,29 @@ If the local server directories are corrupted:
 2. Click the **Import** tab.
 3. Choose the last backup SQL snapshot and click **Go**.
 4. Access the application login screen and verify employee credentials.
+
+---
+
+## 8. Versioning Guidelines (SemVer)
+
+AMS-V1 follows **Semantic Versioning 2.0.0** (SemVer) rules.
+
+### Version Formats
+* **`v[Major].[Minor].[Patch]`**: E.g. `v1.2.0`
+  * **`Major`**: Breaking API changes, major redesigns, or structural database reorganizations.
+  * **`Minor`**: New features, additional modules, or functional extensions (e.g. adding the import engine).
+  * **`Patch`**: Bug fixes, minor layout adjustments, security updates, or database index changes.
+* **`v[Major].[Minor]-phase-[PhaseNum]`**: E.g. `v1.2-phase-4.7.3`
+  * Applied at the completion of a major phase to coordinate progress reports.
+
+---
+
+## 9. Branching Strategy & Git Branch Taxonomy
+
+To maintain historical traceability, development follows a structured branching model:
+
+1. **`main` (Active / Production):** The source of truth for all deployed features. Deployed directly to Hostinger production. All release tags point here.
+2. **`develop` (Historical):** Retained as historical log for initial phase features integration.
+3. **`master` (Historical):** Replaced by `main` as active production path.
+4. **`hotfix/[module]-[short-desc]`:** Created from `main` to patch production bugs. Merged back to `main` with annotated release tags.
+5. **Feature / Topic branches:** Specific task directories mapped to individual phase items (e.g. `ui-layout`).
