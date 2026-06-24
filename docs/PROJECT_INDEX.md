@@ -268,3 +268,13 @@ Aggregates statistics and registers reactive tilt behaviors and transitions on l
 * **Dependencies:**
   * Font sets: `Fraunces`, `IBM Plex Sans`, `IBM Plex Mono` (loaded via Google Fonts API)
   * PostCSS and Tailwind compilers
+
+---
+
+## 9. Repository Governance
+
+Governs commit quality, release tagging standards, historical traceability requirements, repository organization, and documentation synchronization rules.
+
+* **Primary Governance Documents:**
+  * [GIT_STANDARDS.md](file:///c:/Users/Lenovo/AMS-V1/docs/GIT_STANDARDS.md) (authoritative repository standards and audits checklist)
+  * [VERSIONING.md](file:///c:/Users/Lenovo/AMS-V1/docs/VERSIONING.md) (semantic versioning formats, branching strategy, and hotfix paths)

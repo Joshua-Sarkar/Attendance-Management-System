@@ -1,6 +1,9 @@
 # AMS-V1 — Versioning and Deployment Strategy
 
-This document defines the versioning guidelines, commit standards, release tag structures, rollback strategies, hotfix paths, and deployment workflows for all future AMS-V1 development. Adhering to these patterns ensures system reliability, database safety, and tracking.
+This document defines the versioning guidelines, branching taxonomy, hotfix paths, rollback strategies, and deployment workflows for AMS-V1.
+
+> [!IMPORTANT]
+> For the authoritative repository governance rules, detailed commit requirements, release tagging templates, documentation synchronization workflows, and audit checklists, refer directly to **[GIT_STANDARDS.md](file:///c:/Users/Lenovo/AMS-V1/docs/GIT_STANDARDS.md)**. All commits and releases must follow the standards defined there.
 
 ---
 
