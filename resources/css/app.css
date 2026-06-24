@@ -19,14 +19,18 @@
     --brass-dim: rgba(201,162,75,0.55);
     --forest:#1F4034;
     --forest-bg: rgba(31, 64, 52, 0.12);
+    --forest-muted-light: #8FB6A3;
     --burgundy:#5C1A30;
     --burgundy-bg: rgba(92, 26, 48, 0.12);
+    --burgundy-muted-light: #C37D8F;
     --cognac:#9C5A33;
     --cognac-bg: rgba(156, 90, 51, 0.12);
+    --cognac-muted-light: #C38965;
     --walnut:#3A2A1D;
     --walnut-bg: rgba(58, 42, 29, 0.12);
     --slate:#6E8AA8;
     --slate-bg: rgba(110, 138, 168, 0.12);
+    --slate-muted-light: #94ABC3;
     --font-display: 'Fraunces', serif;
     --font-body: 'IBM Plex Sans', sans-serif;
     --font-mono: 'IBM Plex Mono', monospace;
@@ -165,45 +169,53 @@
 
 /* Tag Pills */
 .tag {
-    font-size: 10.5px;
-    letter-spacing: 0.6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
     padding: 3px 9px;
-    border-radius: 20px;
+    border-radius: 4px;
     font-weight: 500;
     flex-shrink: 0;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid transparent;
 }
 
 .tag.present {
     background: var(--forest-bg);
-    color: var(--forest);
+    color: var(--forest-muted-light);
+    border-color: rgba(143, 182, 163, 0.2);
 }
 
 .tag.late {
     background: var(--cognac-bg);
-    color: var(--cognac);
+    color: var(--cognac-muted-light);
+    border-color: rgba(195, 137, 101, 0.2);
 }
 
 .tag.leave, .tag.on_leave {
     background: var(--slate-bg);
-    color: var(--slate);
+    color: var(--slate-muted-light);
+    border-color: rgba(148, 171, 195, 0.2);
 }
 
 .tag.wfh {
     background: var(--forest-bg);
-    color: var(--forest);
+    color: var(--forest-muted-light);
+    border-color: rgba(143, 182, 163, 0.2);
 }
 
 .tag.absent {
     background: var(--burgundy-bg);
-    color: var(--burgundy);
+    color: var(--burgundy-muted-light);
+    border-color: rgba(195, 125, 143, 0.2);
 }
 
 .tag.weekend {
-    background: var(--vellum-faint);
-    color: var(--vellum);
-    opacity: 0.8;
+    background: transparent;
+    color: var(--vellum-muted);
+    border-color: var(--hairline-strong);
 }
 
 .seal.weekend {

@@ -30,14 +30,18 @@ export default {
                 'oxblood-bg': 'rgba(92, 26, 48, 0.12)',
                 'forest': '#1F4034',
                 'forest-bg': 'rgba(31, 64, 52, 0.12)',
+                'forest-light': '#8FB6A3',
                 'burgundy': '#5C1A30',
                 'burgundy-bg': 'rgba(92, 26, 48, 0.12)',
+                'burgundy-light': '#C37D8F',
                 'cognac': '#9C5A33',
                 'cognac-bg': 'rgba(156, 90, 51, 0.12)',
+                'cognac-light': '#C38965',
                 'walnut': '#3A2A1D',
                 'walnut-bg': 'rgba(58, 42, 29, 0.12)',
                 'slate': '#6E8AA8',
                 'slate-bg': 'rgba(110,138,168,0.12)',
+                'slate-light': '#94ABC3',
 
                 // Primary accents
                 'primary': '#ff2d78',

@@ -19,7 +19,7 @@ This document serves as the primary entry point for developers, maintainers, aud
 
 ## 2. Current Snapshot
 
-* **Current Version:** `v1.2-phase-4.7.2`
+* **Current Version:** `v1.2-phase-4.7.3`
 * **Latest Release Tag:** `v1.2-phase-4.7.2`
 * **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to Phase 4.7 consolidation commit)
 * **Current Branch:** `main`
@@ -159,17 +159,15 @@ Currently, there are no known critical issues. The application has 100% test cov
 
 ---
 
-## 8. Current Development Phase
-
-* **Active Phase:** Phase 4.7.2 (completed).
+* **Active Phase:** Phase 4.7.3 (in progress).
 * **Last Completed Phase:** Phase 4.7.2 (Leave authorization system, reusable credits engine, planned/unplanned categories, birthday leave credits sync/expire, approval-driven attendance resolution).
-* **Next Planned Phase:** **Phase 4.7.3 — Readability & Accessibility Pass** (global contrast, typography improvements, and CSS updates).
+* **Next Planned Phase:** **Phase 4.8 — Executive UI Overhaul**.
 
 ---
 
 ## 9. Immediate Next Priorities
 
-1. **Phase 4.7.3 (Readability Pass):** Perform global contrast, typography, and styling enhancements to build visual excellence across all user-facing views.
+1. **Phase 4.8 (Executive UI Overhaul):** Redesign dashboard widgets, unify dropdown menu architectures, and standardise layout grids.
 2. **Phase 5 (Payroll Module):** Create calculation algorithms to determine unpaid hours based on check-in logs and unpaid leaves, mapping outputs into downloadable payslips (Deferred).
 
 ---
@@ -181,14 +179,15 @@ Refer to these documentation files inside the `/docs` directory:
 1. [PROJECT_INDEX.md](file:///c:/Users/Lenovo/AMS-V1/docs/PROJECT_INDEX.md): Index mapping features to codebase paths.
 2. [RELEASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/RELEASE_MAP.md): Historical timelines and git commit details for each phase.
 3. [VERSIONING.md](file:///c:/Users/Lenovo/AMS-V1/docs/VERSIONING.md): Versioning workflows, Conventional Commits, hotfixes, and rollback strategies.
-4. [AMS_CHRONICLE.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_CHRONICLE.md): Chronological chronicle narrative of the system's requirements and evolution.
-5. [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md): Metadata details, active configurations, and codebase statistics.
-6. [DEPLOYMENT.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md): Checklists for local setups, Hostinger deployment, backup schedules, and recovery plans.
-7. [FEATURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/FEATURE_MAP.md): Subsystems maps listing purpose, lineage, codebase files, tests, and operational statuses.
-8. [DATABASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/DATABASE_MAP.md): Tables column schemas, foreign key mappings, sensitive attributes, and engine parity guidelines.
-9. [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md): Architectural Decisions Record (ADR) history tracing rationale and consequences.
-10. [TEST_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TEST_MAP.md): Detailed verification suite maps detailing features and validation coverage logic.
-11. [ARCHITECTURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/ARCHITECTURE_MAP.md): High-level subsystem boundaries interactions and data flow.
+4. [GIT_STANDARDS.md](file:///c:/Users/Lenovo/AMS-V1/docs/GIT_STANDARDS.md): Authoritative repository governance document, commit quality, release tagging standards, and synchronization rules.
+5. [AMS_CHRONICLE.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_CHRONICLE.md): Chronological chronicle narrative of the system's requirements and evolution.
+6. [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md): Metadata details, active configurations, and codebase statistics.
+7. [DEPLOYMENT.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT.md): Checklists for local setups, Hostinger deployment, backup schedules, and recovery plans.
+8. [FEATURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/FEATURE_MAP.md): Subsystems maps listing purpose, lineage, codebase files, tests, and operational statuses.
+9. [DATABASE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/DATABASE_MAP.md): Tables column schemas, foreign key mappings, sensitive attributes, and engine parity guidelines.
+10. [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md): Architectural Decisions Record (ADR) history tracing rationale and consequences.
+11. [TEST_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TEST_MAP.md): Detailed verification suite maps detailing features and validation coverage logic.
+12. [ARCHITECTURE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/ARCHITECTURE_MAP.md): High-level subsystem boundaries interactions and data flow.
 
 ---
 

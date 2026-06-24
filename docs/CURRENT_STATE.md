@@ -6,7 +6,7 @@ This document represents the live, production-ready operational state of the Att
 
 ## 1. System Metadata
 
-* **Current Version:** `v1.2-phase-4.7.2`
+* **Current Version:** `v1.2-phase-4.7.3`
 * **Latest Functional Tag:** `v1.2-phase-4.7.2` (completed backend leave authorization features)
 * **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to commit `e00d32b` / baseline refinements)
 * **Latest Commit:** `feat(leave): implement reusable leave credit database schema and dynamic birthday credits sync`
@@ -87,6 +87,6 @@ This document represents the live, production-ready operational state of the Att
 
 ## 5. Development Timeline
 
-* **Active Phase:** Phase 4.7.2 (completed).
-* **Next Planned Phase:** **Phase 4.7.3 — Readability & Accessibility Pass** (global contrast, typography improvements, and CSS updates).
+* **Active Phase:** Phase 4.7.3 (in progress).
+* **Next Planned Phase:** **Phase 4.8 — Executive UI Overhaul** (redesigning layout wrappers, dashboard widgets, and dropdown overlays).
 * **Deferred Phase:** **Phase 5 — Payroll Integration** (calculating monthly salary components based on clock-in records, late arrival logs, and unpaid leaves).
