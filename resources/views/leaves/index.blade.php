@@ -87,37 +87,37 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead>
-                                <tr class="border-b border-hairline text-vellum-muted font-semibold">
-                                    <th class="py-3 px-4">Date Range</th>
-                                    <th class="py-3 px-4">Leave Type</th>
-                                    <th class="py-3 px-4 text-center">Days</th>
-                                    <th class="py-3 px-4">Reason</th>
-                                    <th class="py-3 px-4">Status</th>
-                                    <th class="py-3 px-4">Notes/Feedback</th>
-                                    <th class="py-3 px-4 text-center">Actions</th>
+                                <tr class="bg-surface-raised/55 border-b border-hairline uppercase text-[11px] tracking-wider text-vellum-muted font-semibold">
+                                    <th class="py-3.5 px-5 text-left">Date Range</th>
+                                    <th class="py-3.5 px-5 text-left">Leave Type</th>
+                                    <th class="py-3.5 px-5 text-right">Days</th>
+                                    <th class="py-3.5 px-5 text-left">Reason</th>
+                                    <th class="py-3.5 px-5 text-center">Status</th>
+                                    <th class="py-3.5 px-5 text-left">Notes/Feedback</th>
+                                    <th class="py-3.5 px-5 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($myLeaves as $req)
-                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.06] transition duration-150">
-                                        <td class="py-3 px-4 font-medium text-vellum">
+                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.04] transition duration-150">
+                                        <td class="py-3.5 px-5 text-left font-medium text-vellum">
                                             {{ $req->start_date->format('M d, Y') }} - {{ $req->end_date->format('M d, Y') }}
                                         </td>
-                                        <td class="py-3 px-4 text-vellum capitalize">
+                                        <td class="py-3.5 px-5 text-left text-vellum capitalize">
                                             {{ $req->leave_type === 'complimentary' ? 'Birthday Leave' : ($req->leave_type ? str_replace('_', ' ', $req->leave_type) : 'Pending Classification') }}
                                         </td>
-                                        <td class="py-3 px-4 text-center text-vellum font-semibold">
+                                        <td class="py-3.5 px-5 text-right text-vellum font-semibold font-mono">
                                             {{ $req->total_days }}
                                         </td>
-                                        <td class="py-3 px-4 text-vellum-muted max-w-xs truncate" title="{{ $req->reason }}">
+                                        <td class="py-3.5 px-5 text-left text-vellum-muted max-w-xs truncate" title="{{ $req->reason }}">
                                             {{ $req->reason }}
                                         </td>
-                                        <td class="py-3 px-4">
+                                        <td class="py-3.5 px-5 text-center">
                                             <span class="tag @if($req->status === 'approved') present @elseif($req->status === 'pending') late @elseif($req->status === 'cancelled') leave @else absent @endif">
                                                 {{ $req->status }}
                                             </span>
                                         </td>
-                                        <td class="py-3 px-4 text-xs text-vellum-muted max-w-xs truncate">
+                                        <td class="py-3.5 px-5 text-left text-xs text-vellum-muted max-w-xs truncate">
                                             @if($req->status === 'approved')
                                                 {{ $req->notes ?? '-' }}
                                             @elseif($req->status === 'rejected')
@@ -126,15 +126,15 @@
                                                 -
                                             @endif
                                         </td>
-                                        <td class="py-3 px-4 text-center">
-                                            <div class="flex items-center justify-center gap-3">
+                                        <td class="py-3.5 px-5 text-right">
+                                            <div class="flex items-center justify-end gap-3">
                                                 <a href="{{ route('leaves.show', $req) }}" class="text-brass hover:underline font-semibold text-xs">
                                                     View Details
                                                 </a>
                                                 @if(in_array($req->status, ['pending', 'approved']))
                                                     <form action="{{ route('leaves.cancel', $req) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this leave request?')" class="inline">
                                                         @csrf
-                                                        <button type="submit" class="text-burgundy hover:underline font-semibold text-xs">
+                                                        <button type="submit" class="text-burgundy-light hover:underline font-semibold text-xs">
                                                             Cancel
                                                         </button>
                                                     </form>
@@ -164,43 +164,43 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead>
-                                <tr class="border-b border-hairline text-vellum-muted font-semibold">
-                                    <th class="py-3 px-4">Employee</th>
-                                    <th class="py-3 px-4">Leave Type</th>
-                                    <th class="py-3 px-4">Date Range</th>
-                                    <th class="py-3 px-4 text-center">Total Days</th>
-                                    <th class="py-3 px-4">Reason</th>
-                                    <th class="py-3 px-4 text-center">Actions</th>
+                                <tr class="bg-surface-raised/55 border-b border-hairline uppercase text-[11px] tracking-wider text-vellum-muted font-semibold">
+                                    <th class="py-3.5 px-5 text-left">Employee</th>
+                                    <th class="py-3.5 px-5 text-left">Leave Type</th>
+                                    <th class="py-3.5 px-5 text-left">Date Range</th>
+                                    <th class="py-3.5 px-5 text-right">Total Days</th>
+                                    <th class="py-3.5 px-5 text-left">Reason</th>
+                                    <th class="py-3.5 px-5 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($pendingQueue as $request)
-                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.06] transition duration-150">
-                                        <td class="py-3 px-4">
+                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.04] transition duration-150">
+                                        <td class="py-3.5 px-5 text-left">
                                             <div class="font-medium text-vellum">{{ $request->user->name }}</div>
                                             <div class="text-xs text-vellum-faint font-mono">{{ $request->user->employee_id }} ({{ ucfirst($request->user->role) }})</div>
                                         </td>
-                                        <td class="py-3 px-4 font-medium text-vellum capitalize">
+                                        <td class="py-3.5 px-5 text-left font-medium text-vellum capitalize">
                                             {{ $request->leave_type === 'complimentary' ? 'Birthday Leave' : ($request->leave_type ? str_replace('_', ' ', $request->leave_type) : 'Pending Classification') }}
                                         </td>
-                                        <td class="py-3 px-4 text-vellum-muted">
+                                        <td class="py-3.5 px-5 text-left text-vellum-muted font-mono">
                                             {{ $request->start_date->format('M d, Y') }} - {{ $request->end_date->format('M d, Y') }}
                                         </td>
-                                        <td class="py-3 px-4 text-center text-brass font-semibold font-mono">
+                                        <td class="py-3.5 px-5 text-right text-brass font-semibold font-mono">
                                             {{ $request->total_days }}
                                         </td>
-                                        <td class="py-3 px-4 text-vellum-muted max-w-xs truncate" title="{{ $request->reason }}">
+                                        <td class="py-3.5 px-5 text-left text-vellum-muted max-w-xs truncate" title="{{ $request->reason }}">
                                             {{ $request->reason }}
                                         </td>
-                                        <td class="py-3 px-4">
-                                            <div class="flex items-center justify-center gap-3">
+                                        <td class="py-3.5 px-5 text-right">
+                                            <div class="flex items-center justify-end gap-3">
                                                 <a href="{{ route('leaves.show', $request) }}" class="text-brass hover:underline font-semibold text-xs">
                                                     View Details
                                                 </a>
-                                                <button onclick="openApproveModal({{ $request->id }})" class="bg-forest-bg border border-forest/30 text-forest hover:bg-forest hover:text-canvas font-semibold py-1 px-3 rounded text-xs transition duration-150">
+                                                <button onclick="openApproveModal({{ $request->id }})" class="bg-forest-bg border border-forest-light/20 text-forest-light hover:bg-forest/40 hover:text-vellum font-semibold py-1 px-3 rounded text-xs transition duration-150">
                                                     Approve
                                                 </button>
-                                                <button onclick="openRejectModal({{ $request->id }})" class="bg-burgundy-bg border border-burgundy/30 text-burgundy hover:bg-burgundy hover:text-canvas font-semibold py-1 px-3 rounded text-xs transition duration-150">
+                                                <button onclick="openRejectModal({{ $request->id }})" class="bg-burgundy-bg border border-burgundy-light/20 text-burgundy-light hover:bg-burgundy/40 hover:text-vellum font-semibold py-1 px-3 rounded text-xs transition duration-150">
                                                     Reject
                                                 </button>
                                             </div>
@@ -226,42 +226,42 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead>
-                                <tr class="border-b border-hairline text-vellum-muted font-semibold">
-                                    <th class="py-3 px-4">Employee</th>
-                                    <th class="py-3 px-4">Leave Type</th>
-                                    <th class="py-3 px-4">Date Range</th>
-                                    <th class="py-3 px-4 text-center">Days</th>
-                                    <th class="py-3 px-4">Status</th>
-                                    <th class="py-3 px-4">Reviewed By</th>
-                                    <th class="py-3 px-4 text-center">Actions</th>
+                                <tr class="bg-surface-raised/55 border-b border-hairline uppercase text-[11px] tracking-wider text-vellum-muted font-semibold">
+                                    <th class="py-3.5 px-5 text-left">Employee</th>
+                                    <th class="py-3.5 px-5 text-left">Leave Type</th>
+                                    <th class="py-3.5 px-5 text-left">Date Range</th>
+                                    <th class="py-3.5 px-5 text-right">Days</th>
+                                    <th class="py-3.5 px-5 text-center">Status</th>
+                                    <th class="py-3.5 px-5 text-left">Reviewed By</th>
+                                    <th class="py-3.5 px-5 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($historyQueue as $request)
-                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.06] transition duration-150">
-                                        <td class="py-3 px-4">
+                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.04] transition duration-150">
+                                        <td class="py-3.5 px-5 text-left">
                                             <div class="font-medium text-vellum">{{ $request->user->name }}</div>
                                             <div class="text-xs text-vellum-faint font-mono">{{ $request->user->employee_id }}</div>
                                         </td>
-                                        <td class="py-3 px-4 capitalize text-vellum">
+                                        <td class="py-3.5 px-5 text-left capitalize text-vellum">
                                             {{ $request->leave_type === 'complimentary' ? 'Birthday Leave' : ($request->leave_type ? str_replace('_', ' ', $request->leave_type) : 'Pending Classification') }}
                                         </td>
-                                        <td class="py-3 px-4 text-vellum-muted">
+                                        <td class="py-3.5 px-5 text-left text-vellum-muted font-mono">
                                             {{ $request->start_date->format('M d, Y') }} - {{ $request->end_date->format('M d, Y') }}
                                         </td>
-                                        <td class="py-3 px-4 text-center text-vellum font-semibold font-mono">
+                                        <td class="py-3.5 px-5 text-right text-vellum font-semibold font-mono">
                                             {{ $request->total_days }}
                                         </td>
-                                        <td class="py-3 px-4">
+                                        <td class="py-3.5 px-5 text-center">
                                             <span class="tag @if($request->status === 'approved') present @elseif($request->status === 'cancelled') leave @else absent @endif">
                                                 {{ $request->status }}
                                             </span>
                                         </td>
-                                        <td class="py-3 px-4 text-vellum">
+                                        <td class="py-3.5 px-5 text-left text-vellum">
                                             {{ $request->approver?->name ?? 'System' }}
                                         </td>
-                                        <td class="py-3 px-4 text-center">
-                                            <div class="flex items-center justify-center gap-3">
+                                        <td class="py-3.5 px-5 text-right">
+                                            <div class="flex items-center justify-end gap-3">
                                                 <a href="{{ route('leaves.show', $request) }}" class="text-brass hover:underline font-semibold text-xs">
                                                     View Details
                                                 </a>
@@ -298,7 +298,7 @@
                         <button type="button" onclick="closeModal('approveModal')" class="bg-surface-raised hover:bg-surface-raised/80 text-vellum font-semibold py-2 px-4 rounded-md transition duration-200 border border-hairline text-xs uppercase tracking-wider">
                             Cancel
                         </button>
-                        <button type="submit" class="bg-forest hover:bg-forest/90 text-canvas font-bold py-2 px-4 rounded-md transition duration-200 shadow-md uppercase tracking-wider text-xs">
+                        <button type="submit" class="bg-forest hover:bg-forest/90 text-vellum font-bold py-2 px-4 rounded-md transition duration-200 shadow-md uppercase tracking-wider text-xs border border-forest/20">
                             Confirm Approve
                         </button>
                     </div>

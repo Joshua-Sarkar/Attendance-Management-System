@@ -210,6 +210,7 @@ To allow employees to submit leave applications under Planned, Unplanned, and Bi
   * *Phase E:* Established the core request and status logs schemas, status transitions, and basic approvals routing.
   * *Phase 4.6:* Simplified workflows by making `leave_type` nullable in the database. General employees submit requests with dates/reasons only; managers classify them as Paid or Unpaid during approval.
   * *Phase 4.7.2:* Completely removed Paid/Unpaid selection. Submissions must select from Planned, Unplanned, or Birthday Leave (complimentary). Balance deduction and salary protection are determined strictly by approval status. Dynamic attendance resolution checks for approved requests to set status to `on_leave`. Exposing a generic `leave_credits` engine for birthday credits sync, leap year offsets, DOB updates locking, and auto-expirations.
+  * *Phase 4.7.3:* Refactored visual contrast and readability. Cleaned up pink/purple accents, aligned status pills to the desaturated tag component standard, and fixed dark text on dark green modal confirm button contrasts.
 * **Current Implementation:** Employees apply via simple forms selecting Planned, Unplanned, or Birthday Leave. Approved planned/unplanned requests deduct balance and protect salary. Birthday leaves consume a synced `leave_credits` token. Cancellation, rejection, and overrides restore balances and credits, and recalculate attendance to `absent` (if no check-in exists).
 * **Related Migrations:**
   * [2026_06_11_153000_create_leave_requests_table.php](file:///c:/Users/Lenovo/AMS-V1/database/migrations/2026_06_11_153000_create_leave_requests_table.php) (primary table)
@@ -243,7 +244,7 @@ To allow employees to submit leave applications under Planned, Unplanned, and Bi
 * **Feature Tests:**
   * [LeaveManagementTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveManagementTest.php) (asserts request submissions, manager approval boundaries, overlapping date checks, self-cancellation routes, and admin self-approvals)
   * [LeaveAuthorizationModelTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveAuthorizationModelTest.php) (tests planned/unplanned, birthday leave credits sync/expire, leap years, auto-approvals, and overrides)
-* **Release Introduced:** `v1.0-phase-e` (Foundation), `v1.2-phase-4.6` (Simplified Nullable Leave), and `v1.2-phase-4.7.2` (Leave Credits & Approval-driven Attendance)
+* **Release Introduced:** `v1.0-phase-e` (Foundation), `v1.2-phase-4.6` (Simplified Nullable Leave), `v1.2-phase-4.7.2` (Leave Credits & Approval-driven Attendance), and `v1.2-phase-4.7.3` (Readability & Usability Pass)
 * **Current Operational Status:** Fully operational. Overlaps are validated, birthday credits are dynamically synced on birthday - 1 day, and attendance resolves correctly.
 
 ---
