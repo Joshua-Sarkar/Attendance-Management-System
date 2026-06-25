@@ -11,15 +11,15 @@
     $initials = substr($initials, 0, 2);
 @endphp
 
-<aside class="sidebar w-[232px] shrink-0 bg-surface border-r border-hairline flex flex-col py-7 sticky top-0 h-screen">
+<aside class="sidebar w-[240px] shrink-0 bg-walnut border-r border-hairline flex flex-col py-7 sticky top-0 h-screen">
     <!-- Crest Section -->
-    <div class="crest flex items-center gap-3 px-6 pb-7 mb-2 border-b border-hairline">
-        <div class="crest-mark w-[38px] h-[38px] border border-brass-dim rounded-full flex items-center justify-center font-display font-semibold text-[15px] text-brass tracking-wider">
+    <div class="crest flex items-center gap-3 px-6 pb-7 mb-2 border-b border-hairline/10">
+        <div class="crest-mark w-[36px] h-[36px] border border-brass-bright rounded-full flex items-center justify-center font-display font-semibold text-[15px] text-brass-bright tracking-wider">
             VQ
         </div>
         <div class="crest-text leading-tight">
-            <div class="top font-display text-[15px] font-semibold text-vellum tracking-wide">Workforce</div>
-            <div class="bottom text-[11px] text-vellum-faint tracking-[1.5px] uppercase mt-0.5">Ledger</div>
+            <div class="top font-display text-[15px] font-semibold text-vellum-light tracking-wide">Workforce</div>
+            <div class="bottom text-[11px] text-vellum-light-muted tracking-[1.8px] uppercase mt-0.5">Ledger</div>
         </div>
     </div>
 
@@ -33,8 +33,8 @@
         <a href="{{ $dashboardRoute }}" 
            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
            {{ $isDashboardActive 
-               ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-               : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+               ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+               : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isDashboardActive ? 'opacity-100' : 'opacity-75' }}">
                 <rect x="3" y="3" width="8" height="8" rx="1.5"/>
                 <rect x="13" y="3" width="8" height="8" rx="1.5"/>
@@ -51,8 +51,8 @@
         <a href="{{ route('attendance.my-attendance') }}" 
            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
            {{ $isAttendanceActive 
-               ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-               : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+               ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+               : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isAttendanceActive ? 'opacity-100' : 'opacity-75' }}">
                 <circle cx="12" cy="12" r="9"/>
                 <path d="M12 7v5l3.5 2"/>
@@ -68,8 +68,8 @@
             <a href="{{ route('employees.index') }}" 
                class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
                {{ $isWorkforceActive 
-                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isWorkforceActive ? 'opacity-100' : 'opacity-75' }}">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                     <circle cx="9" cy="7" r="4"/>
@@ -88,8 +88,8 @@
             <a href="{{ route('departments.index') }}" 
                class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
                {{ $isDepartmentsActive 
-                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isDepartmentsActive ? 'opacity-100' : 'opacity-75' }}">
                     <path d="M3 21h18M3 7v14M21 7v14M16 3H8v4h8V3zM12 11h.01M12 15h.01M16 11h.01M16 15h.01M8 11h.01M8 15h.01"/>
                 </svg>
@@ -104,8 +104,8 @@
         <a href="{{ route('leaves.index') }}" 
            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
            {{ $isLeavesActive 
-               ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-               : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+               ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+               : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isLeavesActive ? 'opacity-100' : 'opacity-75' }}">
                 <rect x="3" y="4" width="18" height="17" rx="1.5"/>
                 <path d="M3 9h18M8 2v4M16 2v4"/>
@@ -121,8 +121,8 @@
             <a href="{{ route('admin.import.show') }}" 
                class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
                {{ $isImportActive 
-                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isImportActive ? 'opacity-100' : 'opacity-75' }}">
                     <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="3"/>
                 </svg>
@@ -139,8 +139,8 @@
             <a href="{{ route('admin.corrections.index') }}" 
                class="nav-item flex items-center justify-between px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
                {{ $isCorrectionsActive 
-                   ? 'bg-brass/[0.09] text-brass border-hairline-strong' 
-                   : 'text-vellum-muted hover:bg-brass/[0.06] hover:text-vellum' }}">
+                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <div class="flex items-center gap-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isCorrectionsActive ? 'opacity-100' : 'opacity-75' }}">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -157,19 +157,19 @@
     </nav>
 
     <!-- User Information & Logout Chip -->
-    <div class="sidebar-foot mt-auto border-t border-hairline pt-4 px-6 flex items-center justify-between gap-2.5">
+    <div class="sidebar-foot mt-auto border-t border-hairline/10 pt-4 px-6 flex items-center justify-between gap-2.5">
         <div class="flex items-center gap-2.5 min-w-0">
-            <div class="avatar w-[30px] h-[30px] rounded-full bg-surface-raised border border-hairline-strong flex items-center justify-center font-display text-[12px] text-brass shrink-0">
+            <div class="avatar w-[32px] h-[32px] rounded-full bg-canvas-dark border border-hairline-strong flex items-center justify-center font-display text-[12px] text-brass-bright shrink-0">
                 {{ $initials }}
             </div>
             <div class="min-w-0">
-                <div class="name text-[12.5px] font-medium text-vellum leading-tight truncate">{{ $user->name }}</div>
-                <div class="role text-[10.5px] text-vellum-faint leading-none mt-0.5 capitalize">{{ $role }}</div>
+                <div class="name text-[13px] font-medium text-vellum-light leading-tight truncate">{{ $user->name }}</div>
+                <div class="role text-[10.5px] text-vellum-light-muted leading-none mt-0.5 capitalize">{{ $role }}</div>
             </div>
         </div>
         <form method="POST" action="{{ route('logout') }}" class="shrink-0 ml-auto">
             @csrf
-            <button type="submit" class="text-vellum-muted hover:text-burgundy transition-colors p-1" title="Log Out">
+            <button type="submit" class="text-vellum-light-muted hover:text-burgundy-light transition-colors p-1" title="Log Out">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>

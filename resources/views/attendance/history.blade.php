@@ -1,123 +1,100 @@
-<x-app-layout wide>
+<x-ledger-layout>
     <x-slot name="header">
-        <h1 class="font-display font-medium text-[26px] tracking-wide text-vellum">Attendance History</h1>
+        <h1 class="font-display font-medium text-[32px] tracking-wide text-vellum">Attendance History</h1>
+        <div class="text-[13px] text-vellum-muted mt-1.5 tracking-wide">
+            Track check-in history and overall attendance records · Last 30 Days
+        </div>
     </x-slot>
 
-    <div class="py-6 space-y-6">
-        <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Top Summary Strip -->
+    <div class="grid grid-cols-1 md:grid-cols-3 border border-hairline bg-surface rounded overflow-hidden mb-6">
+        <!-- Present -->
+        <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
+            <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Days Present</span>
+            <div class="font-display font-medium text-3xl my-2 text-forest">{{ $present_count }}</div>
+            <span class="text-xs text-vellum-muted">Roster check-ins verified</span>
+        </div>
 
-            <!-- Summary Stats -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                
-                <!-- Present Count -->
-                <div class="bg-surface p-6 rounded border border-hairline flex flex-col justify-between">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-vellum-muted text-xs font-semibold uppercase tracking-wider">Days Present</p>
-                            <p class="text-3xl font-bold text-forest-light mt-2 font-display">{{ $present_count }}</p>
-                        </div>
-                        <div class="text-forest-light/20 text-3xl font-mono">✓</div>
-                    </div>
-                </div>
+        <!-- Absent -->
+        <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
+            <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Days Absent</span>
+            <div class="font-display font-medium text-3xl my-2 text-burgundy">{{ $absent_count }}</div>
+            <span class="text-xs text-vellum-muted">Unexcused roster absences</span>
+        </div>
 
-                <!-- Absent Count -->
-                <div class="bg-surface p-6 rounded border border-hairline flex flex-col justify-between">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-vellum-muted text-xs font-semibold uppercase tracking-wider">Days Absent</p>
-                            <p class="text-3xl font-bold text-burgundy-light mt-2 font-display">{{ $absent_count }}</p>
-                        </div>
-                        <div class="text-burgundy-light/20 text-3xl font-mono">✗</div>
-                    </div>
-                </div>
-
-                <!-- Late Count -->
-                <div class="bg-surface p-6 rounded border border-hairline flex flex-col justify-between">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-vellum-muted text-xs font-semibold uppercase tracking-wider">Days Late</p>
-                            <p class="text-3xl font-bold text-cognac-light mt-2 font-display">{{ $late_count }}</p>
-                        </div>
-                        <div class="text-cognac-light/20 text-3xl font-mono">⏱</div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Attendance Table -->
-            <div class="panel space-y-4">
-                <div class="panel-head flex items-center justify-between mb-4">
-                    <h2 class="font-display font-medium text-[16px] text-vellum">Last 30 Days</h2>
-                    <div class="meta font-mono text-[11px] text-vellum-faint">attendance log</div>
-                </div>
-                
-                @if ($history->count() > 0)
-                    <div class="overflow-x-auto">
-                          <table class="w-full text-sm text-left">
-                            <thead>
-                                <tr class="bg-surface-raised/55 border-b border-hairline uppercase text-[11px] tracking-wider text-vellum-muted font-semibold">
-                                    <th class="py-3.5 px-5 text-left">Date</th>
-                                    <th class="py-3.5 px-5 text-left">Day</th>
-                                    <th class="py-3.5 px-5 text-left">Check In</th>
-                                    <th class="py-3.5 px-5 text-left">Check Out</th>
-                                    <th class="py-3.5 px-5 text-right">Hours</th>
-                                    <th class="py-3.5 px-5 text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($history as $record)
-                                    <tr class="border-b border-hairline/50 hover:bg-brass/[0.04] transition duration-150">
-                                        <td class="py-3.5 px-5 text-left text-vellum font-medium font-mono">
-                                            {{ $record->date->format('M d, Y') }}
-                                        </td>
-                                        <td class="py-3.5 px-5 text-left text-vellum-muted">
-                                            {{ $record->date->format('l') }}
-                                        </td>
-                                        <td class="py-3.5 px-5 text-left text-vellum font-mono">
-                                            @if ($record->check_in_time)
-                                                <span>{{ $record->check_in_time->format('h:i A') }}</span>
-                                            @else
-                                                <span class="text-vellum-faint italic font-sans">-</span>
-                                            @endif
-                                        </td>
-                                        <td class="py-3.5 px-5 text-left text-vellum font-mono">
-                                            @if ($record->check_out_time)
-                                                <span>{{ $record->check_out_time->format('h:i A') }}</span>
-                                            @else
-                                                <span class="text-vellum-faint italic font-sans">-</span>
-                                            @endif
-                                        </td>
-                                        <td class="py-3.5 px-5 text-right text-vellum font-mono font-semibold">
-                                            @if ($record->check_in_time && $record->check_out_time)
-                                                <span>{{ number_format($record->check_in_time->diffInHours($record->check_out_time), 1) }}h</span>
-                                            @else
-                                                <span class="text-vellum-faint italic font-sans font-normal">-</span>
-                                            @endif
-                                        </td>
-                                        <td class="py-3.5 px-5 text-center">
-                                            <span class="tag {{ $record->status }}">
-                                                {{ str_replace('_', ' ', $record->status) }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="text-center py-12">
-                        <p class="text-vellum-muted text-base">No attendance records found.</p>
-                    </div>
-                @endif
-            </div>
-
-            <!-- Back Button -->
-            <div class="mt-6">
-                <a href="{{ route('employee.dashboard') }}" class="inline-flex items-center text-brass hover:underline font-semibold text-sm">
-                    ← Back to Dashboard
-                </a>
-            </div>
-
+        <!-- Late -->
+        <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
+            <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Days Late</span>
+            <div class="font-display font-medium text-3xl my-2 text-cognac">{{ $late_count }}</div>
+            <span class="text-xs text-vellum-muted">Arrivals past grace threshold</span>
         </div>
     </div>
-</x-app-layout>
+
+    <!-- Ledger Table content inside ledger wrapper -->
+    <x-slot name="ledgerHeader">
+        <h2>Last 30 Days</h2>
+        <div class="meta">attendance log</div>
+    </x-slot>
+
+    @forelse ($history as $record)
+        @php
+            $dateStr = $record->date->format('M d, Y');
+            $dayName = $record->date->format('l');
+            $checkInStr = $record->check_in_time ? $record->check_in_time->timezone('Asia/Kolkata')->format('h:i A') : '—';
+            $checkOutStr = $record->check_out_time ? $record->check_out_time->timezone('Asia/Kolkata')->format('h:i A') : '—';
+            
+            $durationStr = '';
+            if ($record->check_in_time && $record->check_out_time) {
+                $hrs = $record->check_in_time->diffInMinutes($record->check_out_time, absolute: true) / 60.0;
+                $durationStr = ' · ' . number_format($hrs, 1) . 'h worked';
+            }
+            
+            $desc = '';
+            if ($record->status === 'present') {
+                $desc = 'Checked in at ' . $checkInStr . ' · Checked out at ' . $checkOutStr . $durationStr;
+            } elseif ($record->status === 'late') {
+                $desc = 'Checked in late at ' . $checkInStr . ' · ' . $record->late_minutes . 'm past grace' . $durationStr;
+            } elseif ($record->status === 'on_leave') {
+                $desc = 'Approved leave';
+            } elseif ($record->status === 'wfh') {
+                $desc = 'Working from home' . $durationStr;
+            } else {
+                $desc = 'No check-in recorded';
+            }
+        @endphp
+        <div class="ledger-row grid grid-cols-[24px_110px_1fr_120px] items-center py-4 px-2 border-b border-hairline last:border-none hover:bg-brass/[0.04] transition duration-150">
+            <span class="seal-indicator {{ $record->status }} w-2 h-2 rounded-full 
+                @if($record->status === 'present' || $record->status === 'wfh') bg-forest
+                @elseif($record->status === 'late') bg-cognac
+                @elseif($record->status === 'on_leave' || $record->status === 'leave') bg-slate
+                @else bg-burgundy @endif"></span>
+            <span class="row-time font-mono text-[13px] text-vellum">{{ $dateStr }}</span>
+            <div class="row-identity flex flex-col gap-0.5">
+                <span class="row-name text-[14.0px] font-semibold text-vellum">
+                    {{ $dayName }}
+                </span>
+                <span class="row-desc text-[12px] text-vellum-muted">{{ $desc }}</span>
+            </div>
+            <div class="text-right">
+                <span class="tag {{ $record->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border
+                    @if($record->status === 'present') bg-forest-bg text-forest border-transparent
+                    @elseif($record->status === 'late') bg-cognac-bg text-cognac border-transparent
+                    @elseif($record->status === 'on_leave' || $record->status === 'leave') bg-slate-bg text-slate border-transparent
+                    @elseif($record->status === 'wfh') bg-forest-bg text-forest border-transparent
+                    @else bg-burgundy-bg text-burgundy border-transparent @endif">
+                    @if($record->status === 'on_leave') Leave @else {{ str_replace('_', ' ', $record->status) }} @endif
+                </span>
+            </div>
+        </div>
+    @empty
+        <div class="empty-cta py-8 text-center text-vellum-faint border border-dashed border-hairline-strong rounded mt-1 text-[12px]">
+            No attendance records found.
+        </div>
+    @endforelse
+</x-ledger-layout>
+
+<div class="mt-6 max-w-[1180px] mx-auto px-11 pb-8">
+    <a href="{{ route('employee.dashboard') }}" class="inline-flex items-center text-brass hover:underline font-semibold text-sm">
+        ← Back to Dashboard
+    </a>
+</div>

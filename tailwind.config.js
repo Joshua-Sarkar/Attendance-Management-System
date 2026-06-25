@@ -14,34 +14,38 @@ export default {
         extend: {
             colors: {
                 // Design Reference Mockup Tokens
-                'canvas': '#0F0D0B',
-                'surface': '#17130F',
-                'surface-raised': '#1C1712',
-                'hairline': 'rgba(201,162,75,0.14)',
-                'hairline-strong': 'rgba(201,162,75,0.28)',
-                'vellum': '#ECE4D3',
-                'vellum-muted': '#9C9180',
-                'vellum-faint': '#6B6457',
-                'brass': '#C9A24B',
-                'brass-dim': 'rgba(201,162,75,0.55)',
-                'emerald': '#1F4034',
-                'emerald-bg': 'rgba(31, 64, 52, 0.12)',
-                'oxblood': '#5C1A30',
-                'oxblood-bg': 'rgba(92, 26, 48, 0.12)',
-                'forest': '#1F4034',
-                'forest-bg': 'rgba(31, 64, 52, 0.12)',
-                'forest-light': '#8FB6A3',
-                'burgundy': '#5C1A30',
-                'burgundy-bg': 'rgba(92, 26, 48, 0.12)',
-                'burgundy-light': '#C37D8F',
-                'cognac': '#9C5A33',
-                'cognac-bg': 'rgba(156, 90, 51, 0.12)',
-                'cognac-light': '#C38965',
-                'walnut': '#3A2A1D',
-                'walnut-bg': 'rgba(58, 42, 29, 0.12)',
-                'slate': '#6E8AA8',
-                'slate-bg': 'rgba(110,138,168,0.12)',
-                'slate-light': '#94ABC3',
+                'canvas': '#FAF8F5',          /* Warm Ivory: canvas background */
+                'surface': '#F4EFE6',         /* Soft Cream: panels/containers */
+                'surface-raised': '#FBF9F6',  /* Parchment: input backgrounds */
+                'hairline': 'rgba(156, 124, 56, 0.16)',
+                'hairline-strong': 'rgba(156, 124, 56, 0.28)',
+                'vellum': '#24211E',          /* Dark Charcoal: primary body */
+                'vellum-muted': '#5E5852',    /* Muted Charcoal: subtext */
+                'vellum-faint': '#8A8177',    /* Faint Charcoal: labels/dates */
+                'vellum-light': '#ECE4D3',    /* Vellum Light: sidebar text */
+                'vellum-light-muted': '#9C9180', /* Vellum Muted: sidebar copy */
+                'vellum-light-faint': '#6B6457', /* Vellum Faint: sidebar labels */
+                'brass': '#9C7C38',           /* Aged Brass: accents */
+                'brass-dim': 'rgba(156, 124, 56, 0.55)',
+                'brass-bright': '#C9A24B',
+                'emerald': '#234E39',
+                'emerald-bg': '#E3ECE7',
+                'oxblood': '#6E1A24',
+                'oxblood-bg': '#F3E6E8',
+                'forest': '#234E39',
+                'forest-bg': '#E3ECE7',
+                'forest-light': '#234E39',
+                'burgundy': '#6E1A24',
+                'burgundy-bg': '#F3E6E8',
+                'burgundy-light': '#6E1A24',
+                'cognac': '#8C4E2D',
+                'cognac-bg': '#F6ECE6',
+                'cognac-light': '#8C4E2D',
+                'walnut': '#1E1611',
+                'walnut-bg': 'rgba(30, 22, 17, 0.12)',
+                'slate': '#3B5368',
+                'slate-bg': '#E7EDF1',
+                'slate-light': '#3B5368',
 
                 // Primary accents
                 'primary': '#ff2d78',

@@ -3,26 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Venture Quest — Workforce Ledger</title>
+<title>Venture Quest — Financial Times Overhaul</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* Color Constitution */
     --canvas-dark: #1E1611;       /* Walnut: dark framing */
-    --canvas-light: #FAF8F5;      /* Warm Ivory: canvas background */
+    --canvas-light: #FAF8F5;      /* Warm Ivory: page background */
     --panel-bg: #F4EFE6;          /* Soft Cream: panels/containers */
-    --row-bg: #FAF8F5;            /* Near White: table rows */
-    --text-dark: #24211E;         /* Dark Charcoal: primary content */
-    --text-muted: #5E5852;        /* Muted Charcoal: supporting copy */
+    --row-bg: #FAF8F5;            /* Near White: row backgrounds */
+    --input-bg: #FBF9F6;          /* Parchment: input backgrounds */
+    --text-dark: #24211E;         /* Dark Charcoal: primary body */
+    --text-muted: #5E5852;        /* Muted Charcoal: subtext */
     --text-faint: #8A8177;        /* Faint Charcoal: labels/dates */
     --text-light: #ECE4D3;        /* Vellum Light: sidebar text */
     --text-light-muted: #9C9180;  /* Vellum Muted: sidebar copy */
-    --brass: #9C7C38;             /* Aged Brass: accent highlights */
+    --brass: #9C7C38;             /* Aged Brass: accents */
     --brass-bright: #C9A24B;
     
-    /* Semantic Status Palette */
+    /* Status Colors */
     --forest: #234E39;
     --forest-bg: #E3ECE7;
     --burgundy: #6E1A24;
@@ -32,18 +32,17 @@
     --cognac: #8C4E2D;
     --cognac-bg: #F6ECE6;
     
-    /* Borders & Hairlines */
+    /* Borders */
     --hairline: rgba(156, 124, 56, 0.16);
     --hairline-strong: rgba(156, 124, 56, 0.28);
     
-    /* Typography scale */
+    /* Typography */
     --font-display: 'Fraunces', serif;
     --font-body: 'IBM Plex Sans', sans-serif;
     --font-mono: 'IBM Plex Mono', monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     background: var(--canvas-light);
     color: var(--text-dark);
@@ -92,7 +91,7 @@
 
   .crest-text { line-height: 1.2; }
   .crest-text .top { font-family: var(--font-display); font-size: 15px; font-weight: 500; color: var(--text-light); }
-  .crest-text .bottom { font-size: 10px; color: var(--text-light-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
+  .crest-text .bottom { font-size: 10px; color: var(--text-light-muted); letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
 
   nav { flex: 1; padding: 24px 12px; }
 
@@ -105,9 +104,10 @@
     font-size: 13.5px;
     color: var(--text-light-muted);
     cursor: pointer;
-    transition: background .15s ease, color .15s ease, border-color .15s ease;
+    transition: background .15s ease, color .15s ease;
     margin-bottom: 4px;
     border-left: 3px solid transparent;
+    text-decoration: none;
   }
 
   .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.65; }
@@ -154,29 +154,31 @@
   .sidebar-foot .name { font-size: 13px; font-weight: 500; color: var(--text-light); }
   .sidebar-foot .role { font-size: 11px; color: var(--text-light-muted); }
 
-  /* ---------- Main Content Area ---------- */
+  /* ---------- Main Workspace ---------- */
   main {
     flex: 1;
     padding: 44px 54px 60px;
     max-width: 1200px;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
   }
 
-  /* ---------- Editorial Page Header ---------- */
+  /* ---------- Header ---------- */
   header.page {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-bottom: 38px;
     padding-bottom: 24px;
-    border-bottom: 1px solid var(--hairline-strong);
+    border-bottom: 1.5px solid var(--text-dark); /* Bold newsprint style */
   }
 
   header.page h1 {
     font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 32px;
-    letter-spacing: -0.5px;
+    font-weight: 600;
+    font-size: 36px;
+    letter-spacing: -0.8px;
     color: var(--text-dark);
   }
 
@@ -185,6 +187,8 @@
     color: var(--text-muted);
     margin-top: 6px;
     letter-spacing: 0.2px;
+    text-transform: uppercase;
+    font-weight: 500;
   }
 
   .clock {
@@ -206,14 +210,13 @@
     letter-spacing: 0.2px;
   }
 
-  /* ---------- Daily Operational Briefing Strip ---------- */
+  /* ---------- KPI Briefing Strip ---------- */
   .briefing-strip {
     background: var(--panel-bg);
     border: 1px solid var(--hairline);
     border-radius: 6px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    margin-bottom: 36px;
     overflow: hidden;
   }
 
@@ -263,79 +266,66 @@
     line-height: 1.4;
   }
 
-  /* Status overrides inside the briefing strip */
   .briefing-col.warn .briefing-meta { color: var(--cognac); }
   .briefing-col.danger .briefing-meta { color: var(--burgundy); font-weight: 500; }
   .briefing-col.info .briefing-meta { color: var(--slate); }
 
-  /* ---------- Lower Layout Grid ---------- */
-  .lower-grid {
+  /* ---------- Layout Grid (Three Columns Broad Grid) ---------- */
+  .layout-broad {
     display: grid;
-    grid-template-columns: 1.6fr 1fr;
-    gap: 24px;
+    grid-template-columns: 1fr 1.6fr 1fr;
+    gap: 28px;
     align-items: start;
   }
 
-  .panel {
-    background: var(--panel-bg);
-    border: 1px solid var(--hairline);
-    border-radius: 6px;
-    padding: 28px;
-  }
-
-  .panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .panel-head h2 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 18px;
-    color: var(--text-dark);
-  }
-
-  .panel-head .meta {
-    font-size: 11px;
-    color: var(--text-faint);
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-  }
-
-  /* ---------- Ledger Feed (Archival Directory Table) ---------- */
-  .ledger {
+  .grid-column {
     display: flex;
     flex-direction: column;
   }
 
-  .entry {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 8px;
-    border-bottom: 1px solid var(--hairline);
-    transition: background-color .15s ease;
+  .grid-column.center-col {
+    border-left: 1px solid var(--hairline-strong);
+    border-right: 1px solid var(--hairline-strong);
+    padding: 0 20px;
   }
 
-  .entry:last-child {
+  .column-header {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    font-style: italic;
+    border-bottom: 1.5px solid var(--text-dark);
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+
+  /* ---------- Ledger List ---------- */
+  .ledger-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ledger-entry {
+    padding: 16px 4px; /* 16px vertical row padding from spec */
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 150ms ease;
+  }
+
+  .ledger-entry:last-child {
     border-bottom: none;
   }
 
-  .entry:hover {
+  .ledger-entry:hover {
     background-color: rgba(156, 124, 56, 0.04);
   }
 
   .entry-left {
     display: flex;
     align-items: center;
-    gap: 16px;
-    flex: 1;
+    gap: 12px;
   }
 
   .seal-indicator {
@@ -354,11 +344,11 @@
     font-family: var(--font-mono);
     font-size: 13px;
     color: var(--text-muted);
-    width: 48px;
+    width: 44px;
     flex-shrink: 0;
   }
 
-  .entry-details {
+  .entry-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -370,12 +360,11 @@
     color: var(--text-dark);
   }
 
-  .entry-desc {
+  .entry-meta {
     font-size: 12px;
     color: var(--text-muted);
   }
 
-  /* Status Tag Badges */
   .tag {
     font-size: 11px;
     letter-spacing: 0.8px;
@@ -384,7 +373,7 @@
     border-radius: 4px;
     font-weight: 600;
     flex-shrink: 0;
-    font-family: var(--font-body);
+    font-family: var(--font-mono);
   }
 
   .tag.present { background: var(--forest-bg); color: var(--forest); }
@@ -392,32 +381,26 @@
   .tag.leave { background: var(--slate-bg); color: var(--slate); }
   .tag.absent { background: var(--burgundy-bg); color: var(--burgundy); }
 
-  /* ---------- Intelligence Stack ---------- */
-  .side-stack {
+  /* ---------- Secondary Briefing Lists ---------- */
+  .brief-row {
     display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .mini-row {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 12px 6px;
+    align-items: center;
+    padding: 12px 4px;
     border-bottom: 1px solid var(--hairline);
     font-size: 13px;
   }
 
-  .mini-row:last-child {
+  .brief-row:last-child {
     border-bottom: none;
   }
 
-  .mini-row .who {
+  .brief-row .label {
     font-weight: 500;
     color: var(--text-dark);
   }
 
-  .mini-row .delta {
+  .brief-row .value {
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--brass);
@@ -425,16 +408,12 @@
   }
 
   .flag-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 10.5px;
+    font-size: 10px;
+    font-weight: 600;
     color: var(--burgundy);
     background: var(--burgundy-bg);
-    padding: 3px 10px;
+    padding: 2px 8px;
     border-radius: 4px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
   }
 
@@ -444,7 +423,8 @@
     .briefing-col { border-bottom: 1px solid var(--hairline); }
     .briefing-col:nth-child(2n) { border-right: none; }
     .briefing-col:nth-child(3), .briefing-col:nth-child(4) { border-bottom: none; }
-    .lower-grid { grid-template-columns: 1fr; }
+    .layout-broad { grid-template-columns: 1fr; gap: 32px; }
+    .grid-column.center-col { border-left: none; border-right: none; padding: 0; }
     main { padding: 32px 24px; }
   }
 </style>
@@ -505,8 +485,8 @@
 <main>
   <header class="page">
     <div>
-      <h1>Venture Quest — Workforce Ledger</h1>
-      <div class="sub">Dehradun, Uttarakhand · 49 active members</div>
+      <h1>THE WORKFORCE LEDGER</h1>
+      <div class="sub">Venture Quest · Dehradun, Uttarakhand · 49 Active Register</div>
     </div>
     <div class="clock">
       <div class="time" id="clock-time">09:14:02</div>
@@ -514,13 +494,10 @@
     </div>
   </header>
 
-  <!-- Daily Briefing Strip (No Card Explosion, Unified Layout) -->
   <section class="briefing-strip">
     <div class="briefing-col">
       <span class="briefing-label">Checked in today</span>
-      <div class="briefing-value">
-        42 <span class="unit">/ 49</span>
-      </div>
+      <div class="briefing-value">42 <span class="unit">/ 49</span></div>
       <span class="briefing-meta">86% reporting · on pace with last week</span>
     </div>
     
@@ -532,9 +509,7 @@
     
     <div class="briefing-col info">
       <span class="briefing-label">On leave today</span>
-      <div class="briefing-value">
-        2 <span class="unit">+1 WFH</span>
-      </div>
+      <div class="briefing-value">2 <span class="unit">+1 WFH</span></div>
       <span class="briefing-meta">Shivani B., Tanushi M.</span>
     </div>
     
@@ -545,82 +520,97 @@
     </div>
   </section>
 
-  <section class="lower-grid">
-    <!-- Today's Ledger panel -->
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Today's ledger</h2>
-        <span class="meta">live update</span>
+  <div class="layout-broad">
+    <!-- Left Column: Summary Operations -->
+    <div class="grid-column">
+      <h2 class="column-header">I. Roster Highlights</h2>
+      
+      <div class="brief-row">
+        <span class="label">Mahima Thakur</span>
+        <span class="value">+2m</span>
       </div>
+      <div class="brief-row">
+        <span class="label">Vansh Pharasi</span>
+        <span class="value">+11m</span>
+      </div>
+      <div class="brief-row">
+        <span class="label">Babita Bisht</span>
+        <span class="value">+14m</span>
+      </div>
+    </div>
 
-      <div class="ledger">
-        <div class="entry">
+    <!-- Center Column: Main Daily Registry -->
+    <div class="grid-column center-col">
+      <h2 class="column-header">II. Roster Register</h2>
+      
+      <div class="ledger-list">
+        <div class="ledger-entry">
           <div class="entry-left">
             <span class="seal-indicator present"></span>
             <span class="entry-time">09:02</span>
-            <div class="entry-details">
+            <div class="entry-info">
               <span class="entry-name">Aditi Nanda</span>
-              <span class="entry-desc">Checked in · Human Resource (IT)</span>
+              <span class="entry-meta">Human Resource (IT)</span>
             </div>
           </div>
           <span class="tag present">Present</span>
         </div>
 
-        <div class="entry">
+        <div class="ledger-entry">
           <div class="entry-left">
             <span class="seal-indicator present"></span>
             <span class="entry-time">09:04</span>
-            <div class="entry-details">
+            <div class="entry-info">
               <span class="entry-name">Priyanka Udasi</span>
-              <span class="entry-desc">Checked in · Human Resource (Health Care)</span>
+              <span class="entry-meta">Human Resource (Health Care)</span>
             </div>
           </div>
           <span class="tag present">Present</span>
         </div>
 
-        <div class="entry">
+        <div class="ledger-entry">
           <div class="entry-left">
             <span class="seal-indicator late"></span>
             <span class="entry-time">09:17</span>
-            <div class="entry-details">
+            <div class="entry-info">
               <span class="entry-name">Mahima Thakur</span>
-              <span class="entry-desc">Checked in · 2 minutes past grace</span>
+              <span class="entry-meta">Checked in · 2 minutes past grace</span>
             </div>
           </div>
           <span class="tag late">Late</span>
         </div>
 
-        <div class="entry">
+        <div class="ledger-entry">
           <div class="entry-left">
             <span class="seal-indicator leave"></span>
             <span class="entry-time">—</span>
-            <div class="entry-details">
+            <div class="entry-info">
               <span class="entry-name">Shivani Bhatt</span>
-              <span class="entry-desc">Approved leave · returning Monday</span>
+              <span class="entry-meta">Approved leave · returning Monday</span>
             </div>
           </div>
           <span class="tag leave">On leave</span>
         </div>
 
-        <div class="entry">
+        <div class="ledger-entry">
           <div class="entry-left">
             <span class="seal-indicator present"></span>
             <span class="entry-time">09:21</span>
-            <div class="entry-details">
+            <div class="entry-info">
               <span class="entry-name">Anjali Gusain</span>
-              <span class="entry-desc">Checked in · Human Resource (Health Care)</span>
+              <span class="entry-meta">Human Resource (Health Care)</span>
             </div>
           </div>
           <span class="tag present">Present</span>
         </div>
 
-        <div class="entry">
+        <div class="ledger-entry">
           <div class="entry-left">
             <span class="seal-indicator absent"></span>
             <span class="entry-time">—</span>
-            <div class="entry-details">
+            <div class="entry-info">
               <span class="entry-name">Sarika Rana</span>
-              <span class="entry-desc">No check-in recorded · flagged for review</span>
+              <span class="entry-meta">No check-in recorded · flagged for review</span>
             </div>
           </div>
           <span class="tag absent">Absent</span>
@@ -628,56 +618,32 @@
       </div>
     </div>
 
-    <!-- Side Intelligence Stack -->
-    <div class="side-stack">
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Late arrivals</h2>
-          <span class="meta">today</span>
-        </div>
-        
-        <div class="mini-row">
-          <span class="who">Mahima Thakur</span>
-          <span class="delta">+2m</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Vansh Pharasi</span>
-          <span class="delta">+11m</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Babita Bisht</span>
-          <span class="delta">+14m</span>
-        </div>
+    <!-- Right Column: Verification Requests -->
+    <div class="grid-column">
+      <h2 class="column-header">III. Desk Corrections</h2>
+      
+      <div class="brief-row">
+        <span class="label">Nandini Tiwari</span>
+        <span class="flag-badge">phone</span>
       </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Corrections</h2>
-          <span class="flag-badge">3 pending</span>
-        </div>
-        
-        <div class="mini-row">
-          <span class="who">Nandini Tiwari</span>
-          <span class="delta" style="color: var(--text-muted);">phone</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Harshit Rana</span>
-          <span class="delta" style="color: var(--text-muted);">department</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Sobha Joshi</span>
-          <span class="delta" style="color: var(--text-muted);">manager</span>
-        </div>
+      <div class="brief-row">
+        <span class="label">Harshit Rana</span>
+        <span class="flag-badge">department</span>
+      </div>
+      <div class="brief-row">
+        <span class="label">Sobha Joshi</span>
+        <span class="flag-badge">manager</span>
       </div>
     </div>
-  </section>
+  </div>
 </main>
 
 <script>
   function tick() {
     var now = new Date();
     var t = now.toLocaleTimeString('en-IN', { hour12: false });
-    document.getElementById('clock-time').textContent = t;
+    var clockEl = document.getElementById('clock-time');
+    if (clockEl) clockEl.textContent = t;
   }
   tick();
   setInterval(tick, 1000);

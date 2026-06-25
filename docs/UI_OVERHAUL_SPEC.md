@@ -1,128 +1,227 @@
-# UI Overhaul Specification & Pre-Phase 4.8 Audit
+# AMS-V1 Canonical Design Specification
 
-This document serves as the unified specification, design debt register, component inventory directory, and visual readiness checklist for the **Phase 4.8 Executive UI Overhaul** of the Attendance Management System (AMS-V1).
-
----
-
-## 1. Style Guidelines & Visual Palette
-
-The visual direction of the AMS-V1 interface focuses on **Executive Operations Software** with an **Editorial Information Design** aesthetic.
-
-* **Palette Limits (No Neon/Bright Gradients):**
-  * Canvas/Background: Deep dark charcoal-gold (`#0F0D0B`)
-  * Surface/Panels: Rich dark stones (`#17130F`, `#1C1712`)
-  * Text Body: Vellum (`#ECE4D3`)
-  * Subtext / Copy: Vellum Muted (`#9C9180`)
-  * Highlights & Titles: Brass (`#C9A24B`)
-  * Present/Active: Forest Sage (`#8FB6A3` text, `rgba(143, 182, 163, 0.12)` background, `border border-[#8FB6A3]/20`)
-  * Absent/Skipped/Error: Rose Burgundy (`#C37D8F` text, `rgba(195, 125, 143, 0.12)` background, `border border-[#C37D8F]/20`)
-  * Late/Pending: Copper Cognac (`#C38965` text, `rgba(195, 137, 101, 0.12)` background, `border border-[#C38965]/20`)
-  * Leave/WFH/Approved: Steel Slate (`#94ABC3` text, `rgba(148, 171, 195, 0.12)` background, `border border-[#94ABC3]/20`)
-  * Weekend: Muted border, `text-vellum-faint bg-transparent`
-* **Typography Hierarchy:**
-  * Displays / Screen Headers: `Fraunces`
-  * Body Copy / Labels: `IBM Plex Sans`
-  * Timestamps / Numeric IDs: `IBM Plex Mono` (using monospaced/tabular figures: `tabular-nums` / `font-mono`)
-* **Standard Cell Padding & Row Hover:**
-  * Vertical padding: `py-3.5 px-5`
-  * Row Hover highlight: `hover:bg-brass/[0.04] transition duration-150`
+This document serves as the single canonical UI reference and engineering design system for the **Workforce Ledger Overhaul (Phase 4.8)** of the Attendance Management System (AMS-V1). All Blade files, HTML layouts, CSS variables, and Tailwind rules must conform to these measurements and behavioral guidelines.
 
 ---
 
-## 2. Screen-by-Screen Information Hierarchy Audit
+## Part I — Design Philosophy & Material Language
 
-For each key screen in the system, we have mapped the user accomplishments, eye-draw focal points, and visual de-emphasis goals:
+### 1. Vision & Core Principles
+AMS-V1 is an **Institutional Workforce Operating System**. The visual design must communicate trust, craftsmanship, permanence, and clear visual hierarchy.
 
-* **Dashboard & Clock Check-In:**
-  * *Goal:* Punch check-in/out logs and monitor daily workforce exceptions.
-  * *Primary Eye-Draw:* Active Clocking buttons (for employees); Exception statistics cards grid (for admins).
-  * *Secondary Eye-Draw:* Current check-in logs table.
-  * *De-emphasis:* Static profile parameters and total company size counts.
-* **Workforce Directory (`employees/index.blade.php`):**
-  * *Goal:* Find employee records, department details, and leave balances.
-  * *Primary Eye-Draw:* Left-aligned monospaced employee IDs and names.
-  * *Secondary Eye-Draw:* "Add Employee" header button.
-  * *De-emphasis:* Inline delete button styling (restructured as desaturated burgundy lines).
-* **Workforce Profile details (`employees/show.blade.php`):**
-  * *Goal:* Inspect personal, professional, address, banking, and emergency details.
-  * *Primary Eye-Draw:* Summary profile header card (Avatar initials, employee ID, role status tag).
-  * *Secondary Eye-Draw:* "Request Profile Correction" button.
-  * *De-emphasis:* Field labels (PF No, IFSC Code) compared to their actual values.
-* **Attendance Logs Audit Center (`admin/attendance-logs.blade.php`):**
-  * *Goal:* Search check-ins by date/name and calculate delay averages.
-  * *Primary Eye-Draw:* late-arrival metrics counters and delay values.
-  * *Secondary Eye-Draw:* Filter toolbar dropdown inputs.
-  * *De-emphasis:* Weekend rows (rendered with reduced opacity).
-* **Leaves Management Console (`leaves/index.blade.php`):**
-  * *Goal:* Check available leave credit ledger rows and submit requests.
-  * *Primary Eye-Draw:* "+ Apply for Leave" action button.
-  * *Secondary Eye-Draw:* Categories list stats counters.
-  * *De-emphasis:* Truncated long leave reasons lines.
-* **Leave Approvals Tab Queue:**
-  * *Goal:* Assess pending requests and resolve paid/unpaid/rejection outcomes.
-  * *Primary Eye-Draw:* Forest Sage / Rose Burgundy action buttons.
-  * *Secondary Eye-Draw:* Requested dates range and employee name.
-* **Excel Imports console (`admin/import-employees.blade.php`):**
-  * *Goal:* Post spreadsheets and inspect errors summary.
-  * *Primary Eye-Draw:* Success / Skipped rows counter metrics.
-  * *Secondary Eye-Draw:* File uploader panel form.
-* **Profile Corrections review (`admin/correction-requests/index.blade.php`):**
-  * *Goal:* Inspect and resolve employee-submitted profile edits.
-  * *Primary Eye-Draw:* Highlighted request messages.
-  * *Secondary Eye-Draw:* HR response text form inputs.
+- **Institutional Prestige**: Layout elements should feel permanent, authoritative, and tactile.
+- **Editorial Composition**: Avoid repeating card grids. Construct pages like a curated magazine index.
+- **Cinematic Atmosphere**: Use natural shadow layers, warm canvas backdrops, and strong text weights rather than decorative effects.
+- **Usability Focus**: Aesthetics must never hinder scanning speed.
+
+### 2. Primary Materials
+- **Walnut Frame (`#1E1611`)**: Representing structure. Used for the vertical sidebar navigation column to frame the interface.
+- **Warm Ivory Canvas (`#FAF8F5`)**: Representing the workspace page background. Eliminates cold gray light and eye strain.
+- **Soft Cream Panels (`#F4EFE6`)**: Representing document containers. Used for tables, dashboard summaries, and action panels.
+- **Aged Brass Accent (`#9C7C38` / `#C9A24B`)**: Representing indicators and active status. Used sparingly; brass highlights must be earned.
+- **Vellum Text (`#24211E`)**: Dark charcoal ink for text, optimizing contrast on the warm ivory canvas.
+
+### 3. Anti-Goals
+- No blue/purple startup gradients or modern SaaS templates.
+- No rounded, floating, drop-shadowed KPI cards.
+- No cold grays (`#F3F4F6`), pure white (`#FFFFFF`), or pure black (`#000000`) layout elements.
 
 ---
 
-## 3. UI Component Inventory & Recommendations
+## Part II — Foundations Spec
 
-Our component audit indexes current structures and provides Keep/Rebuild recommendations for the Phase 4.8 Visual Overhaul:
+### 1. Color System
+```css
+:root {
+  --canvas-dark: #1E1611;       /* Walnut: dark framing */
+  --canvas-light: #FAF8F5;      /* Warm Ivory: page background */
+  --panel-bg: #F4EFE6;          /* Soft Cream: panels/containers */
+  --row-bg: #FAF8F5;            /* Near White: row backgrounds */
+  --input-bg: #FBF9F6;          /* Parchment: input backgrounds */
+  --text-dark: #24211E;         /* Dark Charcoal: primary body */
+  --text-muted: #5E5852;        /* Muted Charcoal: subtext */
+  --text-faint: #8A8177;        /* Faint Charcoal: labels/dates */
+  --text-light: #ECE4D3;        /* Vellum Light: sidebar text */
+  --text-light-muted: #9C9180;  /* Vellum Muted: sidebar copy */
+  --brass: #9C7C38;             /* Aged Brass: accents */
+  --brass-bright: #C9A24B;
+  
+  /* Status Colors */
+  --forest: #234E39;
+  --forest-bg: #E3ECE7;
+  --burgundy: #6E1A24;
+  --burgundy-bg: #F3E6E8;
+  --slate: #3B5368;
+  --slate-bg: #E7EDF1;
+  --cognac: #8C4E2D;
+  --cognac-bg: #F6ECE6;
+  
+  /* Borders */
+  --hairline: rgba(156, 124, 56, 0.16);
+  --hairline-strong: rgba(156, 124, 56, 0.28);
+}
+```
 
-1. **Primary Button (`<x-primary-button>`):** Keep. Brass background (`bg-brass text-canvas`), proper uppercase tracking.
-2. **Secondary Button (`<x-secondary-button>`):** Keep. Bordered stone styling (`bg-surface-raised border-hairline text-vellum`).
-3. **Danger Button (`<x-danger-button>`):** Keep. Soft burgundy design (`bg-burgundy text-vellum border-burgundy/30`).
-4. **Text Input (`<x-text-input>`):** Keep. Dark stone backgrounds (`bg-surface-raised`), thin gold hairline outline.
-5. **Input Label (`<x-input-label>`):** Keep. Simple vellum-muted labels.
-6. **Input Error (`<x-input-error>`):** Keep. Soft red validation text.
-7. **Core Sidebar (`<x-sidebar>`):** Keep. Left navigation column with active markers and SVGs.
-8. **Dropdown Menu (`<x-dropdown>`):** **REBUILD (Phase 4.8)**. Currently uses default Breeze light/dark styling (`bg-white dark:bg-gray-800`). Must be re-skinned to dark stone selections.
-9. **Modal Container (`<x-modal>`):** Keep. Alpine-driven overlay panel using `.glass-panel` wrappers.
-10. **Legacy JS Modals (Leaves Index):** **REBUILD (Phase 4.8)**. Handcrafted absolute overlays containing raw script triggers. Must be migrated to the Alpine `<x-modal>` component.
-11. **Status Tag Badge (`.tag`):** Keep (Cleaned). Pill-shaped elements converted to thin-bordered tags in Phase 4.7.3.
-12. **Ledger Timeline Seal (`.seal`):** Keep. Timeline circle dots. Ensure text alternative is present on matching table row.
-13. **Stat Cards (`.stat-card`):** Keep. Dashboard KPI summaries.
-14. **Content Panel (`.panel`):** Keep. Rounded border cards with gold hairlines (`border-hairline`).
+### 2. Typography Hierarchy
+- **Display Serif (`Fraunces`)**: Used strictly for page headers, panel titles, and prominent metrics.
+- **Interface Sans (`IBM Plex Sans`)**: Used for labels, descriptions, links, and body copy.
+- **Tabular Mono (`IBM Plex Mono`)**: Used for timestamps, employee IDs, numeric counts, and status labels.
 
 ---
 
-## 4. Visual Layout & Design Debt Register
+## Part III — Primitive Engineering Specifications
 
-These items represent identified design debt to be resolved during the Phase 4.8 visual overhaul:
+### 1. Sidebar Spine
+- **Width**: `240px` (fixed width to prevent layout shifting on long translation strings).
+- **Outer Padding**: `32px` vertical, `0px` horizontal.
+- **Inner Navigation spacing**: `6px` vertical gap.
+- **Navigation item**: Width `216px` (centered), height `42px` (Fitts' Law target for speed).
+- **Branding Crest**: Height `76px` containing a circular logo (`36px` diameter, `1px` brass border) and `Fraunces` brand text.
+- **Active Navigation State**: `color: var(--brass-bright); background: rgba(201,162,75,0.08); border-left: 3px solid var(--brass-bright); font-weight: 500;`.
+- **Hover behavior**: `background-color: rgba(236,228,211,0.04); color: var(--text-light); transition: background 150ms ease;`.
+- **Focus behavior**: `outline: 2px solid var(--brass); outline-offset: 2px;`.
+- **Scroll behavior**: `overflow-y: auto`, hide scrollbars (`scrollbar-width: none`).
+- **Responsive behavior**: Hidden on viewports `< 960px`.
 
-* **Debt 1: Inconsistent spacing wrappers:**
-  * *Location:* Across all `.blade.php` templates.
-  * *Description:* Mismatches between Breeze standard margins (`max-w-7xl mx-auto sm:px-6`) and the dark-gold custom containers (`px-11 py-9 max-w-[1180px]`).
-  * *Fix:* Standardize all workspaces to use the unified container class.
-* **Debt 2: Workforce table responsiveness:**
-  * *Location:* `resources/views/employees/index.blade.php`.
-  * *Description:* Table contains 10 columns which overflow on smaller mobile screens.
-  * *Fix:* Implement responsive card grids for mobile viewports, reserving the data table for desktop.
-* **Debt 3: Inline modals in approvals:**
-  * *Location:* `resources/views/leaves/index.blade.php`.
-  * *Description:* Raw HTML overlays with inline script block triggers instead of Alpine `<x-modal>` structures.
-  * *Fix:* Unify modal components.
-* **Debt 4: Raw HTML Selects:**
-  * *Location:* Leaves create, dashboard dropdowns, corrections.
-  * *Description:* Select fields use default browser arrows without cohesive styled drop indicators.
-  * *Fix:* Establish a custom `<x-select-input>` component.
-* **Debt 5: Long Profile lists scrolling:**
-  * *Location:* `resources/views/employees/show.blade.php`.
-  * *Description:* Displays 10 sections vertically, forcing excessive scrolling.
-  * *Fix:* Implement visual tabbed groupings (e.g. Personal, Contact, Professional, Banking).
-* **Debt 6: Settings dropdown colors:**
-  * *Location:* `resources/views/components/dropdown.blade.php`.
-  * *Description:* Standard Breeze colors (`bg-white`) cause minor visual flashes when active.
-  * *Fix:* Re-skin using standard dark surfaces.
-* **Debt 7: Alerts reflows:**
-  * *Location:* Session flash alerts in dashboards and lists.
-  * *Description:* Standard session alert banners push lists down on page load.
-  * *Fix:* Create floating or absolute toast overlays.
+---
+
+### 2. Header
+- **Outer padding**: `24px` vertical padding, border bottom `1px solid var(--hairline-strong)`.
+- **Title font**: `Fraunces`, `32px`, weight `500`, tracking `-0.5px`, line-height `1.2`.
+- **Sub-metadata font**: `IBM Plex Sans`, `13px`, weight `400`, color `var(--text-muted)`.
+- **Date/Time block**: Column layout, aligned right.
+- **Time font**: `IBM Plex Mono`, `22px`, weight `500`, color `var(--brass)`.
+- **Date font**: `IBM Plex Sans`, `11.5px`, color `var(--text-faint)`.
+- **Justification**: A larger display font ensures the user identifies page context instantly. Monospaced clock prevents character jumping during redraws.
+
+---
+
+### 3. KPI Briefing Strip
+- **Container**: `display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--hairline); background: var(--panel-bg); border-radius: 6px;`.
+- **Columns**: 4 columns. Width `25%` each. Vertical border right `1px solid var(--hairline)` between columns.
+- **Inner padding**: `24px` on all sides.
+- **Label font**: `IBM Plex Sans`, `10.5px`, weight `600`, uppercase, tracking `1.5px`, color `var(--text-faint)`.
+- **Value font**: `Fraunces`, `38px`, weight `500`, line height `1`, color `var(--text-dark)`.
+- **Unit font**: `IBM Plex Sans`, `15px`, weight `400`, color `var(--text-muted)`.
+- **Subtext/Meta font**: `IBM Plex Sans`, `12px`, weight `400`, color `var(--text-muted)`.
+- **Justification**: Single-row grid replaces individual floating cards. This aligns with Fitts' Law and groups secondary details within a clean, horizontal reading axis.
+
+---
+
+### 4. Tables (Ledger Tables)
+- **Container**: Borderless layout blocks nested in Soft Cream panels.
+- **Row Padding**: Vertical padding `16px` (`py-4`), horizontal padding `8px` (`px-2`).
+- **Row dividers**: Bottom border `1px solid var(--hairline)`. No vertical border rules.
+- **Hover behavior**: `background-color: rgba(156,124,56,0.04); transition: background-color 150ms ease;`.
+- **Column Sizing**:
+  - Status Indicator Seal: `24px` fixed.
+  - Time column: `48px` fixed.
+  - Name + metadata: `1.8fr` (flexible).
+  - Status tag: `120px` right-aligned.
+- **Typography**:
+  - Employee Name: `IBM Plex Sans`, `14.5px`, weight `600`, color `var(--text-dark)`.
+  - Metadata detail: `IBM Plex Sans`, `12px`, color `var(--text-muted)`.
+  - Time value: `IBM Plex Mono`, `13px`, color `var(--text-muted)`.
+- **Justification**: Wide row padding (`16px`) prevents visual fatigue during multi-hour data auditing. Left-aligned names dominate the columns to optimize scanning.
+
+---
+
+### 5. Filters
+- **Heights**: Select elements `38px` height.
+- **Borders & Background**: Border `1px solid var(--hairline)`, background `var(--row-bg)`.
+- **Font**: `IBM Plex Sans`, `13px`, weight `500`.
+- **Padding**: `8px 12px` (right padding `32px` to accommodate custom arrow SVGs).
+- **Focus state**: Border color changes to `var(--brass)`. Drop shadow is disabled.
+- **Justification**: Tight, consistent element heights keep filters aligned with navigation elements.
+
+---
+
+### 6. Search
+- **Height & Width**: Height `38px`, width `240px` (min) to `320px` (max).
+- **Padding**: `8px 12px 8px 36px`.
+- **Search icon**: Size `14px`, stroke `1.75`, absolute position `left: 12px`, color `var(--text-faint)`.
+- **Font**: `IBM Plex Sans`, `13px`, weight `400`.
+- **Border**: `1px solid var(--hairline)`.
+- **Active focus**: Border color changes to `var(--brass)`, background changes to `#FFFFFF`.
+
+---
+
+### 7. Buttons
+- **Primary Button**:
+  - Height: `40px`.
+  - Font: `IBM Plex Sans`, `13px`, weight `600`, uppercase, tracking `0.8px`.
+  - Colors: Background `var(--brass)`, text `#FAF8F5`.
+  - Border: None, border-radius `4px`.
+- **Secondary Button**:
+  - Height: `40px`.
+  - Font: `IBM Plex Sans`, `13px`, weight `500`, uppercase, tracking `0.8px`.
+  - Colors: Background `var(--panel-bg)`, border `1px solid var(--hairline-strong)`.
+- **Danger Button**:
+  - Font: `IBM Plex Sans`, `13px`, weight `600`, uppercase, tracking `0.8px`.
+  - Colors: Background `var(--burgundy-bg)`, border `1px solid var(--burgundy)`, text `var(--burgundy)`.
+- **Justification**: Fixed `40px` hit target ensures touch targets are comfortable and consistent.
+
+---
+
+### 8. Forms
+- **Layout Grid**: Spacing gap between fields is `24px` vertical.
+- **Form sections**: Grouped by thin boundaries (`border-bottom: 1px solid var(--hairline)`), padding bottom `20px`.
+- **Section headers**: `Fraunces`, `18px`, weight `500`.
+- **Labels**: `IBM Plex Sans`, `12px`, weight `600`, uppercase, tracking `1px`, margin-bottom `6px`.
+- **Input background**: `#FBF9F6` (light parchment).
+- **Focus state**: Gold border highlight (`1.5px solid var(--brass)`).
+- **Validation layout**: Alert texts `11.5px`, color `var(--burgundy)`.
+- **Justification**: Separating inputs by `24px` spacing ensures clear reading flow and prevents fields from blending together.
+
+---
+
+### 9. Profile Header
+- **Height**: `120px` auto-height.
+- **Container padding**: `24px` on all sides, background `var(--panel-bg)`, border-radius `6px`.
+- **Avatar box**: Width `72px`, height `72px`, background `rgba(236,228,211,0.2)`, border `1px solid var(--brass)`.
+- **Initials font**: `Fraunces`, `24px`, weight `500`, color `var(--text-dark)`.
+- **Primary Name**: `Fraunces`, `26px`, weight `500`, color `var(--text-dark)`.
+- **Metadata**: `IBM Plex Mono`, `12.5px`, color `var(--text-muted)`.
+
+---
+
+### 10. Employee Dossier
+- **Menu width**: Side folder-tab list is `180px` wide.
+- **Field alignment**: Two-column layout grid.
+- **Left (Label) Column**: Fixed width `200px`, font `IBM Plex Sans`, `12px`, uppercase, tracking `1.2px`, color `var(--text-faint)`.
+- **Right (Value) Column**: Font `IBM Plex Sans`, `14px`, weight `500`, color `var(--text-dark)`.
+- **Sensitive data values**: Naming IDs or bank registers in `IBM Plex Mono`, `13.5px`.
+- **Justification**: Clean metadata columns align scanning vectors along a predictable vertical axis.
+
+---
+
+### 11. Attendance Ledger
+- **Status Seals**: Size `8px` diameter, absolute position centered next to rows.
+- **Status tag badges**: Label text in `IBM Plex Mono`, `11px`, weight `600`, tracking `0.8px`, uppercase, padding `4px 10px`, border-radius `4px`.
+- **Tag color definitions**:
+  - Present: Background `var(--forest-bg)`, text `var(--forest)`.
+  - Late: Background `var(--cognac-bg)`, text `var(--cognac)`.
+  - Leave: Background `var(--slate-bg)`, text `var(--slate)`.
+  - Absent: Background `var(--burgundy-bg)`, text `var(--burgundy)`.
+
+---
+
+### 12. Leave Registry
+- **Category counters**: Sourced in a single horizontal strip.
+- **Metric values**: `Fraunces`, `24px`, weight `500`.
+- **Category labels**: `IBM Plex Sans`, `11px`, weight `500`, uppercase.
+- **Request drawer**: Width `480px` slide-out, background `var(--panel-bg)`, border-left `1px solid var(--hairline-strong)`.
+
+---
+
+## Part IV — Design Review Checklist
+
+Before implementing any screen layout, verify that:
+1. All elements map directly to approved CSS color tokens.
+2. Typography matches the standard rules (Serif headers, Sans-serif body, Monospace numbers/IDs).
+3. Primary layout containers rely on vertical whitespace margins rather than nested cards.
+4. Active sidebar states use the `3px` solid gold left border and active brass text.
+5. All buttons and interactive fields have a height of `40px` or `38px`.
+6. Contrast ratios meet the standard target of 4.5:1.
+7. Spacing follows modular increments (e.g. `6px`, `12px`, `24px`, `36px`).
+8. The page follows one of the canonical page archetypes (Briefing, Ledger, Dossier, Workflow).

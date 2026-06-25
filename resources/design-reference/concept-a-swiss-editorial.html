@@ -3,26 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Venture Quest — Workforce Ledger</title>
+<title>Venture Quest — Swiss Editorial Overhaul</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* Color Constitution */
     --canvas-dark: #1E1611;       /* Walnut: dark framing */
-    --canvas-light: #FAF8F5;      /* Warm Ivory: canvas background */
+    --canvas-light: #FAF8F5;      /* Warm Ivory: page background */
     --panel-bg: #F4EFE6;          /* Soft Cream: panels/containers */
-    --row-bg: #FAF8F5;            /* Near White: table rows */
-    --text-dark: #24211E;         /* Dark Charcoal: primary content */
-    --text-muted: #5E5852;        /* Muted Charcoal: supporting copy */
+    --row-bg: #FAF8F5;            /* Near White: row backgrounds */
+    --input-bg: #FBF9F6;          /* Parchment: input backgrounds */
+    --text-dark: #24211E;         /* Dark Charcoal: primary body */
+    --text-muted: #5E5852;        /* Muted Charcoal: subtext */
     --text-faint: #8A8177;        /* Faint Charcoal: labels/dates */
     --text-light: #ECE4D3;        /* Vellum Light: sidebar text */
     --text-light-muted: #9C9180;  /* Vellum Muted: sidebar copy */
-    --brass: #9C7C38;             /* Aged Brass: accent highlights */
+    --brass: #9C7C38;             /* Aged Brass: accents */
     --brass-bright: #C9A24B;
     
-    /* Semantic Status Palette */
+    /* Status Colors */
     --forest: #234E39;
     --forest-bg: #E3ECE7;
     --burgundy: #6E1A24;
@@ -32,18 +32,17 @@
     --cognac: #8C4E2D;
     --cognac-bg: #F6ECE6;
     
-    /* Borders & Hairlines */
+    /* Borders */
     --hairline: rgba(156, 124, 56, 0.16);
     --hairline-strong: rgba(156, 124, 56, 0.28);
     
-    /* Typography scale */
+    /* Typography */
     --font-display: 'Fraunces', serif;
     --font-body: 'IBM Plex Sans', sans-serif;
     --font-mono: 'IBM Plex Mono', monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     background: var(--canvas-light);
     color: var(--text-dark);
@@ -92,7 +91,7 @@
 
   .crest-text { line-height: 1.2; }
   .crest-text .top { font-family: var(--font-display); font-size: 15px; font-weight: 500; color: var(--text-light); }
-  .crest-text .bottom { font-size: 10px; color: var(--text-light-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
+  .crest-text .bottom { font-size: 10px; color: var(--text-light-muted); letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
 
   nav { flex: 1; padding: 24px 12px; }
 
@@ -105,9 +104,10 @@
     font-size: 13.5px;
     color: var(--text-light-muted);
     cursor: pointer;
-    transition: background .15s ease, color .15s ease, border-color .15s ease;
+    transition: background .15s ease, color .15s ease;
     margin-bottom: 4px;
     border-left: 3px solid transparent;
+    text-decoration: none;
   }
 
   .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.65; }
@@ -154,20 +154,22 @@
   .sidebar-foot .name { font-size: 13px; font-weight: 500; color: var(--text-light); }
   .sidebar-foot .role { font-size: 11px; color: var(--text-light-muted); }
 
-  /* ---------- Main Content Area ---------- */
+  /* ---------- Main Workspace ---------- */
   main {
     flex: 1;
     padding: 44px 54px 60px;
     max-width: 1200px;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 48px; /* Swiss asymmetrical whitespace gaps */
   }
 
-  /* ---------- Editorial Page Header ---------- */
+  /* ---------- Header ---------- */
   header.page {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-bottom: 38px;
     padding-bottom: 24px;
     border-bottom: 1px solid var(--hairline-strong);
   }
@@ -206,14 +208,13 @@
     letter-spacing: 0.2px;
   }
 
-  /* ---------- Daily Operational Briefing Strip ---------- */
+  /* ---------- KPI Briefing Strip ---------- */
   .briefing-strip {
     background: var(--panel-bg);
     border: 1px solid var(--hairline);
     border-radius: 6px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    margin-bottom: 36px;
     overflow: hidden;
   }
 
@@ -263,75 +264,52 @@
     line-height: 1.4;
   }
 
-  /* Status overrides inside the briefing strip */
   .briefing-col.warn .briefing-meta { color: var(--cognac); }
   .briefing-col.danger .briefing-meta { color: var(--burgundy); font-weight: 500; }
   .briefing-col.info .briefing-meta { color: var(--slate); }
 
-  /* ---------- Lower Layout Grid ---------- */
-  .lower-grid {
+  /* ---------- Layout Grid (Swiss Asymmetric) ---------- */
+  .layout-asymmetric {
     display: grid;
-    grid-template-columns: 1.6fr 1fr;
-    gap: 24px;
+    grid-template-columns: 2.2fr 1fr;
+    gap: 54px;
     align-items: start;
   }
 
-  .panel {
-    background: var(--panel-bg);
-    border: 1px solid var(--hairline);
-    border-radius: 6px;
-    padding: 28px;
-  }
-
-  .panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--text-dark);
     margin-bottom: 24px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--hairline);
   }
 
-  .panel-head h2 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 18px;
-    color: var(--text-dark);
-  }
-
-  .panel-head .meta {
-    font-size: 11px;
-    color: var(--text-faint);
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-  }
-
-  /* ---------- Ledger Feed (Archival Directory Table) ---------- */
-  .ledger {
+  /* ---------- Ledger Tables Specification ---------- */
+  .ledger-table {
     display: flex;
     flex-direction: column;
   }
 
-  .entry {
+  .ledger-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 8px;
+    padding: 16px 8px; /* 16px vertical row padding from spec */
     border-bottom: 1px solid var(--hairline);
-    transition: background-color .15s ease;
+    transition: background-color 150ms ease;
   }
 
-  .entry:last-child {
+  .ledger-row:last-child {
     border-bottom: none;
   }
 
-  .entry:hover {
+  .ledger-row:hover {
     background-color: rgba(156, 124, 56, 0.04);
   }
 
-  .entry-left {
+  .row-left {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -350,7 +328,7 @@
   .seal-indicator.leave { background-color: var(--slate); }
   .seal-indicator.absent { background-color: var(--burgundy); }
 
-  .entry-time {
+  .row-time {
     font-family: var(--font-mono);
     font-size: 13px;
     color: var(--text-muted);
@@ -358,24 +336,23 @@
     flex-shrink: 0;
   }
 
-  .entry-details {
+  .row-details {
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
 
-  .entry-name {
+  .row-name {
     font-size: 14.5px;
     font-weight: 600;
     color: var(--text-dark);
   }
 
-  .entry-desc {
+  .row-desc {
     font-size: 12px;
     color: var(--text-muted);
   }
 
-  /* Status Tag Badges */
   .tag {
     font-size: 11px;
     letter-spacing: 0.8px;
@@ -384,7 +361,7 @@
     border-radius: 4px;
     font-weight: 600;
     flex-shrink: 0;
-    font-family: var(--font-body);
+    font-family: var(--font-mono);
   }
 
   .tag.present { background: var(--forest-bg); color: var(--forest); }
@@ -392,17 +369,22 @@
   .tag.leave { background: var(--slate-bg); color: var(--slate); }
   .tag.absent { background: var(--burgundy-bg); color: var(--burgundy); }
 
-  /* ---------- Intelligence Stack ---------- */
+  /* ---------- Secondary Side Stack ---------- */
   .side-stack {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 40px;
+  }
+
+  .mini-table {
+    display: flex;
+    flex-direction: column;
   }
 
   .mini-row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     padding: 12px 6px;
     border-bottom: 1px solid var(--hairline);
     font-size: 13px;
@@ -444,7 +426,7 @@
     .briefing-col { border-bottom: 1px solid var(--hairline); }
     .briefing-col:nth-child(2n) { border-right: none; }
     .briefing-col:nth-child(3), .briefing-col:nth-child(4) { border-bottom: none; }
-    .lower-grid { grid-template-columns: 1fr; }
+    .layout-asymmetric { grid-template-columns: 1fr; gap: 40px; }
     main { padding: 32px 24px; }
   }
 </style>
@@ -514,13 +496,10 @@
     </div>
   </header>
 
-  <!-- Daily Briefing Strip (No Card Explosion, Unified Layout) -->
   <section class="briefing-strip">
     <div class="briefing-col">
       <span class="briefing-label">Checked in today</span>
-      <div class="briefing-value">
-        42 <span class="unit">/ 49</span>
-      </div>
+      <div class="briefing-value">42 <span class="unit">/ 49</span></div>
       <span class="briefing-meta">86% reporting · on pace with last week</span>
     </div>
     
@@ -532,9 +511,7 @@
     
     <div class="briefing-col info">
       <span class="briefing-label">On leave today</span>
-      <div class="briefing-value">
-        2 <span class="unit">+1 WFH</span>
-      </div>
+      <div class="briefing-value">2 <span class="unit">+1 WFH</span></div>
       <span class="briefing-meta">Shivani B., Tanushi M.</span>
     </div>
     
@@ -545,139 +522,131 @@
     </div>
   </section>
 
-  <section class="lower-grid">
-    <!-- Today's Ledger panel -->
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Today's ledger</h2>
-        <span class="meta">live update</span>
-      </div>
-
-      <div class="ledger">
-        <div class="entry">
-          <div class="entry-left">
+  <div class="layout-asymmetric">
+    <section>
+      <h2 class="section-title">Today's Ledger</h2>
+      
+      <div class="ledger-table">
+        <div class="ledger-row">
+          <div class="row-left">
             <span class="seal-indicator present"></span>
-            <span class="entry-time">09:02</span>
-            <div class="entry-details">
-              <span class="entry-name">Aditi Nanda</span>
-              <span class="entry-desc">Checked in · Human Resource (IT)</span>
+            <span class="row-time">09:02</span>
+            <div class="row-details">
+              <span class="row-name">Aditi Nanda</span>
+              <span class="row-desc">Checked in · Human Resource (IT)</span>
             </div>
           </div>
           <span class="tag present">Present</span>
         </div>
 
-        <div class="entry">
-          <div class="entry-left">
+        <div class="ledger-row">
+          <div class="row-left">
             <span class="seal-indicator present"></span>
-            <span class="entry-time">09:04</span>
-            <div class="entry-details">
-              <span class="entry-name">Priyanka Udasi</span>
-              <span class="entry-desc">Checked in · Human Resource (Health Care)</span>
+            <span class="row-time">09:04</span>
+            <div class="row-details">
+              <span class="row-name">Priyanka Udasi</span>
+              <span class="row-desc">Checked in · Human Resource (Health Care)</span>
             </div>
           </div>
           <span class="tag present">Present</span>
         </div>
 
-        <div class="entry">
-          <div class="entry-left">
+        <div class="ledger-row">
+          <div class="row-left">
             <span class="seal-indicator late"></span>
-            <span class="entry-time">09:17</span>
-            <div class="entry-details">
-              <span class="entry-name">Mahima Thakur</span>
-              <span class="entry-desc">Checked in · 2 minutes past grace</span>
+            <span class="row-time">09:17</span>
+            <div class="row-details">
+              <span class="row-name">Mahima Thakur</span>
+              <span class="row-desc">Checked in · 2 minutes past grace</span>
             </div>
           </div>
           <span class="tag late">Late</span>
         </div>
 
-        <div class="entry">
-          <div class="entry-left">
+        <div class="ledger-row">
+          <div class="row-left">
             <span class="seal-indicator leave"></span>
-            <span class="entry-time">—</span>
-            <div class="entry-details">
-              <span class="entry-name">Shivani Bhatt</span>
-              <span class="entry-desc">Approved leave · returning Monday</span>
+            <span class="row-time">—</span>
+            <div class="row-details">
+              <span class="row-name">Shivani Bhatt</span>
+              <span class="row-desc">Approved leave · returning Monday</span>
             </div>
           </div>
           <span class="tag leave">On leave</span>
         </div>
 
-        <div class="entry">
-          <div class="entry-left">
+        <div class="ledger-row">
+          <div class="row-left">
             <span class="seal-indicator present"></span>
-            <span class="entry-time">09:21</span>
-            <div class="entry-details">
-              <span class="entry-name">Anjali Gusain</span>
-              <span class="entry-desc">Checked in · Human Resource (Health Care)</span>
+            <span class="row-time">09:21</span>
+            <div class="row-details">
+              <span class="row-name">Anjali Gusain</span>
+              <span class="row-desc">Checked in · Human Resource (Health Care)</span>
             </div>
           </div>
           <span class="tag present">Present</span>
         </div>
 
-        <div class="entry">
-          <div class="entry-left">
+        <div class="ledger-row">
+          <div class="row-left">
             <span class="seal-indicator absent"></span>
-            <span class="entry-time">—</span>
-            <div class="entry-details">
-              <span class="entry-name">Sarika Rana</span>
-              <span class="entry-desc">No check-in recorded · flagged for review</span>
+            <span class="row-time">—</span>
+            <div class="row-details">
+              <span class="row-name">Sarika Rana</span>
+              <span class="row-desc">No check-in recorded · flagged for review</span>
             </div>
           </div>
           <span class="tag absent">Absent</span>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Side Intelligence Stack -->
     <div class="side-stack">
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Late arrivals</h2>
-          <span class="meta">today</span>
+      <section>
+        <h2 class="section-title">Late arrivals</h2>
+        <div class="mini-table">
+          <div class="mini-row">
+            <span class="who">Mahima Thakur</span>
+            <span class="delta">+2m</span>
+          </div>
+          <div class="mini-row">
+            <span class="who">Vansh Pharasi</span>
+            <span class="delta">+11m</span>
+          </div>
+          <div class="mini-row">
+            <span class="who">Babita Bisht</span>
+            <span class="delta">+14m</span>
+          </div>
         </div>
-        
-        <div class="mini-row">
-          <span class="who">Mahima Thakur</span>
-          <span class="delta">+2m</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Vansh Pharasi</span>
-          <span class="delta">+11m</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Babita Bisht</span>
-          <span class="delta">+14m</span>
-        </div>
-      </div>
+      </section>
 
-      <div class="panel">
-        <div class="panel-head">
-          <h2>Corrections</h2>
-          <span class="flag-badge">3 pending</span>
+      <section>
+        <h2 class="section-title">Corrections <span class="flag-badge">3 pending</span></h2>
+        <div class="mini-table">
+          <div class="mini-row">
+            <span class="who">Nandini Tiwari</span>
+            <span class="delta" style="color: var(--text-muted);">phone</span>
+          </div>
+          <div class="mini-row">
+            <span class="who">Harshit Rana</span>
+            <span class="delta" style="color: var(--text-muted);">department</span>
+          </div>
+          <div class="mini-row">
+            <span class="who">Sobha Joshi</span>
+            <span class="delta" style="color: var(--text-muted);">manager</span>
+          </div>
         </div>
-        
-        <div class="mini-row">
-          <span class="who">Nandini Tiwari</span>
-          <span class="delta" style="color: var(--text-muted);">phone</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Harshit Rana</span>
-          <span class="delta" style="color: var(--text-muted);">department</span>
-        </div>
-        <div class="mini-row">
-          <span class="who">Sobha Joshi</span>
-          <span class="delta" style="color: var(--text-muted);">manager</span>
-        </div>
-      </div>
+      </section>
     </div>
-  </section>
+  </div>
 </main>
 
 <script>
   function tick() {
     var now = new Date();
     var t = now.toLocaleTimeString('en-IN', { hour12: false });
-    document.getElementById('clock-time').textContent = t;
+    var clockEl = document.getElementById('clock-time');
+    if (clockEl) clockEl.textContent = t;
   }
   tick();
   setInterval(tick, 1000);
