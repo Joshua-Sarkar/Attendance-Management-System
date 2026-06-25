@@ -11,4 +11,9 @@ class Department extends Model
         'code',
         'description',
     ];
+
+    public function users(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(User::class);
+    }
 }

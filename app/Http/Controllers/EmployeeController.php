@@ -21,26 +21,61 @@ class EmployeeController extends Controller
     // Index — list all employees
     // =========================================================
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $currentUser = auth()->user();
         if ($currentUser->role === 'employee') {
             abort(403, 'Unauthorized action.');
         }
 
-        if ($currentUser->role === 'admin') {
-            $employees = User::with(['department', 'manager', 'admin'])
-                             ->latest()
-                             ->get();
-        } else { // manager
-            $employees = User::where('role', 'employee')
-                             ->where('manager_id', $currentUser->id)
-                             ->with(['department', 'manager', 'admin'])
-                             ->latest()
-                             ->get();
+        $query = User::with(['department', 'manager', 'admin', 'employeeProfile']);
+
+        if ($currentUser->role === 'manager') {
+            $query->where('role', 'employee')
+                  ->where('manager_id', $currentUser->id);
         }
 
-        return view('employees.index', compact('employees'));
+        // Search: Name, Email, Employee ID
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('employee_id', 'like', "%{$search}%");
+            });
+        }
+
+        // Filters
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->input('department_id'));
+        }
+
+        if ($request->filled('manager_id')) {
+            $query->where('manager_id', $request->input('manager_id'));
+        }
+
+        // Sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc');
+        
+        $allowedSorts = ['name', 'employee_id', 'email', 'status', 'created_at', 'joining_date'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
+        } else {
+            $query->latest();
+        }
+
+        // Pagination
+        $employees = $query->paginate(15)->withQueryString();
+
+        // For filter dropdowns
+        $departments = Department::orderBy('name')->get();
+        $managers = User::whereIn('role', ['manager', 'admin'])
+                        ->where('status', 'active')
+                        ->orderBy('name')
+                        ->get();
+
+        return view('employees.index', compact('employees', 'departments', 'managers'));
     }
 
     // =========================================================
@@ -275,8 +310,12 @@ class EmployeeController extends Controller
     {
         $currentUser = auth()->user();
 
-        // Admin can view anyone, non-admin can only view themselves
-        if ($currentUser->role !== 'admin' && $currentUser->id !== $user->id) {
+        if ($currentUser->role === 'manager') {
+            // Manager can view themselves or their direct reports
+            if ($user->id !== $currentUser->id && ($user->role !== 'employee' || $user->manager_id !== $currentUser->id)) {
+                abort(403, 'Unauthorized action.');
+            }
+        } elseif ($currentUser->role !== 'admin' && $currentUser->id !== $user->id) {
             abort(403, 'Unauthorized action.');
         }
 

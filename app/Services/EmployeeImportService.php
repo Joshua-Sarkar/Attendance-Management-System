@@ -45,16 +45,28 @@ class EmployeeImportService
         }
 
         $headersMap = [];
+        $headerCounts = [];
         foreach ($headerRow as $columnLetter => $headerName) {
             if ($headerName !== null) {
-                $headersMap[trim($headerName)] = $columnLetter;
+                $name = trim($headerName);
+                if (!isset($headerCounts[$name])) {
+                    $headerCounts[$name] = 0;
+                }
+                $headerCounts[$name]++;
+                
+                $key = $name;
+                if ($headerCounts[$name] > 1) {
+                    $key = $name . '.' . ($headerCounts[$name] - 1);
+                }
+                $headersMap[$key] = $columnLetter;
             }
         }
 
         // Validate essential headers
         $essentialHeaders = ['Employee Code', 'Official Email ID', 'Full Name'];
+        $hasEssential = true;
         foreach ($essentialHeaders as $header) {
-            if (!isset($headersMap[$header])) {
+            if ($this->resolveHeader($headersMap, [$header]) === null) {
                 throw new \Exception("Missing essential header: '{$header}'");
             }
         }
@@ -82,8 +94,8 @@ class EmployeeImportService
 
                 $rowsProcessed++;
 
-                $employeeCode = $this->getVal($row, $headersMap, 'Employee Code');
-                $officialEmail = $this->getVal($row, $headersMap, 'Official Email ID');
+                $employeeCode = $this->getVal($row, $headersMap, ['Employee Code', 'Employee ID', 'Code']);
+                $officialEmail = $this->getVal($row, $headersMap, ['Official Email ID', 'Official Email', 'Email ID']);
 
                 $standardizedId = $this->standardizeEmployeeId($employeeCode);
                 $officialEmail = trim($officialEmail);
@@ -106,26 +118,27 @@ class EmployeeImportService
                 }
 
                 // Resolve department_id
-                $deptName = $this->getVal($row, $headersMap, 'Department');
+                $deptName = $this->getVal($row, $headersMap, ['Department', 'Dept']);
                 $department = null;
                 if (!empty($deptName)) {
-                    $department = Department::whereRaw('LOWER(name) = ?', [strtolower(trim($deptName))])->first();
+                    $deptNameTrimmed = trim($deptName);
+                    $department = Department::whereRaw('LOWER(name) = ?', [strtolower($deptNameTrimmed)])->first();
                 }
 
                 if (!$department) {
                     $errors[] = [
                         'row' => $rowIndex,
-                        'reason' => "Department not found: '" . ($deptName ?? 'empty') . "'.",
+                        'reason' => "Department not found or could not be created for '" . ($deptName ?? 'empty') . "'.",
                     ];
                     continue;
                 }
 
                 // Resolve status
-                $statusVal = $this->getVal($row, $headersMap, 'Employee Status');
+                $statusVal = $this->getVal($row, $headersMap, ['Employee Status', 'Status']);
                 $mappedStatus = null;
                 if (!empty($statusVal)) {
                     $trimmedStatus = strtolower(trim($statusVal));
-                    if (in_array($trimmedStatus, ['active', 'probation'])) {
+                    if (in_array($trimmedStatus, ['active', 'probation', 'confirmed'])) {
                         $mappedStatus = 'active';
                     } else {
                         $errors[] = [
@@ -142,7 +155,7 @@ class EmployeeImportService
                     continue;
                 }
 
-                $fullName = trim($this->getVal($row, $headersMap, 'Full Name'));
+                $fullName = trim($this->getVal($row, $headersMap, ['Full Name', 'Employee Name', 'Name']));
                 if (empty($fullName)) {
                     $errors[] = [
                         'row' => $rowIndex,
@@ -151,7 +164,8 @@ class EmployeeImportService
                     continue;
                 }
 
-                $mobileNo = $this->getVal($row, $headersMap, 'Mobile No.');
+                $mobileNo = $this->cleanPhoneNumber($this->getVal($row, $headersMap, ['Mobile No.', 'Mobile', 'Mobile Number']));
+                $joiningDate = $this->parseExcelDate($this->getVal($row, $headersMap, ['Joining Date', 'Date of Joining']));
 
                 if (!$user) {
                     // Create mode
@@ -170,10 +184,10 @@ class EmployeeImportService
                     $user->role = 'employee';
                     $user->status = $mappedStatus;
                     $user->phone = $mobileNo;
-                    $user->joining_date = $this->parseExcelDate($this->getVal($row, $headersMap, 'Joining Date'));
+                    $user->joining_date = $joiningDate;
                     $user->department_id = $department->id;
                     $user->must_change_password = true;
-                    $user->password = \Illuminate\Support\Facades\Hash::make(env('DEFAULT_EMPLOYEE_PASSWORD'));
+                    $user->password = \Illuminate\Support\Facades\Hash::make($defaultPassword);
                     $user->save();
 
                     \App\Services\LeaveBalanceService::initializeUser($user);
@@ -186,7 +200,6 @@ class EmployeeImportService
                     if ($mobileNo) {
                         $user->phone = $mobileNo;
                     }
-                    $joiningDate = $this->parseExcelDate($this->getVal($row, $headersMap, 'Joining Date'));
                     if ($joiningDate) {
                         $user->joining_date = $joiningDate;
                     }
@@ -197,78 +210,86 @@ class EmployeeImportService
 
                 // Gather profile data
                 $profileData = [
-                    'father_name' => $this->getVal($row, $headersMap, 'Father Name'),
-                    'mother_name' => $this->getVal($row, $headersMap, 'Mother Name'),
-                    'gender' => $this->getVal($row, $headersMap, 'Gender'),
-                    'date_of_birth' => $this->parseExcelDate($this->getVal($row, $headersMap, 'Date of birth')),
-                    'marital_status' => $this->getVal($row, $headersMap, 'Marital Status'),
-                    'date_of_marriage' => $this->parseExcelDate($this->getVal($row, $headersMap, 'Date of Marriage')),
-                    'nationality' => $this->getVal($row, $headersMap, 'Nationality'),
-                    'blood_group' => $this->getVal($row, $headersMap, 'Blood Group'),
-                    'personal_email' => $this->getVal($row, $headersMap, 'Personal Email ID'),
+                    'father_name' => $this->getVal($row, $headersMap, ['Father Name', 'Father\'s Name']),
+                    'mother_name' => $this->getVal($row, $headersMap, ['Mother Name', 'Mother\'s Name']),
+                    'gender' => $this->getVal($row, $headersMap, ['Gender', 'Sex']),
+                    'date_of_birth' => $this->parseExcelDate($this->getVal($row, $headersMap, ['Date of birth', 'DOB', 'Birth Date'])),
+                    'marital_status' => $this->getVal($row, $headersMap, ['Marital Status']),
+                    'date_of_marriage' => $this->parseExcelDate($this->getVal($row, $headersMap, ['Date of Marriage', 'DOM'])),
+                    'nationality' => $this->getVal($row, $headersMap, ['Nationality']),
+                    'blood_group' => $this->getVal($row, $headersMap, ['Blood Group', 'Blood Grouping']),
+                    'personal_email' => $this->getVal($row, $headersMap, ['Personal Email ID', 'Personal Email']),
                     'mobile_no' => $mobileNo,
-                    'pf_uan' => $this->getVal($row, $headersMap, 'PF UAN'),
-                    'passport_no' => $this->getVal($row, $headersMap, 'Passport No.'),
-                    'aadhar_card' => $this->getVal($row, $headersMap, 'Aadhar Card'),
-                    'pan' => $this->getVal($row, $headersMap, 'PAN'),
-                    'pf_no' => $this->getVal($row, $headersMap, 'PF NO'),
-                    'esi_number' => $this->getVal($row, $headersMap, 'Esi number'),
-                    'date_of_gratuity' => $this->parseExcelDate($this->getVal($row, $headersMap, 'Date of Gratuity')),
-                    'payroll_type' => $this->getVal($row, $headersMap, 'Payroll Type'),
-                    'contract_end_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'Contract End Date')),
-                    'office_landline' => $this->getVal($row, $headersMap, 'Office Landline Number'),
-                    'leave_rule' => $this->getVal($row, $headersMap, 'Leave Rule'),
-                    'shift' => $this->getVal($row, $headersMap, 'Shift'),
-                    'designation' => $this->getVal($row, $headersMap, 'Designation'),
-                    'grade' => $this->getVal($row, $headersMap, 'Grade'),
-                    'employee_type' => $this->getVal($row, $headersMap, 'Employee Type'),
-                    'company' => $this->getVal($row, $headersMap, 'Company'),
-                    'location' => $this->getVal($row, $headersMap, 'Location'),
-                    'biometric_id' => $this->getVal($row, $headersMap, 'Biometric Id'),
-                    'hiring_source' => $this->getVal($row, $headersMap, 'Hiring source'),
-                    'source_of_verification' => $this->getVal($row, $headersMap, 'Source of verification'),
-                    'current_address1' => $this->getVal($row, $headersMap, 'Current Address1'),
-                    'current_address2' => $this->getVal($row, $headersMap, 'Current Address2'),
-                    'current_country' => $this->getVal($row, $headersMap, 'Country'),
-                    'current_state' => $this->getVal($row, $headersMap, 'State'),
-                    'current_city' => $this->getVal($row, $headersMap, 'City'),
-                    'current_zip' => $this->getVal($row, $headersMap, 'Zip'),
-                    'permanent_address1' => $this->getVal($row, $headersMap, 'Permanent Address1'),
-                    'permanent_address2' => $this->getVal($row, $headersMap, 'Permanent Address2'),
-                    'permanent_country' => $this->getVal($row, $headersMap, 'Country.1'),
-                    'permanent_state' => $this->getVal($row, $headersMap, 'State.1'),
-                    'permanent_city' => $this->getVal($row, $headersMap, 'City.1'),
-                    'permanent_zip' => $this->getVal($row, $headersMap, 'Zip.1'),
-                    'same_as_current_address' => $this->parseBoolean($this->getVal($row, $headersMap, 'Same as current address')),
-                    'payment_type' => $this->getVal($row, $headersMap, 'Payment Type'),
-                    'bank_name' => $this->getVal($row, $headersMap, 'Bank Name'),
-                    'account_holder_name' => $this->getVal($row, $headersMap, 'Account Holder Name'),
-                    'account_no' => $this->getVal($row, $headersMap, 'Account No'),
-                    'ifsc_code' => $this->getVal($row, $headersMap, 'IFSC code'),
-                    'emergency_name' => $this->getVal($row, $headersMap, 'Name'),
-                    'emergency_relationship' => $this->getVal($row, $headersMap, 'Relationship'),
-                    'emergency_address' => $this->getVal($row, $headersMap, 'Address'),
-                    'emergency_email' => $this->getVal($row, $headersMap, 'Email'),
-                    'emergency_mobile' => $this->getVal($row, $headersMap, 'Mobile No..1'),
-                    'degree_name' => $this->getVal($row, $headersMap, 'Diploma/Degree Name'),
-                    'institution_name' => $this->getVal($row, $headersMap, 'Institution Name'),
-                    'passing_year' => $this->getVal($row, $headersMap, 'Passing Year'),
-                    'percentage' => $this->getVal($row, $headersMap, 'Percentage'),
-                    'previous_company_name' => $this->getVal($row, $headersMap, 'Previous Company Name'),
-                    'previous_job_title' => $this->getVal($row, $headersMap, 'Job Title'),
-                    'previous_from_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'From Date')),
-                    'previous_to_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'To Date')),
-                    'state_name' => $this->getVal($row, $headersMap, 'STATE NAME'),
-                    'probation_period' => $this->getVal($row, $headersMap, 'PROBATION PERIOD'),
-                    'probation_confirm_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'PROBATION CONFIRM_DATE')),
-                    'separation_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'SEPRATE DATE')),
-                    'last_working_day' => $this->parseExcelDate($this->getVal($row, $headersMap, 'LWD')),
-                    'previous_year_experience' => $this->trimVal($this->getVal($row, $headersMap, 'PREVIOUS YEAR_EXPERIENCE')),
-                    'years_completed' => $this->trimVal($this->getVal($row, $headersMap, 'NUMBER OF_YEAR_COMPLETED')),
-                    'overall_year_experience' => $this->trimVal($this->getVal($row, $headersMap, 'OVERALL YEAR_EXPERIENCE')),
-                    'city_type' => $this->getVal($row, $headersMap, 'City Type'),
-                    'notice_days' => $this->parseInteger($this->getVal($row, $headersMap, 'Notice Days')),
-                    'joining_date' => $this->parseExcelDate($this->getVal($row, $headersMap, 'Joining Date')),
+                    'pf_uan' => $this->getVal($row, $headersMap, ['PF UAN', 'UAN']),
+                    'passport_no' => $this->getVal($row, $headersMap, ['Passport No.', 'Passport Number', 'Passport']),
+                    'aadhar_card' => $this->getVal($row, $headersMap, ['Aadhar Card', 'Aadhar No', 'Aadhar']),
+                    'pan' => $this->getVal($row, $headersMap, ['PAN', 'PAN Card', 'PAN No']),
+                    'pf_no' => $this->getVal($row, $headersMap, ['PF NO', 'PF Number']),
+                    'esi_number' => $this->getVal($row, $headersMap, ['Esi number', 'ESI No', 'ESI']),
+                    'date_of_gratuity' => $this->parseExcelDate($this->getVal($row, $headersMap, ['Date of Gratuity'])),
+                    'payroll_type' => $this->getVal($row, $headersMap, ['Payroll Type']),
+                    'contract_end_date' => $this->parseExcelDate($this->getVal($row, $headersMap, ['Contract End Date'])),
+                    'office_landline' => $this->cleanPhoneNumber($this->getVal($row, $headersMap, ['Office Landline Number', 'Office Landline'])),
+                    'leave_rule' => $this->getVal($row, $headersMap, ['Leave Rule']),
+                    'shift' => $this->getVal($row, $headersMap, ['Shift']),
+                    'designation' => $this->getVal($row, $headersMap, ['Designation']),
+                    'grade' => $this->getVal($row, $headersMap, ['Grade']),
+                    'employee_type' => $this->getVal($row, $headersMap, ['Employee Type']),
+                    'company' => $this->getVal($row, $headersMap, ['Company']),
+                    'location' => $this->getVal($row, $headersMap, ['Location']),
+                    'biometric_id' => $this->getVal($row, $headersMap, ['Biometric Id', 'Biometric ID']),
+                    'hiring_source' => $this->getVal($row, $headersMap, ['Hiring source', 'Hiring Source']),
+                    'source_of_verification' => $this->getVal($row, $headersMap, ['Source of verification']),
+                    
+                    // Address fields
+                    'current_address1' => $this->getVal($row, $headersMap, ['Current Address1', 'Address1']),
+                    'current_address2' => $this->getVal($row, $headersMap, ['Current Address2', 'Address2']),
+                    'current_country' => $this->getVal($row, $headersMap, ['Country'], 1),
+                    'current_state' => $this->getVal($row, $headersMap, ['State'], 1),
+                    'current_city' => $this->getVal($row, $headersMap, ['City'], 1),
+                    'current_zip' => $this->getVal($row, $headersMap, ['Zip'], 1),
+                    
+                    'permanent_address1' => $this->getVal($row, $headersMap, ['Permanent Address1']),
+                    'permanent_address2' => $this->getVal($row, $headersMap, ['Permanent Address2']),
+                    'permanent_country' => $this->getVal($row, $headersMap, ['Country'], 2),
+                    'permanent_state' => $this->getVal($row, $headersMap, ['State'], 2),
+                    'permanent_city' => $this->getVal($row, $headersMap, ['City'], 2),
+                    'permanent_zip' => $this->getVal($row, $headersMap, ['Zip'], 2),
+                    
+                    'same_as_current_address' => $this->parseBoolean($this->getVal($row, $headersMap, ['Same as current address'])),
+                    'payment_type' => $this->getVal($row, $headersMap, ['Payment Type']),
+                    'bank_name' => $this->getVal($row, $headersMap, ['Bank Name']),
+                    'account_holder_name' => $this->getVal($row, $headersMap, ['Account Holder Name']),
+                    'account_no' => $this->getVal($row, $headersMap, ['Account No', 'Account Number']),
+                    'ifsc_code' => $this->getVal($row, $headersMap, ['IFSC code', 'IFSC']),
+                    
+                    // Emergency contacts
+                    'emergency_name' => $this->getVal($row, $headersMap, ['Emergency Contact Name', 'Emergency Name', 'Name'], 2),
+                    'emergency_relationship' => $this->getVal($row, $headersMap, ['Emergency Relationship', 'Relationship'], 2),
+                    'emergency_address' => $this->getVal($row, $headersMap, ['Emergency Contact Address', 'Emergency Address', 'Address'], 2),
+                    'emergency_email' => $this->getVal($row, $headersMap, ['Emergency Contact Email', 'Emergency Email', 'Email'], 2),
+                    'emergency_mobile' => $this->cleanPhoneNumber($this->getVal($row, $headersMap, ['Emergency Contact Mobile', 'Emergency Mobile', 'Mobile No.'], 2)),
+                    
+                    // Education & Experience
+                    'degree_name' => $this->getVal($row, $headersMap, ['Diploma/Degree Name', 'Degree Name']),
+                    'institution_name' => $this->getVal($row, $headersMap, ['Institution Name', 'College/School Name']),
+                    'passing_year' => $this->getVal($row, $headersMap, ['Passing Year']),
+                    'percentage' => $this->getVal($row, $headersMap, ['Percentage', 'Marks %']),
+                    'previous_company_name' => $this->getVal($row, $headersMap, ['Previous Company Name', 'Previous Company']),
+                    'previous_job_title' => $this->getVal($row, $headersMap, ['Job Title', 'Designation'], 2),
+                    'previous_from_date' => $this->parseExcelDate($this->getVal($row, $headersMap, ['From Date'])),
+                    'previous_to_date' => $this->parseExcelDate($this->getVal($row, $headersMap, ['To Date'])),
+                    'state_name' => $this->getVal($row, $headersMap, ['STATE NAME']),
+                    'probation_period' => $this->getVal($row, $headersMap, ['PROBATION PERIOD']),
+                    'probation_confirm_date' => $this->parseExcelDate($this->getVal($row, $headersMap, ['PROBATION CONFIRM_DATE'])),
+                    'separation_date' => $this->parseExcelDate($this->getVal($row, $headersMap, ['SEPRATE DATE'])),
+                    'last_working_day' => $this->parseExcelDate($this->getVal($row, $headersMap, ['LWD', 'Last Working Day'])),
+                    'previous_year_experience' => $this->trimVal($this->getVal($row, $headersMap, ['PREVIOUS YEAR_EXPERIENCE'])),
+                    'years_completed' => $this->trimVal($this->getVal($row, $headersMap, ['NUMBER OF_YEAR_COMPLETED'])),
+                    'overall_year_experience' => $this->trimVal($this->getVal($row, $headersMap, ['OVERALL YEAR_EXPERIENCE'])),
+                    'city_type' => $this->getVal($row, $headersMap, ['City Type']),
+                    'notice_days' => $this->parseInteger($this->getVal($row, $headersMap, ['Notice Days'])),
+                    'joining_date' => $joiningDate,
                 ];
 
                 EmployeeProfile::updateOrCreate(
@@ -292,27 +313,111 @@ class EmployeeImportService
             // PASS 2: Update manager_id for successfully processed users
             foreach ($processedUsers as $rowIndex => $user) {
                 $row = $rows[$rowIndex];
-                $managerCol = $this->getVal($row, $headersMap, 'Reporting Manager');
+                $managerCol = trim($this->getVal($row, $headersMap, ['Reporting Manager', 'Manager']) ?? '');
 
                 if (!empty($managerCol)) {
+                    $resolvedManagerId = null;
+
+                    // 1. Try parentheses match, e.g. "Name (EMP00001)" or "Name (1)"
                     if (preg_match('/\(([^)]+)\)/', $managerCol, $matches)) {
                         $extractedCode = trim($matches[1]);
-                        $managerCodeInt = (int) $extractedCode;
-
-                        if (isset($userLookup[$managerCodeInt])) {
-                            $user->manager_id = $userLookup[$managerCodeInt];
-                            $user->save();
+                        
+                        // Try matching standardized employee code (e.g. EMP00001)
+                        $stdCode = $this->standardizeEmployeeId($extractedCode);
+                        $managerUser = User::where('employee_id', $stdCode)
+                            ->orWhere('employee_id', $extractedCode)
+                            ->first();
+                        
+                        if ($managerUser) {
+                            $resolvedManagerId = $managerUser->id;
                         } else {
-                            $errors[] = [
-                                'row' => $rowIndex,
-                                'reason' => "Reporting manager with code '{$extractedCode}' (numeric: {$managerCodeInt}) not found in database.",
-                            ];
+                            // Try numeric ID match in $userLookup
+                            $managerCodeInt = (int) $extractedCode;
+                            if (isset($userLookup[$managerCodeInt])) {
+                                $resolvedManagerId = $userLookup[$managerCodeInt];
+                            }
                         }
-                    } else {
-                        $errors[] = [
-                            'row' => $rowIndex,
-                            'reason' => "Invalid format for Reporting Manager: '{$managerCol}'. Could not parse code in parentheses.",
-                        ];
+                    }
+
+                    // 2. Try raw employee code directly, e.g. "EMP00001" or "1"
+                    if (!$resolvedManagerId) {
+                        $stdCode = $this->standardizeEmployeeId($managerCol);
+                        $managerUser = User::where('employee_id', $stdCode)
+                            ->orWhere('employee_id', $managerCol)
+                            ->first();
+                        if ($managerUser) {
+                            $resolvedManagerId = $managerUser->id;
+                        }
+                    }
+
+                    // 3. Fallback: match by full name (case insensitive trim check)
+                    if (!$resolvedManagerId) {
+                        $managerUser = User::whereRaw('LOWER(name) = ?', [strtolower(trim($managerCol))])->first();
+                        if ($managerUser) {
+                            $resolvedManagerId = $managerUser->id;
+                        }
+                    }
+
+                    // 4. Create manager on-the-fly if not found
+                    if (!$resolvedManagerId) {
+                        $mgrName = $managerCol;
+                        $mgrCode = null;
+                        if (preg_match('/^([^(]+)\(([^)]+)\)/', $managerCol, $parts)) {
+                            $mgrName = trim($parts[1]);
+                            $mgrCode = $this->standardizeEmployeeId(trim($parts[2]));
+                        } else {
+                            $mgrCode = $this->standardizeEmployeeId($managerCol);
+                        }
+
+                        if ($mgrCode && !str_starts_with($mgrCode, 'EMP')) {
+                            $mgrCode = null;
+                        }
+
+                        if (!$mgrCode) {
+                            $latestUser = User::where('employee_id', 'like', 'EMP%')->orderBy('employee_id', 'desc')->first();
+                            $num = 1000;
+                            if ($latestUser && preg_match('/\d+/', $latestUser->employee_id, $numMatches)) {
+                                $num = (int)$numMatches[0] + 1;
+                            }
+                            $mgrCode = 'EMP' . str_pad($num, 5, '0', STR_PAD_LEFT);
+                        }
+
+                        $emailLocal = strtolower(preg_replace('/[^A-Za-z0-9]/', '.', $mgrName));
+                        $email = $emailLocal . '@ams.com';
+                        $existsEmail = User::where('email', $email)->first();
+                        if ($existsEmail) {
+                            $email = $emailLocal . rand(100, 999) . '@ams.com';
+                        }
+
+                        $managerUser = User::create([
+                            'employee_id' => $mgrCode,
+                            'name' => $mgrName,
+                            'email' => $email,
+                            'role' => 'manager',
+                            'status' => 'active',
+                            'must_change_password' => true,
+                            'password' => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+                        ]);
+
+                        \App\Services\LeaveBalanceService::initializeUser($managerUser);
+
+                        EmployeeProfile::create([
+                            'user_id' => $managerUser->id,
+                        ]);
+
+                        $resolvedManagerId = $managerUser->id;
+                    }
+
+                    if ($resolvedManagerId) {
+                        $user->manager_id = $resolvedManagerId;
+                        $user->save();
+
+                        // Automatically promote resolved manager to 'manager' role
+                        $mgrUser = User::find($resolvedManagerId);
+                        if ($mgrUser && $mgrUser->role === 'employee') {
+                            $mgrUser->role = 'manager';
+                            $mgrUser->save();
+                        }
                     }
                 } else {
                     $user->manager_id = null;
@@ -335,10 +440,54 @@ class EmployeeImportService
         ];
     }
 
-    private function getVal(array $row, array $headersMap, string $headerName)
+    private function getVal(array $row, array $headersMap, string|array $headerNames, int $occurrence = 1)
     {
-        $colLetter = $headersMap[$headerName] ?? null;
-        return $colLetter !== null ? $row[$colLetter] : null;
+        $candidates = is_array($headerNames) ? $headerNames : [$headerNames];
+        $resolvedKey = $this->resolveHeader($headersMap, $candidates, $occurrence);
+        if ($resolvedKey !== null && isset($headersMap[$resolvedKey])) {
+            $colLetter = $headersMap[$resolvedKey];
+            return $row[$colLetter] ?? null;
+        }
+        return null;
+    }
+
+    private function resolveHeader(array $headersMap, array $candidates, int $occurrence = 1): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if ($occurrence === 1) {
+                if (isset($headersMap[$candidate])) {
+                    return $candidate;
+                }
+            } else {
+                $key = $candidate . '.' . ($occurrence - 1);
+                if (isset($headersMap[$key])) {
+                    return $key;
+                }
+            }
+        }
+        
+        // Fallback for occurrence > 1 if no suffix match was found
+        if ($occurrence > 1) {
+            foreach ($candidates as $candidate) {
+                if (isset($headersMap[$candidate])) {
+                    return $candidate;
+                }
+            }
+        }
+        return null;
+    }
+
+    private function cleanPhoneNumber($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $value = trim((string) $value);
+        if (str_ends_with($value, '.0')) {
+            $value = substr($value, 0, -2);
+        }
+        $cleaned = preg_replace('/[^\d+]/', '', $value);
+        return $cleaned !== '' ? $cleaned : null;
     }
 
     private function standardizeEmployeeId($code): ?string

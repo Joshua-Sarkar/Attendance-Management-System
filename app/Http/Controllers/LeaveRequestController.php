@@ -476,9 +476,9 @@ class LeaveRequestController extends Controller
     {
         $user = Auth::user();
 
-        // Request must be pending
-        if ($leaveRequest->status !== 'pending') {
-            return back()->with('error', 'Only pending requests can be rejected.');
+        // Request must be pending or approved
+        if (!in_array($leaveRequest->status, ['pending', 'approved'])) {
+            return back()->with('error', 'Only pending or approved requests can be rejected.');
         }
 
         // Self-action protection
@@ -507,20 +507,51 @@ class LeaveRequestController extends Controller
         try {
             DB::transaction(function () use ($leaveRequest, $user, $request) {
                 $lockedRequest = LeaveRequest::where('id', $leaveRequest->id)->lockForUpdate()->first();
-                if ($lockedRequest->status !== 'pending') {
-                    throw new \Exception('This request has already been processed.');
+                if (!in_array($lockedRequest->status, ['pending', 'approved'])) {
+                    throw new \Exception('Only pending or approved requests can be rejected.');
                 }
+
+                $oldStatus = $lockedRequest->status;
 
                 $lockedRequest->update([
                     'status' => 'rejected',
                     'approver_id' => $user->id,
-                    'approved_at' => now(),
+                    'approved_at' => null,
                     'rejection_reason' => $request->input('rejection_reason'),
                 ]);
 
+                $applicant = $lockedRequest->user;
+                $lockedUser = User::where('id', $applicant->id)->lockForUpdate()->first();
+
+                // If it was approved, refund the balance / restore credit
+                if ($oldStatus === 'approved') {
+                    if ($lockedRequest->leave_type === 'complimentary') {
+                        // Restore birthday leave credit
+                        $credit = $lockedRequest->leaveCredit;
+                        if ($credit) {
+                            $lockedCredit = LeaveCredit::where('id', $credit->id)->lockForUpdate()->first();
+                            $lockedCredit->used_amount = 0.00;
+                            $lockedCredit->save();
+                        }
+                        $lockedRequest->update(['leave_credit_id' => null]);
+                    } else {
+                        // Refund regular balance
+                        $lockedUser->leave_balance += $lockedRequest->total_days;
+                        $lockedUser->save();
+
+                        LeaveLedgerEntry::create([
+                            'user_id' => $lockedUser->id,
+                            'leave_request_id' => $lockedRequest->id,
+                            'amount' => $lockedRequest->total_days,
+                            'type' => 'refund',
+                            'description' => 'Refund due to leave rejection of approved leave request',
+                        ]);
+                    }
+                }
+
                 LeaveRequestLog::create([
                     'leave_request_id' => $lockedRequest->id,
-                    'from_status' => 'pending',
+                    'from_status' => $oldStatus,
                     'to_status' => 'rejected',
                     'action' => 'rejected',
                     'notes' => $request->input('rejection_reason'),
@@ -586,7 +617,7 @@ class LeaveRequestController extends Controller
                 $updateData = [
                     'status' => $newOverrideStatus,
                     'approver_id' => $user->id,
-                    'approved_at' => now(),
+                    'approved_at' => $shouldBeApproved ? now() : null,
                 ];
 
                 if ($shouldBeApproved) {

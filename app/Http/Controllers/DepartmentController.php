@@ -100,4 +100,22 @@ class DepartmentController extends Controller
             ->route('departments.index')
             ->with('success', 'Department deleted successfully.');
     }
+
+    public function show(Department $department)
+    {
+        $user = auth()->user();
+        if ($user->role === 'employee') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $query = $department->users()->with(['department', 'manager', 'admin', 'employeeProfile']);
+
+        if ($user->role === 'manager') {
+            $query->where('role', 'employee')->where('manager_id', $user->id);
+        }
+
+        $employees = $query->latest()->get();
+
+        return view('departments.show', compact('department', 'employees'));
+    }
 }

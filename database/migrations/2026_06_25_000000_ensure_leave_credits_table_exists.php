@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // 1. Ensure 'leave_credits' table exists
         if (!Schema::hasTable('leave_credits')) {
             Schema::create('leave_credits', function (Blueprint $table) {
                 $table->id();
@@ -30,6 +31,13 @@ return new class extends Migration
                 $table->unique(['user_id', 'source_identifier']);
             });
         }
+
+        // 2. Ensure 'leave_credit_id' column exists in 'leave_requests'
+        if (Schema::hasTable('leave_requests') && !Schema::hasColumn('leave_requests', 'leave_credit_id')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->foreignId('leave_credit_id')->nullable()->constrained('leave_credits')->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -37,6 +45,13 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::hasTable('leave_requests') && Schema::hasColumn('leave_requests', 'leave_credit_id')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->dropForeign(['leave_credit_id']);
+                $table->dropColumn('leave_credit_id');
+            });
+        }
+
         Schema::dropIfExists('leave_credits');
     }
 };

@@ -29,6 +29,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/departments/create', [DepartmentController::class, 'create'])
         ->name('departments.create');
 
+    Route::get('/departments/{department}', [DepartmentController::class, 'show'])
+        ->name('departments.show');
+
     Route::post('/departments', [DepartmentController::class, 'store'])
         ->name('departments.store');
 
