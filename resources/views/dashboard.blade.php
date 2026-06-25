@@ -58,40 +58,40 @@
         <!-- Admin Company Metrics Grid (Briefing Strip Layout) -->
         @if(auth()->user()->role === 'admin' && isset($companyMetrics))
             <div class="space-y-3">
-                <h4 class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Workforce Metrics</h4>
+                <h4 class="text-[13px] font-bold text-vellum uppercase tracking-wider">Workforce Metrics</h4>
                 <div class="grid grid-cols-1 md:grid-cols-5 border border-hairline bg-surface rounded overflow-hidden">
                     <!-- People in Company -->
                     <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                        <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">People in Company</span>
-                        <div class="font-display font-medium text-3xl my-2">{{ $companyMetrics['people_in_company'] }}</div>
+                        <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">People in Company</span>
+                        <div class="font-display font-bold text-3xl my-2 text-vellum">{{ $companyMetrics['people_in_company'] }}</div>
                         <span class="text-xs text-vellum-muted">Total active directory size</span>
                     </div>
 
                     <!-- Admins count -->
                     <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                        <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Admins</span>
-                        <div class="font-display font-medium text-3xl my-2 text-slate-light">{{ $companyMetrics['admins'] }}</div>
+                        <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Admins</span>
+                        <div class="font-display font-bold text-3xl my-2 text-slate-light">{{ $companyMetrics['admins'] }}</div>
                         <span class="text-xs text-vellum-muted">Platform administrators</span>
                     </div>
 
                     <!-- Managers count -->
                     <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                        <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Managers</span>
-                        <div class="font-display font-medium text-3xl my-2 text-slate-light">{{ $companyMetrics['managers'] }}</div>
+                        <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Managers</span>
+                        <div class="font-display font-bold text-3xl my-2 text-slate-light">{{ $companyMetrics['managers'] }}</div>
                         <span class="text-xs text-vellum-muted">Department supervisors</span>
                     </div>
 
                     <!-- Employees count -->
                     <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                        <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Employees</span>
-                        <div class="font-display font-medium text-3xl my-2 text-forest-light">{{ $companyMetrics['employees'] }}</div>
+                        <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Employees</span>
+                        <div class="font-display font-bold text-3xl my-2 text-forest-light">{{ $companyMetrics['employees'] }}</div>
                         <span class="text-xs text-vellum-muted">Workforce members</span>
                     </div>
 
                     <!-- Correction Requests -->
                     <a href="{{ route('admin.corrections.index') }}" class="p-6 border-r border-hairline last:border-none flex flex-col justify-between hover:bg-brass/[0.04] transition duration-150">
-                        <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider text-burgundy-light">Pending Corrections</span>
-                        <div class="font-display font-medium text-3xl my-2 text-burgundy-light">{{ $companyMetrics['pending_corrections'] }}</div>
+                        <span class="text-[11px] font-bold text-burgundy uppercase tracking-wider">Pending Corrections</span>
+                        <div class="font-display font-bold text-3xl my-2 text-burgundy-light">{{ $companyMetrics['pending_corrections'] }}</div>
                         <span class="text-xs text-burgundy-light font-semibold">Requires HR review</span>
                     </a>
                 </div>
@@ -100,15 +100,15 @@
 
         <!-- Overview Stats Grid (Briefing Strip Layout) -->
         <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Today's Punctuality Briefing</h4>
+            <h4 class="text-[13px] font-bold text-vellum uppercase tracking-wider">Today's Punctuality Briefing</h4>
             <div class="grid grid-cols-1 md:grid-cols-4 border border-hairline bg-surface rounded overflow-hidden">
                 <!-- Checked In Today -->
                 <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                    <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Checked In Today</span>
-                    <div class="font-display font-medium text-3xl my-2">
+                    <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Checked In Today</span>
+                    <div class="font-display font-bold text-3xl my-2 text-vellum">
                         {{ $stats['present'] }} <span class="text-base text-vellum-muted font-sans font-normal">/ {{ $stats['total'] }}</span>
                     </div>
-                    <span class="text-xs text-forest">
+                    <span class="text-xs text-forest font-semibold">
                         @php
                             $percentage = $stats['total'] > 0 ? round(($stats['present'] / $stats['total']) * 100) : 0;
                         @endphp
@@ -118,18 +118,18 @@
 
                 <!-- Late Today -->
                 <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                    <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider text-cognac-light">Late Arrivals Today</span>
-                    <div class="font-display font-medium text-3xl my-2 text-cognac-light">{{ $stats['late'] }}</div>
-                    <span class="text-xs text-cognac-light">average {{ $stats['average_late_minutes'] }}m past grace</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-cognac">Late Arrivals Today</span>
+                    <div class="font-display font-bold text-3xl my-2 text-cognac">{{ $stats['late'] }}</div>
+                    <span class="text-xs text-cognac font-semibold">average {{ $stats['average_late_minutes'] }}m past grace</span>
                 </div>
 
                 <!-- On Leave Today -->
                 <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                    <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider text-slate-light">On Leave Today</span>
-                    <div class="font-display font-medium text-3xl my-2 text-slate-light">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate">On Leave Today</span>
+                    <div class="font-display font-bold text-3xl my-2 text-slate">
                         {{ $stats['on_leave'] }} <span class="text-base text-vellum-muted font-sans font-normal">+{{ $stats['wfh'] }} WFH</span>
                     </div>
-                    <span class="text-xs text-slate-light truncate">
+                    <span class="text-xs text-slate truncate font-semibold">
                         @php
                             $leaveNames = collect($stats['exceptions']['on_leave'])->pluck('name')->merge(
                                 collect($stats['exceptions']['wfh'])->map(fn($w) => $w['name'] . ' (WFH)')
@@ -141,9 +141,9 @@
 
                 <!-- Absent Today -->
                 <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                    <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider text-burgundy-light">Absent, unverified</span>
-                    <div class="font-display font-medium text-3xl my-2 text-burgundy-light">{{ $stats['absent'] }}</div>
-                    <span class="text-xs text-burgundy-light">no check-in, no leave logs</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-burgundy">Absent, unverified</span>
+                    <div class="font-display font-bold text-3xl my-2 text-burgundy">{{ $stats['absent'] }}</div>
+                    <span class="text-xs text-burgundy font-semibold">no check-in, no leave logs</span>
                 </div>
             </div>
         </div>

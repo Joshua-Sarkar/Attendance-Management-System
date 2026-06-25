@@ -4,7 +4,7 @@
             <div class="flex items-center gap-4">
                 <h1 class="font-display font-medium text-[32px] tracking-wide text-vellum">Attendance Logs</h1>
                 <!-- Export CSV Placeholder -->
-                <button type="button" disabled class="inline-flex items-center bg-surface-raised text-vellum-faint font-semibold py-2 px-4 rounded text-xs uppercase tracking-wider border border-hairline opacity-50 cursor-not-allowed shadow-sm h-[38px]" title="Export CSV feature coming soon">
+                <button type="button" disabled class="inline-flex items-center justify-center bg-surface-raised text-vellum-faint font-bold py-2 px-4 rounded text-xs uppercase tracking-wider border border-hairline opacity-50 cursor-not-allowed shadow-sm h-[38px]" title="Export CSV feature coming soon">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>

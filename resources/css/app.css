@@ -10,11 +10,11 @@
     --canvas:#FAF8F5;            /* Warm Ivory: canvas background */
     --surface:#F4EFE6;           /* Soft Cream: panels/containers */
     --surface-raised:#FBF9F6;    /* Parchment: input backgrounds */
-    --hairline: rgba(156, 124, 56, 0.16);
-    --hairline-strong: rgba(156, 124, 56, 0.28);
-    --vellum:#24211E;            /* Dark Charcoal: primary body */
-    --vellum-muted:#5E5852;      /* Muted Charcoal: subtext */
-    --vellum-faint:#8A8177;      /* Faint Charcoal: labels/dates */
+    --hairline: rgba(156, 124, 56, 0.22);
+    --hairline-strong: rgba(156, 124, 56, 0.38);
+    --vellum:#1B1917;            /* Dark Charcoal: primary body */
+    --vellum-muted:#4D463F;      /* Muted Charcoal: subtext */
+    --vellum-faint:#6D645A;      /* Faint Charcoal: labels/dates */
     --vellum-light:#ECE4D3;      /* Vellum Light: sidebar text */
     --vellum-light-muted:#9C9180; /* Vellum Muted: sidebar copy */
     --vellum-light-faint:#6B6457; /* Vellum Faint: sidebar labels */
@@ -69,8 +69,9 @@
 
 .panel-head h2 {
     font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 16px;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--vellum);
 }
 
 .panel-head .meta {
@@ -78,6 +79,17 @@
     color: var(--vellum-faint);
     font-family: var(--font-mono);
 }
+
+/* Form inputs, select options, and placeholders readability overrides */
+input, select, textarea {
+    color: var(--vellum) !important;
+}
+
+::placeholder {
+    color: var(--vellum-muted) !important;
+    opacity: 0.65 !important;
+}
+
 
 /* Glassmorphism Panel Container */
 .glass-panel {
@@ -388,5 +400,32 @@ select {
     background-size: 1.25em 1.25em !important;
     padding-right: 2.5rem !important;
 }
+
+/* Table layout readability enhancements (slightly increase row height) */
+table tbody tr td {
+    padding-top: 1.125rem !important; /* py-4.5 equivalent */
+    padding-bottom: 1.125rem !important;
+}
+
+/* Sidebar navigation items readability */
+.nav-item {
+    font-weight: 500 !important;
+}
+
+/* Page titles visual emphasis */
+h1 {
+    font-weight: 600 !important; /* Semibold/bold page titles */
+}
+
+/* Enforce medium weight and darker contrast for all field and form labels */
+label, 
+span.text-vellum-faint.uppercase,
+span.text-xs.font-semibold.text-vellum-faint.uppercase {
+    font-weight: 500 !important;
+    color: var(--vellum-muted) !important;
+}
+
+
+
 
 

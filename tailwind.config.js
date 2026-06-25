@@ -17,11 +17,11 @@ export default {
                 'canvas': '#FAF8F5',          /* Warm Ivory: canvas background */
                 'surface': '#F4EFE6',         /* Soft Cream: panels/containers */
                 'surface-raised': '#FBF9F6',  /* Parchment: input backgrounds */
-                'hairline': 'rgba(156, 124, 56, 0.16)',
-                'hairline-strong': 'rgba(156, 124, 56, 0.28)',
-                'vellum': '#24211E',          /* Dark Charcoal: primary body */
-                'vellum-muted': '#5E5852',    /* Muted Charcoal: subtext */
-                'vellum-faint': '#8A8177',    /* Faint Charcoal: labels/dates */
+                'hairline': 'rgba(156, 124, 56, 0.22)',
+                'hairline-strong': 'rgba(156, 124, 56, 0.38)',
+                'vellum': '#1B1917',          /* Dark Charcoal: primary body */
+                'vellum-muted': '#4D463F',    /* Muted Charcoal: subtext */
+                'vellum-faint': '#6D645A',    /* Faint Charcoal: labels/dates */
                 'vellum-light': '#ECE4D3',    /* Vellum Light: sidebar text */
                 'vellum-light-muted': '#9C9180', /* Vellum Muted: sidebar copy */
                 'vellum-light-faint': '#6B6457', /* Vellum Faint: sidebar labels */

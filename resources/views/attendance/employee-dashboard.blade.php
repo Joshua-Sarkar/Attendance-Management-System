@@ -8,19 +8,19 @@
 
     <!-- Stats KPI Cards (Briefing Strip Layout) -->
     <div class="space-y-3">
-        <h4 class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Attendance Briefing</h4>
+        <h4 class="text-[13px] font-bold text-vellum uppercase tracking-wider">Attendance Briefing</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 border border-hairline bg-surface rounded overflow-hidden">
             <!-- Attendance Rate -->
             <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Attendance Rate (Month)</span>
-                <div class="font-display font-medium text-3xl my-2 text-forest">{{ $month_attendance_rate }}%</div>
+                <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Attendance Rate (Month)</span>
+                <div class="font-display font-bold text-3xl my-2 text-forest">{{ $month_attendance_rate }}%</div>
                 <span class="text-xs text-vellum-muted">Monthly average percentage</span>
             </div>
 
             <!-- Leaves Remaining -->
             <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Leaves Remaining</span>
-                <div class="font-display font-medium text-3xl my-2 text-slate">
+                <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Leaves Remaining</span>
+                <div class="font-display font-bold text-3xl my-2 text-slate">
                     {{ $leaves_remaining }} <span class="text-base text-vellum-muted font-sans font-normal">days</span>
                 </div>
                 <span class="text-xs text-vellum-muted">Accrued leaves balance</span>
@@ -28,8 +28,8 @@
 
             <!-- On-Time Streak -->
             <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">On-Time Streak</span>
-                <div class="font-display font-medium text-3xl my-2 text-brass">
+                <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">On-Time Streak</span>
+                <div class="font-display font-bold text-3xl my-2 text-brass">
                     {{ $on_time_streak }} <span class="text-base text-vellum-muted font-sans font-normal">days</span>
                 </div>
                 <span class="text-xs text-vellum-muted">Consecutive on-time days</span>
@@ -37,8 +37,8 @@
 
             <!-- Total Hours Worked -->
             <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
-                <span class="text-[10.5px] font-semibold text-vellum-faint uppercase tracking-wider">Total Hours (Month)</span>
-                <div class="font-display font-medium text-3xl my-2 text-vellum">
+                <span class="text-[11px] font-semibold text-vellum-muted uppercase tracking-wider">Total Hours (Month)</span>
+                <div class="font-display font-bold text-3xl my-2 text-vellum">
                     {{ number_format($month_hours, 1) }} <span class="text-base text-vellum-muted font-sans font-normal">h</span>
                 </div>
                 <span class="text-xs text-vellum-muted">Completed check-in hours</span>
