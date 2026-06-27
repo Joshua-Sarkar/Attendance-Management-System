@@ -13,12 +13,23 @@ class Attendance extends Model
         'check_in_time',
         'check_out_time',
         'status',
+        'classification',
+        'is_overridden',
+        'overridden_by',
+        'overridden_at',
+        'override_reason',
+        'override_type',
+        'automatic_status',
+        'automatic_classification',
+        'automatic_classification_reason',
     ];
 
     protected $casts = [
         'date' => 'date',
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
+        'is_overridden' => 'boolean',
+        'overridden_at' => 'datetime',
     ];
 
     protected $appends = [
@@ -34,23 +45,30 @@ class Attendance extends Model
             return 0;
         }
 
-        $transitionDate = config('attendance.new_rules_start_date');
-        $useNewRules = false;
-
-        if ($transitionDate) {
-            $useNewRules = $this->date->format('Y-m-d') >= $transitionDate;
-        }
-
-        if ($useNewRules) {
-            $startTime = config('attendance.start_time', '09:30');
-            $graceMinutes = config('attendance.grace_minutes', 15);
+        $department = $this->user?->department;
+        if ($department && $department->shift_start_time) {
+            $startTime = $department->shift_start_time;
+            $graceMinutes = $department->grace_minutes ?? 5;
         } else {
-            $startTime = '09:00';
-            $graceMinutes = 15;
+            $transitionDate = config('attendance.new_rules_start_date');
+            $useNewRules = false;
+
+            if ($transitionDate) {
+                $useNewRules = $this->date->format('Y-m-d') >= $transitionDate;
+            }
+
+            if ($useNewRules) {
+                $startTime = config('attendance.start_time', '09:30');
+                $graceMinutes = config('attendance.grace_minutes', 15);
+            } else {
+                $startTime = '09:00';
+                $graceMinutes = 15;
+            }
         }
 
         $checkIn = \Carbon\Carbon::parse($this->check_in_time);
-        $graceEnd = $checkIn->copy()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);
+        $shiftStart = $checkIn->copy()->setTimeFromTimeString($startTime);
+        $graceEnd = $shiftStart->copy()->addMinutes($graceMinutes);
 
         $checkInMin = $checkIn->copy()->second(0)->microsecond(0);
         $graceEndMin = $graceEnd->copy()->second(0)->microsecond(0);

@@ -137,6 +137,9 @@ erDiagram
   * `name` (`varchar(255)`): Department name.
   * `code` (`varchar(10)`, UK, Nullable): Short code (e.g. `ENG`).
   * `description` (`text`, Nullable): Description block.
+  * `shift_start_time` (`time`): Shift start time boundary.
+  * `shift_end_time` (`time`): Shift end time boundary.
+  * `grace_minutes` (`int`): Buffer grace period minutes.
 * **Table Columns (`users`):**
   * `employee_id` (`varchar(255)`, UK, Nullable): Standardized code (e.g. `EMP00010`).
   * `status` (`enum('active','inactive','resigned')`, Default: `'active'`).
@@ -223,7 +226,16 @@ erDiagram
   * `user_id` (`bigint unsigned`, FK -> `users.id`, ON DELETE CASCADE).
   * `date` (`date`): Calendar date.
   * `check_in_time` / `check_out_time` (`timestamp`, Nullable).
-  * `status` (`enum('present','absent','late','on_leave','wfh')`, Default: `'absent'`).
+  * `status` (`string`, Default: `'absent'`): Daily presence state.
+  * `classification` (`string`, Default: `'full_day'`): Working day split.
+  * `is_overridden` (`boolean`, Default: `false`): Manual flag indicator.
+  * `overridden_by` (`bigint unsigned`, FK -> `users.id`, Nullable): Admin ID.
+  * `overridden_at` (`timestamp`, Nullable): Override action time.
+  * `override_reason` (`text`, Nullable): Change notes.
+  * `override_type` (`string`, Nullable): Override type (`individual` or `bulk`).
+  * `automatic_status` (`string`, Nullable): Pre-override presence state.
+  * `automatic_classification` (`string`, Nullable): Pre-override working split.
+  * `automatic_classification_reason` (`string`, Nullable): Late arrival or insufficient hours indicator.
   * *Index Constraints:* UNIQUE KEY `attendances_user_id_date_unique (user_id, date)`.
 
 #### D. Verification Suite
@@ -239,6 +251,13 @@ erDiagram
   * *Scenarios:*
     1. HR can filter logs by date, status, department, and employee name.
     2. The audit center correctly calculates late delay averages.
+* **Test File:** [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php)
+  * *Scenarios:*
+    1. Only admins can access override actions.
+    2. Individual overrides update status, classification, and cache pre-override values.
+    3. Bulk overrides update multiple targets simultaneously.
+    4. Department-specific shifts are resolved dynamically.
+    5. Late arrivals trigger half-day classifications, while check-outs check for working-hour policies.
 
 ---
 

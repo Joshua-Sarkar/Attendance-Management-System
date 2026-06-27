@@ -227,20 +227,21 @@
                     $checkOutStr = $day['check_out'] ? $day['check_out']->timezone('Asia/Kolkata')->format('h:i A') : '—';
                     
                     $durationStr = $day['hours'] ? ' · ' . number_format($day['hours'], 1) . 'h worked' : '';
+                    $classificationStr = ($status !== 'weekend' && isset($day['classification']) && $day['classification'] === 'half_day') ? ' · Half Day' : '';
                     
                     $desc = '';
                     if ($status === 'present') {
-                        $desc = 'Checked in at ' . $checkInStr . ' · Checked out at ' . $checkOutStr . $durationStr;
+                        $desc = 'Checked in at ' . $checkInStr . ' · Checked out at ' . $checkOutStr . $durationStr . $classificationStr;
                     } elseif ($status === 'late') {
-                        $desc = 'Checked in late at ' . $checkInStr . ' · ' . (isset($day['late_minutes']) ? $day['late_minutes'] . 'm past grace' : 'past grace') . $durationStr;
+                        $desc = 'Checked in late at ' . $checkInStr . ' · ' . (isset($day['late_minutes']) ? $day['late_minutes'] . 'm past grace' : 'past grace') . $durationStr . $classificationStr;
                     } elseif ($status === 'on_leave') {
-                        $desc = 'Approved leave';
+                        $desc = 'Approved leave' . $classificationStr;
                     } elseif ($status === 'wfh') {
-                        $desc = 'Working from home' . $durationStr;
+                        $desc = 'Working from home' . $durationStr . $classificationStr;
                     } elseif ($status === 'weekend') {
                         $desc = 'Weekend · Non-working day';
                     } else {
-                        $desc = 'No check-in recorded';
+                        $desc = 'No check-in recorded' . $classificationStr;
                     }
                 @endphp
                 <div class="ledger-row grid grid-cols-[24px_110px_1fr_120px] items-center py-4 px-2 border-b border-hairline last:border-none hover:bg-brass/[0.04] transition duration-150 @if($day['is_weekend']) opacity-60 @endif">

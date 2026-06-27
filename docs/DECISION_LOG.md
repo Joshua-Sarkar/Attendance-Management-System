@@ -452,4 +452,31 @@ Refactor `EmployeeController` and `EmployeeImportService` to retrieve the passwo
   * [routes/web.php](file:///c:/Users/Lenovo/AMS-V1/routes/web.php) (removed debug route)
 * **Related Release:** Phase 4.9 (`v1.2-phase-4.9.0`)
 
+---
+
+## ADR 17: Sprint 2 Attendance Engine V2 Upgrade
+
+### Problem
+Attendance engine policies were static and configurations-based, preventing departments from maintaining flexible shift policies dynamically. Also, overrides, classification logic (Full Day/Half Day), and early check-ins were not cleanly handled.
+
+### Context
+We want department shift timings (Shift Start, Shift End, and Grace Period) to be data-driven, allowing HR/Healthcare to configure independent shifts. We also need to separate attendance status from payroll classification, record override audit trails (is_overridden, overridden_by, override_reason, override_type), and track original automatic decisions before override edits.
+
+### Alternatives Considered
+* **Option A: Extended Config arrays:** Map shifts within config files.
+  * *Trade-off:* Hardcoded values cannot be easily adjusted by admin users or managed in future UIs.
+* **Option B: Database Shift timings on Departments and Audit columns on Attendances (Chosen):** Save shift parameters on `departments` and override audit fields directly in `attendances` table.
+
+### Chosen Solution
+Implement Option B. Created migrations adding timings to `departments` table and audit/classification fields to `attendances`. Refactored `AttendanceService` to resolve shift schedules dynamically from employee departments. Added `AttendanceOverrideController` to manage admin overrides. Created comprehensive testing suite in `AttendanceOverrideTest`.
+
+### Consequences
+* **Positive:** Dynamic data-driven shift policies, clear distinction between late arrival and insufficient hours reasons, and comprehensive administrative auditability.
+* **Related Files:**
+  * [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (updated schema, casts, and minutes formula)
+  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (refactored check-in/out evaluations)
+  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) (new override controller)
+  * [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php) (new feature tests)
+* **Related Release:** Phase 5.0 (`v1.2-phase-5.0.0`)
+
 

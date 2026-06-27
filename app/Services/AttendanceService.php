@@ -16,18 +16,26 @@ class AttendanceService
     public function checkIn(User $user): Attendance
     {
         $today = today();
-
-        // Determine check-in status (late if after configured start time + grace threshold)
         $now = now();
-        $startTime = config('attendance.start_time', '09:00');
-        $graceMinutes = config('attendance.grace_minutes', 15);
+
+        $department = $user->department;
+        $startTime = $department?->shift_start_time ?? '09:30:00';
+        $graceMinutes = $department?->grace_minutes ?? 5;
 
         $threshold = today()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);
 
         $nowMin = $now->copy()->second(0)->microsecond(0);
         $thresholdMin = $threshold->copy()->second(0)->microsecond(0);
 
-        $status = $nowMin->greaterThan($thresholdMin) ? 'late' : 'present';
+        if ($nowMin->greaterThan($thresholdMin)) {
+            $status = 'late';
+            $classification = 'half_day';
+            $reason = 'late_arrival';
+        } else {
+            $status = 'present';
+            $classification = 'full_day';
+            $reason = null;
+        }
 
         $attendance = Attendance::firstOrCreate(
             [
@@ -36,6 +44,10 @@ class AttendanceService
             ],
             [
                 'status' => $status,
+                'automatic_status' => $status,
+                'classification' => $classification,
+                'automatic_classification' => $classification,
+                'automatic_classification_reason' => $reason,
             ]
         );
 
@@ -43,6 +55,10 @@ class AttendanceService
         if (is_null($attendance->check_in_time)) {
             $attendance->check_in_time = $now;
             $attendance->status = $status;
+            $attendance->automatic_status = $status;
+            $attendance->classification = $classification;
+            $attendance->automatic_classification = $classification;
+            $attendance->automatic_classification_reason = $reason;
             $attendance->save();
         }
 
@@ -64,6 +80,27 @@ class AttendanceService
         // Only set check-out time if not already checked out
         if (is_null($attendance->check_out_time)) {
             $attendance->check_out_time = now();
+
+            // Calculate hours worked
+            $hours = $attendance->check_in_time->diffInMinutes($attendance->check_out_time, true) / 60.0;
+
+            // Check if it's already classified as half_day due to late_arrival
+            if ($attendance->automatic_classification_reason !== 'late_arrival') {
+                if ($hours < 4.0) {
+                    $attendance->automatic_classification = 'half_day';
+                    $attendance->automatic_classification_reason = 'insufficient_hours';
+                    if (!$attendance->is_overridden) {
+                        $attendance->classification = 'half_day';
+                    }
+                } else {
+                    $attendance->automatic_classification = 'full_day';
+                    $attendance->automatic_classification_reason = null;
+                    if (!$attendance->is_overridden) {
+                        $attendance->classification = 'full_day';
+                    }
+                }
+            }
+
             $attendance->save();
         }
 
@@ -93,6 +130,9 @@ class AttendanceService
                     'user_id' => $user->id,
                     'date' => today(),
                     'status' => $status,
+                    'automatic_status' => $status,
+                    'classification' => 'full_day',
+                    'automatic_classification' => 'full_day',
                 ]);
             }
         }
@@ -195,6 +235,9 @@ class AttendanceService
                     'user_id' => $employee->id,
                     'date' => Carbon::parse($date),
                     'status' => $status,
+                    'automatic_status' => $status,
+                    'classification' => 'full_day',
+                    'automatic_classification' => 'full_day',
                 ]);
             }
 

@@ -72,12 +72,13 @@ This document serves as the primary entry point for developers, maintainers, aud
   * [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (includes late minutes logic)
   * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (check-in/out logic)
 
-### 5. Attendance Audit Center
-* **Purpose:** A centralized interface for Admins to search logs, view check-in timelines, analyze exceptions, and update statuses.
-* **Current Status:** Operational.
+### 5. Attendance Audit & Override Center
+* **Purpose:** A centralized interface for Admins to search logs, view timelines, and apply individual or bulk overrides on status and classifications (Full/Half Day) with full audit log capabilities.
+* **Current Status:** Operational. Fully database-driven department shift policies.
 * **Primary Files:**
-  * [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php)
-  * `resources/views/admin/attendance-logs.blade.php`
+  * [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php) (read operations)
+  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) (write overrides)
+  * `resources/views/admin/attendance-logs.blade.php` (UI modals)
 
 ### 6. Leave Management
 * **Purpose:** Allows employees to submit leave requests. Handles approval workflows and cancels.

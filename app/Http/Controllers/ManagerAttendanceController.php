@@ -87,6 +87,8 @@ class ManagerAttendanceController extends Controller
                 'check_out' => $record?->check_out_time,
                 'status' => $status,
                 'hours' => $hours,
+                'classification' => $record?->classification ?? 'full_day',
+                'is_overridden' => $record?->is_overridden ?? false,
             ];
         }
 

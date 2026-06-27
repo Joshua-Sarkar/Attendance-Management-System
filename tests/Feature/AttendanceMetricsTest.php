@@ -26,7 +26,11 @@ class AttendanceMetricsTest extends TestCase
         config(['attendance.start_time' => '09:00']);
         config(['attendance.grace_minutes' => 15]);
 
-        $this->department = Department::create(['name' => 'Engineering']);
+        $this->department = Department::create([
+            'name' => 'Engineering',
+            'shift_start_time' => '09:00:00',
+            'grace_minutes' => 15,
+        ]);
 
         $this->admin = User::create([
             'employee_id' => 'ADM001',

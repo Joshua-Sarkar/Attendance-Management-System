@@ -10,6 +10,9 @@ class Department extends Model
         'name',
         'code',
         'description',
+        'shift_start_time',
+        'shift_end_time',
+        'grace_minutes',
     ];
 
     public function users(): \Illuminate\Database\Eloquent\Relations\HasMany
