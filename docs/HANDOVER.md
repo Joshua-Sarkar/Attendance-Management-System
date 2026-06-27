@@ -19,11 +19,11 @@ This document serves as the primary entry point for developers, maintainers, aud
 
 ## 2. Current Snapshot
 
-* **Current Version:** `v1.2-phase-4.8.0`
-* **Latest Release Tag:** `v1.2-phase-4.8.0`
+* **Current Version:** `v1.2-phase-4.9.0`
+* **Latest Release Tag:** `v1.2-phase-4.9.0`
 * **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to Phase 4.7 consolidation commit)
 * **Current Branch:** `main`
-* **Latest Commit:** `v1.2-phase-4.8.0`
+* **Latest Commit:** `v1.2-phase-4.9.0`
 * **Production URL:** Hostinger production directory root (cPanel mappings active)
 * **Production Database:** MySQL 8.0
 * **Current Deployment Environment:** Linux Shared Web Server (Hostinger PHP 8.2 runtime)
@@ -155,12 +155,12 @@ AMS-V1 uses 9 primary tables. Relationships are managed at the database level us
 
 ## 7. Current Known Issues
 
-Currently, there are no known critical issues. The application has 100% test coverage with 98 features tests fully green.
+Currently, there are no known critical issues. The application has 100% test coverage with 103 tests (548 assertions) fully green.
 
 ---
 
-* **Active Phase:** Phase 5 — Payroll Integration (Deferred).
-* **Last Completed Phase:** Phase 4.8 — Executive UI Overhaul.
+* **Active Phase:** Phase 5 — Payroll Integration (Planned).
+* **Last Completed Phase:** Phase 4.9 — Documentation Synchronization & Production Config Refactor.
 * **Next Planned Phase:** **Phase 5 — Payroll Integration**.
 
 ---
@@ -180,9 +180,10 @@ Refer to these documentation files inside the `/docs` directory:
 3. [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md): Unified codebase paths, database schemas, and Pest tests mapped by subsystem.
 4. [DEPLOYMENT_GUIDE.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md): Setup scripts, cPanel deployment playbooks, backup tasks, SemVer rules, and rollback guides.
 5. [AMS_HISTORY.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_HISTORY.md): Narration of requirements evolution, project phase commits, and annotated release tags.
-6. [UI_OVERHAUL_SPEC.md](file:///c:/Users/Lenovo/AMS-V1/docs/UI_OVERHAUL_SPEC.md): Consistency audits, component inventories, design debt items, and Phase 4.8 readiness parameters.
+6. [UI_OVERHAUL_SPEC.md](file:///c:/Users/Lenovo/AMS-V1/docs/UI_OVERHAUL_SPEC.md): Consistency audits, component inventories, design debt items, and Phase 4.9 readiness parameters.
 7. [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md): Immutable Architectural Decision Records (ADRs) logs database.
 8. [GIT_STANDARDS.md](file:///c:/Users/Lenovo/AMS-V1/docs/GIT_STANDARDS.md): Conventional Commits formats, annotated tags criteria, and audit checklists.
+9. [PRODUCTION_READINESS.md](file:///c:/Users/Lenovo/AMS-V1/docs/PRODUCTION_READINESS.md): Production readiness matrix, subsystem statuses (Completed/Planned/Future), environment specifications, and known limitations.
 
 ---
 

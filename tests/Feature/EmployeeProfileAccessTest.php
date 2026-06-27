@@ -198,11 +198,11 @@ test('manually created employee receives DEFAULT_EMPLOYEE_PASSWORD and redirects
     
     $provisioned = session('success_provisioned');
     expect($provisioned['name'])->toBe('Test Default Pass');
-    expect($provisioned['password'])->toBe(env('DEFAULT_EMPLOYEE_PASSWORD'));
+    expect($provisioned['password'])->toBe(config('employees.default_employee_password'));
 
     $user = User::where('email', 'defaultpass@example.com')->first();
     expect($user->must_change_password)->toBeTrue();
-    expect(Illuminate\Support\Facades\Hash::check(env('DEFAULT_EMPLOYEE_PASSWORD'), $user->password))->toBeTrue();
+    expect(Illuminate\Support\Facades\Hash::check(config('employees.default_employee_password'), $user->password))->toBeTrue();
 });
 
 test('logged-in manager can view their direct reports but not other employees', function () {

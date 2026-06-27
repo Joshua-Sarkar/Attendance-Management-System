@@ -119,6 +119,9 @@ class User extends Authenticatable
             }
 
             $unlockDate = $birthday->copy()->subDay()->startOfDay();
+            if ($unlockDate->month !== $birthMonth) {
+                $unlockDate = $birthday->copy()->startOfDay();
+            }
             $expiryDate = $birthday->copy()->addMonths(12)->endOfDay();
 
             // If we are on or after the unlock date, check/create the credit
@@ -184,6 +187,9 @@ class User extends Authenticatable
             }
 
             $unlockDate = $birthday->copy()->subDay()->startOfDay();
+            if ($unlockDate->month !== $birthMonth) {
+                $unlockDate = $birthday->copy()->startOfDay();
+            }
             $expiryDate = $birthday->copy()->addMonths(12)->endOfDay();
 
             if ($date->greaterThanOrEqualTo($unlockDate) && $date->lessThanOrEqualTo($expiryDate)) {

@@ -51,7 +51,11 @@
 
                 <!-- Manager -->
                 <td class="py-4 px-4 text-[16px] text-vellum font-medium">
-                    {{ $department->users->where('role', 'manager')->first()?->name ?? 'None' }}
+                    @php
+                        $manager = $department->users->whereIn('role', ['manager', 'admin'])->first()
+                            ?? $department->users->whereNotNull('manager_id')->first()?->manager;
+                    @endphp
+                    {{ $manager?->name ?? 'None' }}
                 </td>
 
                 <!-- Employees Count -->

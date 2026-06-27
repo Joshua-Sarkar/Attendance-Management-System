@@ -165,29 +165,27 @@ Successfully tested against a real-world workforce dataset.
 
 ### Completed
 
-* Authentication System
-* Role-Based Access Control
-* Department Management
-* Employee Management
-* Attendance Tracking
-* Leave Management
-* Manager Hierarchy
-* Employee Profiles
-* Zimyo Import Engine
-* Production Deployment
-
-### In Progress
-
-* Web-Based Employee Import Interface
-* Employee Overview Dashboard
-* Import Audit Logs
+* Authentication & Onboarding Security (Forced password resets)
+* Department & Workforce Ledger Directory
+* Employee Tabbed Profiles & Dossier (AES-256 field encryption casts)
+* Attendance Tracking & late delay calculations (09:00/09:30 transitions)
+* Attendance Audit Center & log search dashboards
+* Leave Management & Double-Entry Ledger (Accruals command & locks)
+* Zimyo Excel Import Engine & Web Import Interface
+* Profile Correction Requests Queue with sidebar badges
+* Production Configuration Hardening (caching compliance)
+* Automated Pest/PHPUnit Test Suite (103 tests, 548 assertions passing)
 
 ### Planned
 
-* Reporting Module
-* Automated Backups
-* Advanced Analytics
-* Payroll Integration
+* Phase 5 — Payroll Integration algorithms (unpaid hours and salary deductions calculations)
+
+### Future
+
+* Geofencing and biometric checking integrations
+* Two-Factor Authentication (2FA) and OAuth2 logins
+* PDF report exports for attendance audits
+* Document scan uploads (e.g. PDF attachments for Aadhaar/PAN)
 
 ---
 

@@ -105,11 +105,5 @@ Route::middleware('auth')->group(function () {
             ->name('admin.corrections.resolve');
     });
 });
-Route::get('/env-test', function () {
-    return [
-        'env' => env('DEFAULT_EMPLOYEE_PASSWORD'),
-        'config' => config('app.env'),
-    ];
-});
 
 require __DIR__ . '/auth.php';

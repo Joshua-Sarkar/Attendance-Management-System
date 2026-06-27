@@ -83,8 +83,8 @@ class AttendanceVerificationTest extends TestCase
             'description' => 'Customer support'
         ]);
 
-        // 1. Provision employee - verify it assigns DEFAULT_EMPLOYEE_PASSWORD from env
-        $defaultPassword = env('DEFAULT_EMPLOYEE_PASSWORD');
+        // 1. Provision employee - verify it assigns DEFAULT_EMPLOYEE_PASSWORD from config
+        $defaultPassword = config('employees.default_employee_password');
         $autoGenResponse = $this->actingAs($admin)->post(route('employees.store'), [
             'name' => 'Auto Provisioned',
             'email' => 'auto@example.com',

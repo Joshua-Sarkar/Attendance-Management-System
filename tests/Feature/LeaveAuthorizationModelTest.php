@@ -296,4 +296,30 @@ class LeaveAuthorizationModelTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /** @test */
+    public function first_of_month_birthday_unlocks_on_first_day_of_month(): void
+    {
+        // Birthday on July 1, 1999
+        EmployeeProfile::create([
+            'user_id' => $this->employee->id,
+            'date_of_birth' => '1999-07-01',
+        ]);
+
+        // Test at Birthday - 1 day (June 30 - locked/not synced)
+        Carbon::setTestNow('2026-06-30 12:00:00');
+        $this->employee->syncBirthdayCredits();
+        $credit = LeaveCredit::where('user_id', $this->employee->id)->where('source_identifier', 'birthday_2026')->first();
+        $this->assertNull($credit);
+
+        // Test at Birthday (July 1 - unlocked)
+        Carbon::setTestNow('2026-07-01 12:00:00');
+        $this->employee->syncBirthdayCredits();
+        $credit = LeaveCredit::where('user_id', $this->employee->id)->where('source_identifier', 'birthday_2026')->first();
+        $this->assertNotNull($credit);
+        $this->assertEquals('active', $credit->status);
+        $this->assertEquals('2026-07-01', $credit->unlocked_at->format('Y-m-d'));
+
+        Carbon::setTestNow();
+    }
 }

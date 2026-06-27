@@ -415,4 +415,41 @@ Implement Option B. Standardized the `<x-ledger-table>` component to wrap layout
   * [index.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/employees/index.blade.php) (workforce index)
 * **Related Release:** Phase 4.8 (`v1.2-phase-4.8.0` completion)
 
+---
+
+## ADR 16: Migration from env() to config() for Production Configuration Readiness
+
+### Problem
+During production deployment, the application encountered failures when creating or importing employees. The system reported that `DEFAULT_EMPLOYEE_PASSWORD` was not configured, even though the variable was correctly defined in the production `.env` file.
+
+### Context
+In local development, Laravel configuration is not cached, meaning the `env()` helper can dynamically load values from the `.env` file at runtime anywhere in the codebase. However, in production environments, running `php artisan config:cache` compiles all configuration files into a single cached file. Once cached, Laravel disables reading the `.env` file directly, causing all direct `env()` calls outside configuration files to return `null`.
+
+### Alternatives Considered
+* **Option A: Disable Configuration Caching in Production:** Do not run `config:cache` in production.
+  * *Trade-off:* Significant performance degradation on every HTTP request, as Laravel would have to parse `.env` and multiple config files repeatedly.
+* **Option B: Move Variables to config/app.php:** Append the custom variables directly to Laravel's default `config/app.php`.
+  * *Trade-off:* Pollutes the core framework configurations with domain-specific settings, making updates harder to track.
+* **Option C: Dedicated Configuration File & Migration to config() (Chosen):** Create a dedicated `config/employees.php` file and refactor all references to use `config()`.
+
+### Chosen Solution
+Implement Option C. Create [config/employees.php](file:///c:/Users/Lenovo/AMS-V1/config/employees.php) to return the environment variable:
+```php
+return [
+    'default_employee_password' => env('DEFAULT_EMPLOYEE_PASSWORD'),
+];
+```
+Refactor `EmployeeController` and `EmployeeImportService` to retrieve the password via `config('employees.default_employee_password')`. Additionally, refactor feature tests to use `config(['employees.default_employee_password' => ...])` rather than relying solely on `putenv` or modifying global `$_ENV`/`$_SERVER` arrays, ensuring test isolation and config-caching compatibility. Remove any temporary debug routes (like `/env-test`).
+
+### Consequences
+* **Positive:** Complete compatibility with Laravel's production configuration caching, boosting performance and preventing runtime environment failures. Clear isolation of employee-related configuration settings.
+* **Negative:** Requires developers to define new settings in configuration files first rather than calling `env()` directly in controllers.
+* **Related Files:**
+  * [employees.php](file:///c:/Users/Lenovo/AMS-V1/config/employees.php) (new configuration file)
+  * [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php) (controller updates)
+  * [EmployeeImportService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeImportService.php) (service updates)
+  * [PasswordStrategySecurityTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/PasswordStrategySecurityTest.php) (tests update)
+  * [routes/web.php](file:///c:/Users/Lenovo/AMS-V1/routes/web.php) (removed debug route)
+* **Related Release:** Phase 4.9 (`v1.2-phase-4.9.0`)
+
 

@@ -100,6 +100,12 @@ Deploying to Hostinger Shared Linux Servers using cPanel access:
    php artisan view:cache
    ```
 
+   > [!IMPORTANT]
+   > **Laravel Configuration Caching & env() Usage Rules:**
+   > In production, you must run `php artisan config:cache` to optimize performance. 
+   > Once configurations are cached, the `.env` file is NOT parsed at runtime, and all direct calls to the `env()` helper function outside of configuration files (in `config/*.php`) will return `null`.
+   > Always define environment variables in configuration files (e.g., `config/employees.php`) and retrieve them using the `config()` helper (e.g., `config('employees.default_employee_password')`). Direct calls to `env()` inside controllers, models, or services will resolve to `null` and cause application crashes.
+
 ---
 
 ## 3. Production Migration Checklist
@@ -171,7 +177,7 @@ To return the code to a previous release tag:
 git fetch --tags
 
 # Force checkout the target tag
-git checkout v1.2-phase-4.7.3
+git checkout v1.2-phase-4.8.0
 
 # Re-run build and dependency setup to match this release state
 composer install --no-dev --optimize-autoloader
@@ -223,7 +229,7 @@ AMS-V1 follows **Semantic Versioning 2.0.0** (SemVer) rules.
   * **`Major`**: Breaking API changes, major redesigns, or structural database reorganizations.
   * **`Minor`**: New features, additional modules, or functional extensions (e.g. adding the import engine).
   * **`Patch`**: Bug fixes, minor layout adjustments, security updates, or database index changes.
-* **`v[Major].[Minor]-phase-[PhaseNum]`**: E.g. `v1.2-phase-4.7.3`
+* **`v[Major].[Minor]-phase-[PhaseNum]`**: E.g. `v1.2-phase-4.9.0`
   * Applied at the completion of a major phase to coordinate progress reports.
 
 ---

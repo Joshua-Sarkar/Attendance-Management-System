@@ -1,6 +1,6 @@
 # AMS-V1 Canonical Design Specification
 
-This document serves as the single canonical UI reference and engineering design system for the **Workforce Ledger Overhaul (Phase 4.8)** of the Attendance Management System (AMS-V1). All Blade files, HTML layouts, CSS variables, and Tailwind rules must conform to these measurements and behavioral guidelines.
+This document serves as the single canonical UI reference and engineering design system for the **Workforce Ledger Overhaul (Phase 4.9)** of the Attendance Management System (AMS-V1). All Blade files, HTML layouts, CSS variables, and Tailwind rules must conform to these measurements and behavioral guidelines.
 
 ---
 

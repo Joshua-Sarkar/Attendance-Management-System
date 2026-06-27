@@ -202,6 +202,11 @@ test('it imports employees and updates profiles correctly from xlsx', function (
     expect($profile1->years_completed)->toBe('5 Year, 3 Month');
     expect($profile1->overall_year_experience)->toBe('11 Year, 10 Month, 12 Days');
 
+    // Verify birthday credit was initialized correctly
+    $birthdayCredit = \App\Models\LeaveCredit::where('user_id', $user1->id)->where('source_identifier', 'birthday_2026')->first();
+    expect($birthdayCredit)->not->toBeNull();
+    expect($birthdayCredit->status)->toBe('active');
+
     // User Two should be created and linked to User One as manager
     $user2 = User::where('employee_id', 'EMP00002')->first();
     expect($user2)->not->toBeNull();

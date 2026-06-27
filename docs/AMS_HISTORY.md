@@ -26,6 +26,7 @@ The table below maps the development timeline, indicating completion commits, in
 | 14 | **Phase 4.7.2** | `70cd6cc` | None | `v1.2-phase-4.7.2` | **Leave Authorization System:** Reusable credits engine, planned/unplanned types, birthday credit sync, and approval-driven attendance. |
 | 15 | **Phase 4.7.3** | `c5a0652` (Code) | `ff023b2`, `d88d3d4`, `89d9987`, `d8bc202` | `v1.2-phase-4.7.3` | **Readability & Usability Pass:** Standardized table padding, hovers, list alignments, and desaturated tags. Skinned inputs to dark theme. |
 | 16 | **Phase 4.8** | `v1.2-phase-4.8.0` | `4f87741`, `60de647`, `0f9907b` | `v1.2-phase-4.8.0` | **Release Candidate UI Overhaul & Polish:** Standardized all 7 organizational registries to a unified `<x-ledger-table>` ledger grid. Deduplicated action triggers from the Employee Dossier header (relocating all controls to the right-hand summary card). Centered action buttons horizontally next to the title headings. Fixed local test temp file offsets. |
+| 17 | **Phase 4.9** | `v1.2-phase-4.9.0` | None | `v1.2-phase-4.9.0` | **Documentation Synchronization & Production Config Refactor:** Refactored direct `env()` environment helper usages in application code to Laravel configuration values to ensure configuration caching compliance. Cleaned up `/env-test` temporary debugging routes. Synchronized all documentation files across `/docs` with identical version (`v1.2-phase-4.9.0`) and state, and aligned all tests to configuration-based overrides. |
 
 ---
 
@@ -81,6 +82,9 @@ git tag -a v1.2-phase-4.7.3 716bd4a -m "Phase 4.7.3 complete - Readability & Usa
 
 # Phase 4.8 (Release Candidate UI Overhaul & Polish)
 git tag -a v1.2-phase-4.8.0 -m "Phase 4.8 complete - Unified ledger grids across Workforce, Departments, Leaves, Attendance and Correction Requests registries, header action button vertical alignments, Employee Dossier cleanup, and test warnings remediation"
+
+# Phase 4.9 (Documentation Synchronization & Production Config Refactor)
+git tag -a v1.2-phase-4.9.0 -m "Phase 4.9 complete - Refactored env() usages to config() for configuration caching compliance, removed debug routes, and synchronized all documents across /docs directory to v1.2-phase-4.9.0"
 ```
 
 ---
@@ -161,3 +165,13 @@ git tag -a v1.2-phase-4.8.0 -m "Phase 4.8 complete - Unified ledger grids across
 * **Business Problem:** Spacing density, low-contrast tags, and light-mode remnants in inputs and profiles.
 * **Details:** Standardized cell padding (`py-3.5 px-5`), row hovers (`bg-brass/[0.04]`), and desaturated tag styles. Re-skinned Breeze forms to dark-theme panel components.
 * **Files:** `resources/css/app.css` [MODIFY], `tailwind.config.js` [MODIFY], `employees/create.blade.php` [MODIFY], `profile/edit.blade.php` [MODIFY].
+
+### Phase 4.8 — Release Candidate UI Overhaul & Polish
+* **Business Problem:** Registry listings had structural inconsistencies, action buttons had misalignments, and the Employee Dossier had redundant buttons.
+* **Details:** Consolidated all registries to use a unified `<x-ledger-table>`. Relocated header action triggers in the Employee Dossier to the right-hand metadata summary card. Centered page action buttons. Fixed local test timezone temp file offsets.
+* **Files:** [ledger-table.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/ledger-table.blade.php) [NEW], [show.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/employees/show.blade.php) [MODIFY], [index.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/employees/index.blade.php) [MODIFY], [app.css](file:///c:/Users/Lenovo/AMS-V1/resources/css/app.css) [MODIFY].
+
+### Phase 4.9 — Documentation Synchronization & Production Config Refactor
+* **Business Problem:** Invoking the `env()` helper outside of configuration files returns `null` when configuration is cached in production. Additionally, the documentation sets had divergent version identifiers and phase references.
+* **Details:** Introduced `config/employees.php` configuration wrapper. Migrated all direct code references of `DEFAULT_EMPLOYEE_PASSWORD` to use `config()`. Refactored tests to use container-level configuration overrides. Removed temporary `/env-test` debugging routes. Audited and synchronized the entire `/docs` directory to version `v1.2-phase-4.9.0`.
+* **Files:** [employees.php](file:///c:/Users/Lenovo/AMS-V1/config/employees.php) [NEW], [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php) [MODIFY], [EmployeeImportService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeImportService.php) [MODIFY], [PasswordStrategySecurityTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/PasswordStrategySecurityTest.php) [MODIFY], [EmployeeProfileAccessTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/EmployeeProfileAccessTest.php) [MODIFY], [AttendanceVerificationTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceVerificationTest.php) [MODIFY], [web.php](file:///c:/Users/Lenovo/AMS-V1/routes/web.php) [MODIFY].

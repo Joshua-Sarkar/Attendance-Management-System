@@ -47,19 +47,21 @@ class PasswordStrategySecurityTest extends TestCase
         ]);
         
         // Ensure DEFAULT_EMPLOYEE_PASSWORD is set in config/env
-        config(['app.default_employee_password' => 'asdfghjkl']);
+        config(['employees.default_employee_password' => 'asdfghjkl']);
         putenv('DEFAULT_EMPLOYEE_PASSWORD=asdfghjkl');
     }
 
     /** @test */
     public function it_fails_creation_if_default_employee_password_is_missing()
     {
-        // 1. Unset the DEFAULT_EMPLOYEE_PASSWORD environment and server variables
+        // 1. Unset the DEFAULT_EMPLOYEE_PASSWORD environment, server, and config variables
         $oldEnvVal = $_ENV['DEFAULT_EMPLOYEE_PASSWORD'] ?? null;
         $oldServerVal = $_SERVER['DEFAULT_EMPLOYEE_PASSWORD'] ?? null;
+        $oldConfigVal = config('employees.default_employee_password');
         unset($_ENV['DEFAULT_EMPLOYEE_PASSWORD']);
         unset($_SERVER['DEFAULT_EMPLOYEE_PASSWORD']);
         putenv('DEFAULT_EMPLOYEE_PASSWORD');
+        config(['employees.default_employee_password' => null]);
 
         $employeeData = [
             'name' => 'No Pass Employee',
@@ -87,12 +89,13 @@ class PasswordStrategySecurityTest extends TestCase
             $_SERVER['DEFAULT_EMPLOYEE_PASSWORD'] = $oldServerVal;
         }
         putenv('DEFAULT_EMPLOYEE_PASSWORD=asdfghjkl');
+        config(['employees.default_employee_password' => $oldConfigVal]);
     }
 
     /** @test */
     public function it_allows_admin_to_reset_employee_password_to_default()
     {
-        $defaultPassword = env('DEFAULT_EMPLOYEE_PASSWORD', 'asdfghjkl');
+        $defaultPassword = config('employees.default_employee_password', 'asdfghjkl');
 
         // Verify pre-conditions
         $this->assertFalse($this->employee->must_change_password);
@@ -114,7 +117,7 @@ class PasswordStrategySecurityTest extends TestCase
     /** @test */
     public function it_forces_password_reset_flow_after_admin_reset()
     {
-        $defaultPassword = env('DEFAULT_EMPLOYEE_PASSWORD', 'asdfghjkl');
+        $defaultPassword = config('employees.default_employee_password', 'asdfghjkl');
 
         // 1. Admin resets the password
         $this->actingAs($this->admin)

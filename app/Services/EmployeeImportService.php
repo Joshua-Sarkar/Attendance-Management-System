@@ -167,6 +167,7 @@ class EmployeeImportService
                 $mobileNo = $this->cleanPhoneNumber($this->getVal($row, $headersMap, ['Mobile No.', 'Mobile', 'Mobile Number']));
                 $joiningDate = $this->parseExcelDate($this->getVal($row, $headersMap, ['Joining Date', 'Date of Joining']));
 
+                $isNewUser = false;
                 if (!$user) {
                     // Create mode
                     if (empty($officialEmail)) {
@@ -190,8 +191,7 @@ class EmployeeImportService
                     $user->password = \Illuminate\Support\Facades\Hash::make($defaultPassword);
                     $user->save();
 
-                    \App\Services\LeaveBalanceService::initializeUser($user);
-
+                    $isNewUser = true;
                     $usersCreatedCount++;
                 } else {
                     // Update mode - ONLY update status, department_id, and phone/joining_date if needed
@@ -297,6 +297,11 @@ class EmployeeImportService
                     $profileData
                 );
 
+                if ($isNewUser) {
+                    \App\Services\LeaveBalanceService::initializeUser($user);
+                    $user->syncBirthdayCredits();
+                }
+
                 $processedUsers[$rowIndex] = $user;
             }
 
@@ -395,15 +400,17 @@ class EmployeeImportService
                             'email' => $email,
                             'role' => 'manager',
                             'status' => 'active',
+                            'department_id' => $user->department_id,
                             'must_change_password' => true,
                             'password' => \Illuminate\Support\Facades\Hash::make($defaultPassword),
                         ]);
 
-                        \App\Services\LeaveBalanceService::initializeUser($managerUser);
-
                         EmployeeProfile::create([
                             'user_id' => $managerUser->id,
                         ]);
+
+                        \App\Services\LeaveBalanceService::initializeUser($managerUser);
+                        $managerUser->syncBirthdayCredits();
 
                         $resolvedManagerId = $managerUser->id;
                     }

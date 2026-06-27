@@ -14,8 +14,8 @@ class DepartmentController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $departments = Department::latest()->get();
-
+        $departments = Department::with(['users.manager'])->latest()->get();
+        
         return view('departments.index', compact('departments'));
     }
 
