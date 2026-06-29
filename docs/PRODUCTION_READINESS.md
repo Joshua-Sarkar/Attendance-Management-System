@@ -19,7 +19,7 @@ This document defines the current production readiness status of the Attendance 
 | **Profile Corrections** | Employee correction request submission form; sidebar alert count badges notifying Admin of pending items. | Resolving panel UI polish. | Direct profile merge utility with visual diff. | **PRODUCTION READY** |
 | **UI Design System** | Dark-theme Walnut/Ivory/Brass styling; horizontal ledger grids; centered header title action alignments; custom inputs skins. | None. | Client-side theme toggler (Dark / Light mode). | **PRODUCTION READY** |
 | **Configuration & Hardening** | locked Asia/Kolkata timezone; `config/employees.php` config wrapper preventing production config caching failures. | Mailer and SMTP host verification rules. | Vault configuration integration (e.g. AWS Secrets Manager). | **PRODUCTION READY** |
-| **Testing & Verification** | 103 passing Pest/PHPUnit tests (548 assertions) covering RBAC, timezone locks, uploader loops, encryption, and ledger safety. | None. | End-to-end browser testing utilizing Laravel Dusk. | **PRODUCTION READY** |
+| **Testing & Verification** | 116 passing Pest/PHPUnit tests (605 assertions) covering RBAC, timezone locks, uploader loops, encryption, ledger safety, and V3 overrides. | None. | End-to-end browser testing utilizing Laravel Dusk. | **PRODUCTION READY** |
 
 ---
 

@@ -19,11 +19,11 @@ This document serves as the primary entry point for developers, maintainers, aud
 
 ## 2. Current Snapshot
 
-* **Current Version:** `v1.2-phase-5.2.0`
-* **Latest Release Tag:** `v1.2-phase-5.2.0`
+* **Current Version:** `v1.2-phase-5.3`
+* **Latest Release Tag:** `v1.2-phase-5.3`
 * **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to Phase 4.7 consolidation commit)
 * **Current Branch:** `main`
-* **Latest Commit:** `v1.2-phase-5.2.0`
+* **Latest Commit:** `d89fb6f`
 * **Production URL:** Hostinger production directory root (cPanel mappings active)
 * **Production Database:** MySQL 8.0
 * **Current Deployment Environment:** Linux Shared Web Server (Hostinger PHP 8.2 runtime)
@@ -156,12 +156,12 @@ AMS-V1 uses 9 primary tables. Relationships are managed at the database level us
 
 ## 7. Current Known Issues
 
-Currently, there are no known critical issues. The application has 100% test coverage with 115 tests (595 assertions) fully green.
+Currently, there are no known critical issues. The application has 100% test coverage with 116 tests (605 assertions) fully green.
 
 ---
 
-* **Active Phase:** Phase 5 — Payroll Integration (Planned).
-* **Last Completed Phase:** Phase 5.2 — Sprint 2.2 Attendance Administration UX Improvements.
+* **Active Phase:** Sprint 2.3.1 — Repository Stabilization & Documentation Synchronization (Completed).
+* **Last Completed Phase:** Sprint 2.3 — Attendance Administration V3 (v1.2-phase-5.3).
 * **Next Planned Phase:** **Phase 5 — Payroll Integration**.
 
 ---

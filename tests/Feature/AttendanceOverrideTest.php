@@ -119,7 +119,7 @@ class AttendanceOverrideTest extends TestCase
     /** @test */
     public function individual_override_creates_or_updates_attendance_correctly()
     {
-        $dateStr = '2026-06-28';
+        $dateStr = '2026-06-29';
         
         // 1. Assert no record initially
         $this->assertDatabaseMissing('attendances', [
@@ -361,9 +361,17 @@ class AttendanceOverrideTest extends TestCase
         // Fetch logs page and verify overrides are loaded
         $response = $this->actingAs($this->admin)->get(route('admin.attendance.logs', ['date' => $dateStr]));
         $response->assertStatus(200);
-        $response->assertViewHas('overrides');
-        $overrides = $response->viewData('overrides');
-        $this->assertTrue($overrides->contains($attendance));
+        $response->assertViewHas('groupedOverrides');
+        $groupedOverrides = $response->viewData('groupedOverrides');
+        
+        $found = false;
+        foreach ($groupedOverrides as $group) {
+            if ($group['items']->contains($attendance)) {
+                $found = true;
+                break;
+            }
+        }
+        $this->assertTrue($found, 'Attendance record should be present in groupedOverrides items.');
     }
 }
 

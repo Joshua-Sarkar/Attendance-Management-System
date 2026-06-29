@@ -558,6 +558,66 @@ Implement Option B.
   - [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php)
 * **Related Release:** Sprint 2.2 UX Improvements (`v1.2-phase-5.2.0`)
 
+---
+
+## ADR 20: Attendance Administration V3 & Weekly Off Engine (Sprint 2.3)
+
+### Problem
+The administrative override and daily roster interfaces were disjointed. Bulk updates were clumsy, department filters were not unified, and weekends (Sundays) did not have a clear automatic status designation (`weekly_off`) separate from standard weekdays (`absent`) or approved leaves, causing incorrect calculations when displaying rosters or counting attendance rates.
+
+### Context
+HR and administrators require a unified workspace to filter employees by department, search by name, apply bulk or individual status/classification overrides, and inspect an auditable chronological timeline of past overrides. Additionally, Sunday needs to be automatically mapped to a non-working weekly off status by default.
+
+### Alternatives Considered
+* **Option A: Page-level custom controllers:** Create separate routes and layouts for bulk adjustments.
+  * *Trade-off:* High file churn, duplicate queries, and inconsistent sidebar navigation.
+* **Option B: Tabbed admin workspace and service-level weekly off engine (Chosen):** Centralize logic in `AttendanceService` and group administrative views into a single route utilizing client-side tab state.
+
+### Chosen Solution
+1. **Weekly Off Engine:** Modified `AttendanceService` and `AttendanceController` to automatically return `status = 'weekly_off'` for unrecorded Sundays, preventing them from skewing attendance rates or showing as absent.
+2. **Unified Override Workspace:** Redesigned `attendance-logs.blade.php` to host three Alpine-driven tabs: Daily Attendance Roster, Attendance Override Management (with multi-department select and bulk options), and Override Audit Trail.
+3. **Audit Timeline:** Grouped overrides in `AttendanceAuditController` by administrator, reason, type, and timestamp, mapping them to chronological timeline cards.
+
+### Consequences
+* **Positive:** Complete workspace unification. Sunday is correctly excluded from absenteeism metrics. Overrides are logged with complete automatic vs manual metadata.
+* **Related Files:**
+  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) (bulk inputs handling)
+  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (weekly off rules)
+  * [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php) (grouped timeline)
+  * [attendance-logs.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/admin/attendance-logs.blade.php) (tab views)
+* **Related Release:** Sprint 2.3 Attendance V3 (`v1.2-phase-5.3` complete commit `30baa57`)
+
+---
+
+## ADR 21: Test Suite and Documentation Stabilization (Sprint 2.3.1)
+
+### Problem
+Following the implementation of Sprint 2.3, several test suite assertions diverged from the actual database statuses (expecting `'weekend'` instead of `'weekly_off'` or checking for weekday `'absent'` status on a Sunday). Furthermore, the documentation set mapped to Sprint 2.2 metrics (115 tests, 595 assertions), diverging from the active repository tag and commit state.
+
+### Context
+Prior to shipping Phase 5 features, all existing feature tests must compile 100% green and the documentation maps must serve as an authoritative source of truth.
+
+### Alternatives Considered
+* **Option A: Revert weekly off status names:** Change `'weekly_off'` back to `'weekend'` in application controllers and services.
+  * *Trade-off:* Violates the strict "do not modify application code" sprint instruction.
+* **Option B: Update test suite bounds and synchronize documentation (Chosen):** Align test cases to match V3 override logic and compile accurate version metrics.
+
+### Chosen Solution
+Implement Option B.
+1. **WorkingDaysTest:** Updated expected Sunday status to `'weekly_off'`.
+2. **AttendanceOverrideTest:** Shifted individual override test dates from Sunday (`2026-06-28`) to Monday (`2026-06-29`) to validate standard weekday absence logic, and updated the audit trail test to verify `groupedOverrides` view variables.
+3. **Documentation Sync:** Audited and synchronized the entire `/docs` directory to match the active release.
+
+### Consequences
+* **Positive:** 100% test suite stability (116 tests, 605 assertions passing). Absolute documentation synchronization.
+* **Related Files:**
+  * [WorkingDaysTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/WorkingDaysTest.php)
+  * [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php)
+  * [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md)
+  * [HANDOVER.md](file:///c:/Users/Lenovo/AMS-V1/docs/HANDOVER.md)
+* **Related Release:** Sprint 2.3.1 Stabilization (HEAD commit `d89fb6f`)
+
+
 
 
 

@@ -45,9 +45,9 @@ class WorkingDaysTest extends TestCase
         $this->assertFalse($saturdayEntry['is_weekend']);
         $this->assertEquals('absent', $saturdayEntry['status']);
 
-        // Sunday should be marked as weekend, and should fall back to 'weekend' if no check-in
+        // Sunday should be marked as weekend, and should fall back to 'weekly_off' if no check-in
         $this->assertTrue($sundayEntry['is_weekend']);
-        $this->assertEquals('weekend', $sundayEntry['status']);
+        $this->assertEquals('weekly_off', $sundayEntry['status']);
 
         // Let's verify getEmployeeStats includes Saturday but skips Sunday
         $attendanceService = resolve(AttendanceService::class);
