@@ -49,49 +49,52 @@ class AttendanceController extends Controller
         $diffDays = $today->diffInDays($startOfMonth) + 1;
         for ($i = 0; $i < $diffDays; $i++) {
             $date = $startOfMonth->copy()->addDays($i);
-            if ($date->isSunday()) {
+            $dateStr = $date->format('Y-m-d');
+            $record = $monthAttendances->get($dateStr);
+            
+            $status = 'absent';
+            $isOverridden = false;
+            if ($record) {
+                $status = $record->status;
+                $isOverridden = $record->is_overridden;
+            } else {
+                $dayLeave = $monthLeaves->first(function($leave) use ($date) {
+                    $dateStr = $date->format('Y-m-d');
+                    $leaveStartStr = $leave->start_date->format('Y-m-d');
+                    $leaveEndStr = $leave->end_date->format('Y-m-d');
+                    return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
+                });
+                
+                if ($dayLeave) {
+                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
+                } elseif ($date->isSunday()) {
+                    $status = 'weekly_off';
+                }
+            }
+
+            if ($status === 'weekly_off') {
                 continue;
             }
-            $dateStr = $date->format('Y-m-d');
             
-            $dayLeave = $monthLeaves->first(function($leave) use ($date) {
-                $dateStr = $date->format('Y-m-d');
-                $leaveStartStr = $leave->start_date->format('Y-m-d');
-                $leaveEndStr = $leave->end_date->format('Y-m-d');
-                return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
-            });
-            
-            if (isset($monthAttendances[$dateStr])) {
-                $record = $monthAttendances[$dateStr];
-                if ($record->status === 'present' || $record->status === 'late') {
-                    $monthPresent++;
-                } elseif ($record->status === 'wfh') {
-                    $monthWfh++;
-                } elseif ($record->status === 'on_leave') {
-                    $monthLeave++;
-                } else {
+            if ($status === 'present' || $status === 'late') {
+                $monthPresent++;
+            } elseif ($status === 'wfh') {
+                $monthWfh++;
+            } elseif ($status === 'on_leave') {
+                $monthLeave++;
+            } elseif ($status === 'absent') {
+                if (!$date->isSunday() || $isOverridden) {
                     $monthAbsent++;
                 }
-                
-                if ($record->check_in_time) {
-                    $endTime = $record->check_out_time ?? ($date->isToday() ? now() : null);
-                    if ($endTime) {
-                        $monthHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
-                    }
-                }
-            } else {
-                if ($dayLeave) {
-                    if ($dayLeave->leave_type === 'work_from_home') {
-                        $monthWfh++;
-                    } else {
-                        $monthLeave++;
-                    }
-                } else {
-                    $monthAbsent++;
+            }
+            
+            if ($record && $record->check_in_time) {
+                $endTime = $record->check_out_time ?? ($date->isToday() ? now() : null);
+                if ($endTime) {
+                    $monthHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
                 }
             }
         }
-        
         $totalMonthWorkingDays = $monthPresent + $monthAbsent + $monthLeave + $monthWfh;
         $monthAttendanceRate = $totalMonthWorkingDays > 0
             ? round((($monthPresent + $monthWfh) / $totalMonthWorkingDays) * 100, 1)
@@ -139,31 +142,34 @@ class AttendanceController extends Controller
         
         for ($d = 0; $d < $historyDays; $d++) {
             $date = $evalDate->copy()->subDays($d);
-            if ($date->isSunday()) {
-                continue;
-            }
             $dateStr = $date->format('Y-m-d');
+            $record = $allAttendances->get($dateStr);
             
-            $dayLeave = $allLeaves->first(function($l) use ($dateStr) {
-                return $dateStr >= $l->start_date->format('Y-m-d') && $dateStr <= $l->end_date->format('Y-m-d');
-            });
-            
-            if ($dayLeave) {
-                continue;
+            $status = 'absent';
+            if ($record) {
+                $status = $record->status;
+            } else {
+                $dayLeave = $allLeaves->first(function($l) use ($dateStr) {
+                    return $dateStr >= $l->start_date->format('Y-m-d') && $dateStr <= $l->end_date->format('Y-m-d');
+                });
+                
+                if ($dayLeave) {
+                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
+                } elseif ($date->isSunday()) {
+                    $status = 'weekly_off';
+                }
+            }
+
+            if ($status === 'weekly_off' || $status === 'on_leave') {
+                continue; // Ignore Weekly Off and approved leaves for streak calculations
             }
             
-            if (isset($allAttendances[$dateStr])) {
-                $record = $allAttendances[$dateStr];
-                if ($record->status === 'present') {
-                    $streak++;
-                } else {
-                    break;
-                }
+            if ($status === 'present') {
+                $streak++;
             } else {
-                break;
+                break; // Break on late or absent
             }
         }
-        
         return view('attendance.employee-dashboard', [
             'user' => $user,
             'today_attendance' => $today_attendance,
@@ -226,14 +232,18 @@ class AttendanceController extends Controller
                 }
             }
 
-            $dayLeave = $leaves->first(function($leave) use ($date) {
-                return $date->between($leave->start_date, $leave->end_date);
-            });
-
-            $status = $record ? $record->status : ($date->isSunday() ? 'weekend' : 'absent');
-            
-            if (!$record && $dayLeave) {
-                $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
+            $status = 'absent';
+            if ($record) {
+                $status = $record->status;
+            } else {
+                $dayLeave = $leaves->first(function($l) use ($dateStr) {
+                    return $dateStr >= $l->start_date->format('Y-m-d') && $dateStr <= $l->end_date->format('Y-m-d');
+                });
+                if ($dayLeave) {
+                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
+                } elseif ($date->isSunday()) {
+                    $status = 'weekly_off';
+                }
             }
 
             $history[] = [

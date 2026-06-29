@@ -258,6 +258,8 @@ erDiagram
     3. Bulk overrides update multiple targets simultaneously.
     4. Department-specific shifts are resolved dynamically.
     5. Late arrivals trigger half-day classifications, while check-outs check for working-hour policies.
+    6. Override reason is mandatory (minimum 5 characters) for both individual and bulk overrides.
+    7. Override audit trail loading verifies the overriddenBy relationship mapping and retrieves view data correctly.
 
 ---
 
@@ -315,9 +317,10 @@ erDiagram
     3. Admin override path adjusts balances and updates request status.
 * **Test File:** [LeaveAuthorizationModelTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveAuthorizationModelTest.php)
   * *Scenarios:*
-    1. Birthday credits unlock 1 day before birthday, auto-approve birthday leave, and expire after 12 months.
+    1. Birthday credits unlock 1 day before birthday (regardless of month boundary), auto-approve birthday leave, and expire after 1 year from the unlock date.
     2. Overriding and rejecting birthday leave restores credits and updates daily attendance to `absent`.
     3. Leap year birthdays (February 29) resolve to February 27 in non-leap years.
+    4. Birthday Leave cannot be submitted before the employee becomes eligible (submission date validation).
 
 ---
 

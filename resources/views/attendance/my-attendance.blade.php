@@ -238,6 +238,12 @@
                         $desc = 'Approved leave' . $classificationStr;
                     } elseif ($status === 'wfh') {
                         $desc = 'Working from home' . $durationStr . $classificationStr;
+                    } elseif ($status === 'weekly_off') {
+                        $desc = 'Weekly Off · Non-working day';
+                    } elseif ($status === 'paid_leave') {
+                        $desc = 'Approved paid leave' . $classificationStr;
+                    } elseif ($status === 'unpaid_leave') {
+                        $desc = 'Approved unpaid leave' . $classificationStr;
                     } elseif ($status === 'weekend') {
                         $desc = 'Weekend · Non-working day';
                     } else {
@@ -248,13 +254,13 @@
                     <span class="seal-indicator {{ $status }} w-2 h-2 rounded-full 
                         @if($status === 'present' || $status === 'wfh') bg-forest
                         @elseif($status === 'late') bg-cognac
-                        @elseif($status === 'on_leave' || $status === 'leave') bg-slate
-                        @elseif($status === 'weekend') bg-hairline-strong
+                        @elseif($status === 'on_leave' || $status === 'leave' || $status === 'paid_leave' || $status === 'unpaid_leave') bg-slate
+                        @elseif($status === 'weekend' || $status === 'weekly_off') bg-hairline-strong
                         @else bg-burgundy @endif"></span>
                     <span class="row-time font-mono text-[13px] text-vellum">
                         {{ $dateStr }}
                         @if($day['date']->isToday())
-                            <span class="ml-1.5 bg-brass/10 text-brass text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">Today</span>
+                            <span class="ml-1.5 bg-brass/10 text-brass text-[9px] uppercase font-bold px-1.5 py-0.5 rounded font-mono">Today</span>
                         @endif
                     </span>
                     <div class="row-identity flex flex-col gap-0.5">
@@ -267,11 +273,11 @@
                         <span class="tag {{ $status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border
                             @if($status === 'present') bg-forest-bg text-forest border-transparent
                             @elseif($status === 'late') bg-cognac-bg text-cognac border-transparent
-                            @elseif($status === 'on_leave' || $status === 'leave') bg-slate-bg text-slate border-transparent
+                            @elseif($status === 'on_leave' || $status === 'leave' || $status === 'paid_leave' || $status === 'unpaid_leave') bg-slate-bg text-slate border-transparent
                             @elseif($status === 'wfh') bg-forest-bg text-forest border-transparent
-                            @elseif($status === 'weekend') bg-transparent text-vellum-muted border-hairline-strong
+                            @elseif($status === 'weekly_off' || $status === 'weekend') bg-transparent text-vellum-muted border-hairline-strong
                             @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                            @if($status === 'on_leave') Leave @else {{ str_replace('_', ' ', $status) }} @endif
+                            @if($status === 'on_leave' || $status === 'leave') Leave @elseif($status === 'paid_leave') Paid Leave @elseif($status === 'unpaid_leave') Unpaid Leave @elseif($status === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $status) }} @endif
                         </span>
                     </div>
                 </div>

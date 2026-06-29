@@ -87,4 +87,12 @@ class Attendance extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Get the administrator who performed the override.
+     */
+    public function overriddenBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'overridden_by');
+    }
 }

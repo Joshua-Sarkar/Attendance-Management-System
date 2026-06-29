@@ -143,7 +143,11 @@
                                     @elseif($status === 'pending') bg-cognac-bg text-cognac border-transparent
                                     @elseif($status === 'cancelled') bg-transparent text-vellum-muted border-hairline-strong
                                     @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                    {{ $status }}
+                                    @if($status === 'approved' && $resolvedType === 'complimentary')
+                                        Auto Approved
+                                    @else
+                                        {{ $status }}
+                                    @endif
                                 </span>
                             </td>
 
@@ -333,7 +337,11 @@
                                     @if($status === 'approved') bg-forest-bg text-forest border-transparent
                                     @elseif($status === 'cancelled') bg-transparent text-vellum-muted border-hairline-strong
                                     @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                    {{ $status }}
+                                    @if($status === 'approved' && $resolvedType === 'complimentary')
+                                        Auto Approved
+                                    @else
+                                        {{ $status }}
+                                    @endif
                                 </span>
                             </td>
 

@@ -479,4 +479,85 @@ Implement Option B. Created migrations adding timings to `departments` table and
   * [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php) (new feature tests)
 * **Related Release:** Phase 5.0 (`v1.2-phase-5.0.0`)
 
+---
+
+## ADR 18: Attendance Override & Birthday Leave Stabilization
+
+### Problem
+1. Admin attendance overrides did not function in SQLite testing and local configurations due to date-type serialization mismatches (the controller queried by a date string `'Y-m-d'`, whereas the database stored dates with `00:00:00` timestamps, causing duplicates).
+2. The override reason validation was not strictly validated in tests.
+3. Birthday Leave eligibility rules allowed the leave option to appear before an employee was eligible, did not handle leap-year February 29 birthdays correctly in non-leap years (should resolve to February 27), locked eligibility on month boundaries, and calculated expiration incorrectly.
+4. Auto-approval logic was embedded directly in the controller instead of being centralized in the service layer.
+
+### Context
+We need to stabilize the override and birthday leave systems while maintaining strict adherence to the minimum file-change rule and keeping business logic out of the Blade presentation files.
+
+### Alternatives Considered
+* **Option A: Controller-level logic:** Leave the auto-approval and date-parsing checks inside the controllers.
+  * *Trade-off:* Controller bloat, poor reusability if command-line tools or API endpoints are added later.
+* **Option B: Centralized Service-Layer & Strict Model-casting rules (Chosen):** Move the auto-approval transaction to `LeaveBalanceService`, clean up model date cast comparisons with Carbon instances, and enforce strict date-based eligibility calculations in `User.php`.
+
+### Chosen Solution
+Implement Option B. Refactored date parsing in `AttendanceOverrideController` to use `Carbon::parse()->startOfDay()` matching database casts. Created `LeaveBalanceService::submitBirthdayLeave()` to encapsulate the auto-approval transaction, pessimistic locks, and credit consumption. Modified `User.php` birthday methods to resolve February 29 birthdays to February 27 in non-leap years, unlock exactly 1 day before the birthday regardless of month, and expire credits exactly 1 year from the unlock date. Conditionally hid the option from the Blade select dropdown using a controller-provided eligibility boolean (`$hasBirthdayCredit`) and rendered "Auto Approved" for complimentary leaves.
+
+During subsequent debugging and verification, the following runtime UI fixes were added:
+1. **Alpine Bindings:** Added `x-data` to both individual and bulk override buttons in `attendance-logs.blade.php` and `show.blade.php` to initialize Alpine contexts and allow `@click` events to fire.
+2. **Joining Date Cycle Limit:** Configured credit generation in `syncBirthdayCredits` (User.php) to compare cycle year against the employee's `joining_date` year, preventing pre-joining birthday credits from being initialized.
+3. **Submission Date Validation:** Enforced combined validation of credit availability on both the submission date (`today()`) and the leave dates in `submitBirthdayLeave`.
+
+### Consequences
+* **Positive:** Safe SQLite/MySQL date query consistency, reusable and isolated business logic in the service layer, accurate and date-based credit grant/expiration, cleaner views without business logic, responsive and functional override trigger buttons, and strict joining/submission validation rules.
+* **Related Files:**
+  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php)
+  * [LeaveBalanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/LeaveBalanceService.php)
+  * [LeaveRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/LeaveRequestController.php)
+  * [User.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/User.php)
+  * [create.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/leaves/create.blade.php)
+  * [index.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/leaves/index.blade.php)
+  * [show.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/leaves/show.blade.php)
+* **Related Release:** Sprint 2.1 Stabilization (`v1.2-phase-5.1.0`)
+
+---
+
+## ADR 19: Attendance Administration UX & Override Audit Trail
+
+### Problem
+The Attendance Administration interface had usability gaps:
+1. Bulk overrides required select boxes that were too cramped in small modal frames when organization size grew.
+2. Individual overrides opened a modal, but clicking any of its input fields closed the modal immediately.
+3. Accessing Attendance Logs was only possible through the main dashboard rather than a permanent navigation menu item.
+4. Overrides did not have a dedicated historical audit view listing critical details like administrator, timestamp, reason, type, original status/classification, and final status/classification.
+
+### Context
+We want to keep all changes to the minimum required file set, reuse existing employee retrieval logic, resolve the root cause of modal bugs rather than applying workarounds, and align styles with the gold-dark glassmorphism design system.
+
+### Alternatives Considered
+* **Option A: Separate modules and routes:** Create an Attendance Admin controller, new database tables for audits, and a separate sidebar entry.
+  * *Trade-off:* High file churn, duplicates metadata already saved on the `attendances` table, and violates the "minimum source files required" sprint objective.
+* **Option B: Inline Tabs workspace & shared modal fix (Chosen):** Fix the shared modal container stacking context, place a permanent sidebar link to the existing logs route, and rebuild the Attendance Logs page to house three tabs (Daily Attendance Roster, Attendance Override Management, Override Audit Trail).
+
+### Chosen Solution
+Implement Option B.
+1. **Modal Stacking Fix:** Added `relative` positioning class to the modal content wrapper in `modal.blade.php` to place it above the backdrop overlay sibling (which is `fixed inset-0`).
+2. **Permanent Sidebar Link:** Appended the Attendance Logs item under the admin role section in `sidebar.blade.php`.
+3. **Model & Controller Updates:** Declared the `overriddenBy` relation in `Attendance.php` mapping `overridden_by` to the `User` model. Updated `AttendanceAuditController` to query overridden attendances using active filters and pass them to the view.
+4. **Tab Switcher and Inline Forms:** Rewrote `attendance-logs.blade.php` using Alpine.js state synced with `window.location.hash`. Toggled the layout between "Daily Attendance Roster", "Attendance Override Management" (inline bulk override form with department filters and select actions), and "Override Audit Trail" table.
+
+### Consequences
+* **Positive:**
+  - Resolved modal clicking bugs globally.
+  - Seamless, permanent administrative navigation.
+  - Full override audit logs listing all metadata.
+  - Improved Bulk selection ergonomics (All Employees, Entire Department, Manual) utilizing local filtering and state selection without loading extra database queries.
+* **Related Files:**
+  - [modal.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/modal.blade.php)
+  - [sidebar.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/sidebar.blade.php)
+  - [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php)
+  - [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php)
+  - [attendance-logs.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/admin/attendance-logs.blade.php)
+  - [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php)
+* **Related Release:** Sprint 2.2 UX Improvements (`v1.2-phase-5.2.0`)
+
+
+
 

@@ -237,23 +237,10 @@
                             </td>
                             @if(auth()->user()->role === 'admin')
                                 <td class="py-3 px-4 text-right">
-                                    @if($status !== 'weekend')
-                                        <button type="button" 
-                                                @click="$dispatch('open-modal', 'override-modal'); 
-                                                        $nextTick(() => { 
-                                                            document.getElementById('override_user_id').value = '{{ $user->id }}'; 
-                                                            document.getElementById('override_date').value = '{{ $day['date']->format('Y-m-d') }}'; 
-                                                            document.getElementById('override_employee_name').innerText = '{{ addslashes($user->name) }}';
-                                                            document.getElementById('override_status').value = '{{ $status === 'on_leave' || $status === 'wfh' || $status === 'present' || $status === 'late' || $status === 'absent' ? $status : 'absent' }}';
-                                                            document.getElementById('override_classification').value = '{{ $day['classification'] ?? 'full_day' }}';
-                                                            document.getElementById('override_reason').value = '';
-                                                        })" 
-                                                class="inline-flex items-center justify-center bg-brass/10 hover:bg-brass/25 text-brass font-bold py-1 px-2.5 rounded text-[10px] uppercase tracking-wider transition duration-150">
-                                            Override
-                                        </button>
-                                    @else
-                                        <span class="text-vellum-faint font-mono text-[10px]">—</span>
-                                    @endif
+                                    <a href="{{ route('admin.attendance.logs', ['date' => $day['date']->format('Y-m-d'), 'select_employee' => $user->id]) }}#override" 
+                                       class="inline-flex items-center justify-center bg-brass/10 hover:bg-brass/25 text-brass font-bold py-1 px-2.5 rounded text-[10px] uppercase tracking-wider transition duration-150">
+                                        Override
+                                    </a>
                                 </td>
                             @endif
                         </tr>
@@ -263,51 +250,5 @@
         </div>
     </div>
 
-    <!-- Individual Override Modal -->
-    <x-modal name="override-modal" maxWidth="lg">
-        <form method="POST" action="{{ route('admin.attendance.override.store') }}" class="p-6">
-            @csrf
-            <h3 class="text-lg font-medium text-vellum font-display mb-4">
-                Override Attendance for <span id="override_employee_name" class="text-brass"></span>
-            </h3>
 
-            <input type="hidden" name="user_id" id="override_user_id">
-            <input type="hidden" name="date" id="override_date">
-
-            <div class="space-y-4">
-                <div>
-                    <x-input-label for="override_status" value="Attendance Status" />
-                    <select name="status" id="override_status" class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
-                        <option value="present">Present</option>
-                        <option value="late">Late</option>
-                        <option value="absent">Absent</option>
-                        <option value="on_leave">On Leave</option>
-                        <option value="wfh">WFH</option>
-                    </select>
-                </div>
-
-                <div>
-                    <x-input-label for="override_classification" value="Classification" />
-                    <select name="classification" id="override_classification" class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
-                        <option value="full_day">Full Day</option>
-                        <option value="half_day">Half Day</option>
-                    </select>
-                </div>
-
-                <div>
-                    <x-input-label for="override_reason" value="Override Reason" />
-                    <textarea name="override_reason" id="override_reason" rows="3" required minlength="5" placeholder="Minimum 5 characters describing reason for audit log..." class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none"></textarea>
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-                <x-secondary-button type="button" x-on:click="$dispatch('close')">
-                    Cancel
-                </x-secondary-button>
-                <x-primary-button type="submit">
-                    Apply Override
-                </x-primary-button>
-            </div>
-        </form>
-    </x-modal>
 </x-executive-layout>

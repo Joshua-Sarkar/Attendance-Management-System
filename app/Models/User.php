@@ -113,19 +113,21 @@ class User extends Authenticatable
             // Handle leap year (Feb 29) birthdays on non-leap years
             $isLeapYear = (($year % 4 == 0) && ($year % 100 != 0)) || ($year % 400 == 0);
             if ($birthMonth === 2 && $birthDay === 29 && !$isLeapYear) {
-                $birthday = \Carbon\Carbon::create($year, 2, 28)->startOfDay();
+                $birthday = \Carbon\Carbon::create($year, 2, 27)->startOfDay();
             } else {
                 $birthday = \Carbon\Carbon::create($year, $birthMonth, $birthDay)->startOfDay();
             }
 
             $unlockDate = $birthday->copy()->subDay()->startOfDay();
-            if ($unlockDate->month !== $birthMonth) {
-                $unlockDate = $birthday->copy()->startOfDay();
-            }
-            $expiryDate = $birthday->copy()->addMonths(12)->endOfDay();
+            $expiryDate = $unlockDate->copy()->addYear()->endOfDay();
 
             // If we are on or after the unlock date, check/create the credit
             if ($date->greaterThanOrEqualTo($unlockDate)) {
+                $joiningYear = $profile->joining_date ? \Carbon\Carbon::parse($profile->joining_date)->year : null;
+                if ($joiningYear && $year < $joiningYear) {
+                    continue;
+                }
+
                 $identifier = "birthday_{$year}";
 
                 $credit = LeaveCredit::firstOrCreate(
@@ -181,16 +183,18 @@ class User extends Authenticatable
         foreach ($yearsToCheck as $year) {
             $isLeapYear = (($year % 4 == 0) && ($year % 100 != 0)) || ($year % 400 == 0);
             if ($birthMonth === 2 && $birthDay === 29 && !$isLeapYear) {
-                $birthday = \Carbon\Carbon::create($year, 2, 28)->startOfDay();
+                $birthday = \Carbon\Carbon::create($year, 2, 27)->startOfDay();
             } else {
                 $birthday = \Carbon\Carbon::create($year, $birthMonth, $birthDay)->startOfDay();
             }
 
             $unlockDate = $birthday->copy()->subDay()->startOfDay();
-            if ($unlockDate->month !== $birthMonth) {
-                $unlockDate = $birthday->copy()->startOfDay();
+            $expiryDate = $unlockDate->copy()->addYear()->endOfDay();
+
+            $joiningYear = $profile->joining_date ? \Carbon\Carbon::parse($profile->joining_date)->year : null;
+            if ($joiningYear && $year < $joiningYear) {
+                continue;
             }
-            $expiryDate = $birthday->copy()->addMonths(12)->endOfDay();
 
             if ($date->greaterThanOrEqualTo($unlockDate) && $date->lessThanOrEqualTo($expiryDate)) {
                 // Find if there is an active unused credit in DB

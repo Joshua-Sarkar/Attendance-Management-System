@@ -110,8 +110,7 @@ class AttendanceService
     /**
      * Get today's attendance record for a user.
      */
-    public function getTodayAttendance(User $user): ?Attendance
-    {
+    public function getTodayAttendance(User $user): ?Attendance    {
         $attendance = Attendance::where('user_id', $user->id)
             ->where('date', today())
             ->first();
@@ -134,11 +133,21 @@ class AttendanceService
                     'classification' => 'full_day',
                     'automatic_classification' => 'full_day',
                 ]);
+            } elseif (today()->isSunday()) {
+                $attendance = new Attendance([
+                    'user_id' => $user->id,
+                    'date' => today(),
+                    'status' => 'weekly_off',
+                    'automatic_status' => 'weekly_off',
+                    'classification' => 'full_day',
+                    'automatic_classification' => 'full_day',
+                ]);
             }
         }
 
         return $attendance;
     }
+
 
     /**
      * Get attendance history for a user over last N days.
@@ -225,20 +234,32 @@ class AttendanceService
             ->keyBy('user_id');
 
         // Map them together
-        return $employees->map(function ($employee) use ($attendances, $leaves, $date) {
+        $isSunday = \Carbon\Carbon::parse($date)->isSunday();
+        return $employees->map(function ($employee) use ($attendances, $leaves, $date, $isSunday) {
             $attendance = $attendances->get($employee->id);
             $leave = $leaves->get($employee->id);
 
-            if ($leave && !$attendance) {
-                $status = $leave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
-                $attendance = new Attendance([
-                    'user_id' => $employee->id,
-                    'date' => Carbon::parse($date),
-                    'status' => $status,
-                    'automatic_status' => $status,
-                    'classification' => 'full_day',
-                    'automatic_classification' => 'full_day',
-                ]);
+            if (!$attendance) {
+                if ($leave) {
+                    $status = $leave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
+                    $attendance = new \App\Models\Attendance([
+                        'user_id' => $employee->id,
+                        'date' => \Carbon\Carbon::parse($date),
+                        'status' => $status,
+                        'automatic_status' => $status,
+                        'classification' => 'full_day',
+                        'automatic_classification' => 'full_day',
+                    ]);
+                } elseif ($isSunday) {
+                    $attendance = new \App\Models\Attendance([
+                        'user_id' => $employee->id,
+                        'date' => \Carbon\Carbon::parse($date),
+                        'status' => 'weekly_off',
+                        'automatic_status' => 'weekly_off',
+                        'classification' => 'full_day',
+                        'automatic_classification' => 'full_day',
+                    ]);
+                }
             }
 
             $employee->today_attendance = $attendance;
@@ -249,8 +270,7 @@ class AttendanceService
     /**
      * Compute overview stats for the dashboard.
      */
-    public function getTodayStats(string $date, ?int $departmentId = null, ?User $monitoringUser = null): array
-    {
+    public function getTodayStats(string $date, ?int $departmentId = null, ?User $monitoringUser = null): array    {
         $employees = $this->getFilteredAttendance($date, $departmentId, null, $monitoringUser);
 
         $present = 0;
@@ -271,52 +291,55 @@ class AttendanceService
 
         foreach ($employees as $emp) {
             $attendance = $emp->today_attendance;
+            
+            // Resolve resolved status and whether overridden
+            $status = 'absent';
+            $isOverridden = false;
+            
             if ($attendance) {
-                if ($attendance->status === 'present') {
-                    $present++;
-                } elseif ($attendance->status === 'late') {
-                    // Note: 'Present Today' includes 'Late Today' employees because late employees
-                    // are physically present at work. 'Late Today' acts as a subset metric of 'Present Today'
-                    // rather than a separate attendance category.
-                    $late++;
-                    $present++;
-                    
-                    $lateMinutes = $attendance->late_minutes;
-                    $totalLateMinutes += $lateMinutes;
-                    $lateArrivals[] = [
-                        'name' => $emp->name,
-                        'employee_id' => $emp->employee_id,
-                        'check_in_time' => $attendance->check_in_time,
-                        'late_minutes' => $lateMinutes,
-                    ];
-                    
-                    $exceptions['late'][] = [
-                        'name' => $emp->name,
-                        'employee_id' => $emp->employee_id,
-                        'check_in_time' => $attendance->check_in_time,
-                        'late_minutes' => $lateMinutes,
-                    ];
-                } elseif ($attendance->status === 'absent') {
-                    if (!$isSunday) {
-                        $absent++;
-                    }
-                } elseif ($attendance->status === 'on_leave') {
-                    $onLeave++;
-                    $exceptions['on_leave'][] = [
-                        'name' => $emp->name,
-                        'employee_id' => $emp->employee_id,
-                    ];
-                } elseif ($attendance->status === 'wfh') {
-                    $wfh++;
-                    $exceptions['wfh'][] = [
-                        'name' => $emp->name,
-                        'employee_id' => $emp->employee_id,
-                    ];
-                }
-            } else {
-                if (!$isSunday) {
+                $status = $attendance->status;
+                $isOverridden = $attendance->is_overridden;
+            } elseif ($isSunday) {
+                $status = 'weekly_off';
+            }
+
+            if ($status === 'present') {
+                $present++;
+            } elseif ($status === 'late') {
+                $late++;
+                $present++;
+                
+                $lateMinutes = $attendance ? $attendance->late_minutes : 0;
+                $totalLateMinutes += $lateMinutes;
+                $lateArrivals[] = [
+                    'name' => $emp->name,
+                    'employee_id' => $emp->employee_id,
+                    'check_in_time' => $attendance?->check_in_time,
+                    'late_minutes' => $lateMinutes,
+                ];
+                
+                $exceptions['late'][] = [
+                    'name' => $emp->name,
+                    'employee_id' => $emp->employee_id,
+                    'check_in_time' => $attendance?->check_in_time,
+                    'late_minutes' => $lateMinutes,
+                ];
+            } elseif ($status === 'absent') {
+                if (!$isSunday || $isOverridden) {
                     $absent++;
                 }
+            } elseif ($status === 'on_leave') {
+                $onLeave++;
+                $exceptions['on_leave'][] = [
+                    'name' => $emp->name,
+                    'employee_id' => $emp->employee_id,
+                ];
+            } elseif ($status === 'wfh') {
+                $wfh++;
+                $exceptions['wfh'][] = [
+                    'name' => $emp->name,
+                    'employee_id' => $emp->employee_id,
+                ];
             }
         }
 
@@ -362,49 +385,54 @@ class AttendanceService
 
         for ($i = 0; $i < $days; $i++) {
             $date = $startDate->copy()->addDays($i);
-
-            // Skip Sundays for calculating absences
-            if ($date->isSunday()) {
-                continue;
+            $dateStr = $date->format('Y-m-d');
+            $record = $attendances->get($dateStr);
+            
+            $status = 'absent';
+            $isOverridden = false;
+            $hasRecord = false;
+            
+            if ($record) {
+                $status = $record->status;
+                $isOverridden = $record->is_overridden;
+                $hasRecord = true;
+            } else {
+                $dayLeave = $leaves->first(function($leave) use ($date) {
+                    $dateStr = $date->format('Y-m-d');
+                    $leaveStartStr = $leave->start_date->format('Y-m-d');
+                    $leaveEndStr = $leave->end_date->format('Y-m-d');
+                    return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
+                });
+                
+                if ($dayLeave) {
+                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
+                } elseif ($date->isSunday()) {
+                    $status = 'weekly_off';
+                }
             }
 
-            $dateStr = $date->format('Y-m-d');
-            $dayLeave = $leaves->first(function($leave) use ($date) {
-                $dateStr = $date->format('Y-m-d');
-                $leaveStartStr = $leave->start_date->format('Y-m-d');
-                $leaveEndStr = $leave->end_date->format('Y-m-d');
-                return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
-            });
+            if ($status === 'weekly_off') {
+                continue;
+            }
+            
+            if ($status === 'present') {
+                $present++;
+            } elseif ($status === 'late') {
+                $late++;
+                $present++;
+            } elseif ($status === 'absent') {
+                if (!$date->isSunday() || $isOverridden) {
+                    $absent++;
+                }
+            } elseif ($status === 'on_leave') {
+                $onLeave++;
+            } elseif ($status === 'wfh') {
+                $wfh++;
+            }
 
-            if (isset($attendances[$dateStr])) {
-                $record = $attendances[$dateStr];
-                
-                if ($record->status === 'present') {
-                    $present++;
-                } elseif ($record->status === 'late') {
-                    // Note: 'Present' includes 'Late' records because the employee did check in and attend.
-                    // 'Late' is treated as a subset flag of the 'Present' count, not a separate standalone category.
-                    $late++;
-                    $present++;
-                } elseif ($record->status === 'absent') {
-                    $absent++;
-                }
-                
-                if ($record->check_in_time) {
-                    // Add hours worked
-                    $endTime = $record->check_out_time ?? now();
-                    $totalHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
-                }
-            } else {
-                if ($dayLeave) {
-                    if ($dayLeave->leave_type === 'work_from_home') {
-                        $wfh++;
-                    } else {
-                        $onLeave++;
-                    }
-                } else {
-                    $absent++;
-                }
+            if ($hasRecord && $record->check_in_time) {
+                $endTime = $record->check_out_time ?? now();
+                $totalHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
             }
         }
 
@@ -417,6 +445,7 @@ class AttendanceService
             'total_hours' => $totalHours,
         ];
     }
+
 
     /**
      * Get recent check-in/out activity across all employees.

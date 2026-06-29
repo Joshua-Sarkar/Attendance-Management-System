@@ -294,4 +294,76 @@ class AttendanceOverrideTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /** @test */
+    public function override_reason_is_mandatory_for_individual_override()
+    {
+        $response = $this->actingAs($this->admin)->post(route('admin.attendance.override.store'), [
+            'date' => '2026-06-28',
+            'user_id' => $this->employee1->id,
+            'status' => 'present',
+            'classification' => 'full_day',
+            // override_reason is missing
+        ]);
+        $response->assertSessionHasErrors(['override_reason']);
+
+        $response2 = $this->actingAs($this->admin)->post(route('admin.attendance.override.store'), [
+            'date' => '2026-06-28',
+            'user_id' => $this->employee1->id,
+            'status' => 'present',
+            'classification' => 'full_day',
+            'override_reason' => 'abc', // too short
+        ]);
+        $response2->assertSessionHasErrors(['override_reason']);
+    }
+
+    /** @test */
+    public function override_reason_is_mandatory_for_bulk_override()
+    {
+        $response = $this->actingAs($this->admin)->post(route('admin.attendance.override.store'), [
+            'date' => '2026-06-28',
+            'user_ids' => [$this->employee1->id, $this->employee2->id],
+            'status' => 'wfh',
+            'classification' => 'full_day',
+            'override_reason' => '', // empty
+        ]);
+        $response->assertSessionHasErrors(['override_reason']);
+    }
+
+    /** @test */
+    public function override_audit_trail_includes_required_fields_and_relations()
+    {
+        $dateStr = '2026-06-28';
+
+        // Perform override to create audit metadata
+        $this->actingAs($this->admin)->post(route('admin.attendance.override.store'), [
+            'date' => $dateStr,
+            'user_id' => $this->employee1->id,
+            'status' => 'present',
+            'classification' => 'half_day',
+            'override_reason' => 'Admin override reason validation',
+        ]);
+
+        $attendance = Attendance::where('user_id', $this->employee1->id)
+            ->whereDate('date', $dateStr)
+            ->first();
+
+        $this->assertNotNull($attendance);
+        $this->assertTrue($attendance->is_overridden);
+        $this->assertEquals('individual', $attendance->override_type);
+        $this->assertEquals('Admin override reason validation', $attendance->override_reason);
+        $this->assertEquals($this->admin->id, $attendance->overridden_by);
+        
+        // Test relationship
+        $this->assertNotNull($attendance->overriddenBy);
+        $this->assertEquals($this->admin->name, $attendance->overriddenBy->name);
+
+        // Fetch logs page and verify overrides are loaded
+        $response = $this->actingAs($this->admin)->get(route('admin.attendance.logs', ['date' => $dateStr]));
+        $response->assertStatus(200);
+        $response->assertViewHas('overrides');
+        $overrides = $response->viewData('overrides');
+        $this->assertTrue($overrides->contains($attendance));
+    }
 }
+

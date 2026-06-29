@@ -11,7 +11,7 @@
     $initials = substr($initials, 0, 2);
 @endphp
 
-<aside class="sidebar w-[240px] shrink-0 bg-walnut border-r border-hairline flex flex-col py-7 sticky top-0 h-screen">
+<aside class="sidebar w-[260px] shrink-0 bg-walnut border-r border-hairline flex flex-col py-7 sticky top-0 h-screen">
     <!-- Crest Section -->
     <div class="crest flex items-center gap-3 px-6 pb-7 mb-2 border-b border-hairline/10">
         <div class="crest-mark w-[36px] h-[36px] border border-brass-bright rounded-full flex items-center justify-center font-display font-semibold text-[15px] text-brass-bright tracking-wider">
@@ -24,16 +24,16 @@
     </div>
 
     <!-- Navigation List -->
-    <nav class="flex-1 px-3.5 py-5 space-y-[2px]">
+    <nav class="flex-1 px-3.5 py-5 space-y-1.5">
         <!-- Dashboard Link (All Roles) -->
         @php
             $dashboardRoute = ($role === 'employee') ? route('employee.dashboard') : route('dashboard');
             $isDashboardActive = request()->routeIs('dashboard') || request()->routeIs('employee.dashboard');
         @endphp
         <a href="{{ $dashboardRoute }}" 
-           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
            {{ $isDashboardActive 
-               ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+               ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isDashboardActive ? 'opacity-100' : 'opacity-75' }}">
                 <rect x="3" y="3" width="8" height="8" rx="1.5"/>
@@ -44,14 +44,31 @@
             Dashboard
         </a>
 
+        <!-- Attendance Logs Link (Admin Only) - Moved here directly below Dashboard -->
+        @if($role === 'admin')
+            @php
+                $isAttendanceLogsActive = request()->routeIs('admin.attendance.logs');
+            @endphp
+            <a href="{{ route('admin.attendance.logs') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
+               {{ $isAttendanceLogsActive 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isAttendanceLogsActive ? 'opacity-100' : 'opacity-75' }}">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <span>Attendance Logs</span>
+            </a>
+        @endif
+
         <!-- My Attendance Link (All Roles) -->
         @php
             $isAttendanceActive = request()->routeIs('attendance.my-attendance');
         @endphp
         <a href="{{ route('attendance.my-attendance') }}" 
-           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
            {{ $isAttendanceActive 
-               ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+               ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isAttendanceActive ? 'opacity-100' : 'opacity-75' }}">
                 <circle cx="12" cy="12" r="9"/>
@@ -66,9 +83,9 @@
                 $isWorkforceActive = request()->routeIs('employees.*');
             @endphp
             <a href="{{ route('employees.index') }}" 
-               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
                {{ $isWorkforceActive 
-                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                    : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isWorkforceActive ? 'opacity-100' : 'opacity-75' }}">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -86,9 +103,9 @@
                 $isDepartmentsActive = request()->routeIs('departments.*');
             @endphp
             <a href="{{ route('departments.index') }}" 
-               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
                {{ $isDepartmentsActive 
-                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                    : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isDepartmentsActive ? 'opacity-100' : 'opacity-75' }}">
                     <path d="M3 21h18M3 7v14M21 7v14M16 3H8v4h8V3zM12 11h.01M12 15h.01M16 11h.01M16 15h.01M8 11h.01M8 15h.01"/>
@@ -102,9 +119,9 @@
             $isLeavesActive = request()->routeIs('leaves.*');
         @endphp
         <a href="{{ route('leaves.index') }}" 
-           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
            {{ $isLeavesActive 
-               ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+               ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isLeavesActive ? 'opacity-100' : 'opacity-75' }}">
                 <rect x="3" y="4" width="18" height="17" rx="1.5"/>
@@ -119,9 +136,9 @@
                 $isImportActive = request()->routeIs('admin.import.*');
             @endphp
             <a href="{{ route('admin.import.show') }}" 
-               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
                {{ $isImportActive 
-                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                    : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isImportActive ? 'opacity-100' : 'opacity-75' }}">
                     <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="3"/>
@@ -137,9 +154,9 @@
                 $pendingCorrectionsCount = \App\Models\ProfileCorrectionRequest::where('status', 'pending')->count();
             @endphp
             <a href="{{ route('admin.corrections.index') }}" 
-               class="nav-item flex items-center justify-between px-3 py-2.5 rounded-md text-[13.5px] transition duration-150 ease-in-out border border-transparent
+               class="nav-item flex items-center justify-between px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
                {{ $isCorrectionsActive 
-                   ? 'bg-brass/[0.08] text-brass-bright border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                    : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <div class="flex items-center gap-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isCorrectionsActive ? 'opacity-100' : 'opacity-75' }}">

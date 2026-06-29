@@ -177,7 +177,7 @@ class LeaveAuthorizationModelTest extends TestCase
         $response->assertRedirect(route('leaves.index'));
 
         // Refresh and check credit is consumed
-        $credit = LeaveCredit::where('user_id', $this->employee->id)->first();
+        $credit = LeaveCredit::where('user_id', $this->employee->id)->where('source_identifier', 'birthday_2026')->first();
         $this->assertNotNull($credit);
         $this->assertEquals(1.00, $credit->used_amount);
 
@@ -281,8 +281,8 @@ class LeaveAuthorizationModelTest extends TestCase
         ]);
 
         // Year 2026 (non-leap year)
-        // Unlock on Feb 27 (Birthday - 1 day of resolved Feb 28 birthday)
-        Carbon::setTestNow('2026-02-27 12:00:00');
+        // Unlock on Feb 26 (Birthday - 1 day of resolved Feb 27 birthday)
+        Carbon::setTestNow('2026-02-26 12:00:00');
         $this->employee->syncBirthdayCredits();
         
         $credit = LeaveCredit::where('user_id', $this->employee->id)
@@ -291,14 +291,14 @@ class LeaveAuthorizationModelTest extends TestCase
             
         $this->assertNotNull($credit);
         $this->assertEquals('active', $credit->status);
-        // expires 12 months after Feb 28, 2026 -> Feb 28, 2027
-        $this->assertEquals('2027-02-28', $credit->expires_at->format('Y-m-d'));
+        // expires 1 year after Feb 26, 2026 -> Feb 26, 2027
+        $this->assertEquals('2027-02-26', $credit->expires_at->format('Y-m-d'));
 
         Carbon::setTestNow();
     }
 
     /** @test */
-    public function first_of_month_birthday_unlocks_on_first_day_of_month(): void
+    public function first_of_month_birthday_unlocks_exactly_one_day_before(): void
     {
         // Birthday on July 1, 1999
         EmployeeProfile::create([
@@ -306,19 +306,47 @@ class LeaveAuthorizationModelTest extends TestCase
             'date_of_birth' => '1999-07-01',
         ]);
 
-        // Test at Birthday - 1 day (June 30 - locked/not synced)
-        Carbon::setTestNow('2026-06-30 12:00:00');
+        // Test at Birthday - 2 days (June 29 - locked/not synced)
+        Carbon::setTestNow('2026-06-29 12:00:00');
         $this->employee->syncBirthdayCredits();
         $credit = LeaveCredit::where('user_id', $this->employee->id)->where('source_identifier', 'birthday_2026')->first();
         $this->assertNull($credit);
 
-        // Test at Birthday (July 1 - unlocked)
-        Carbon::setTestNow('2026-07-01 12:00:00');
+        // Test at Birthday - 1 day (June 30 - unlocked)
+        Carbon::setTestNow('2026-06-30 12:00:00');
         $this->employee->syncBirthdayCredits();
         $credit = LeaveCredit::where('user_id', $this->employee->id)->where('source_identifier', 'birthday_2026')->first();
         $this->assertNotNull($credit);
         $this->assertEquals('active', $credit->status);
-        $this->assertEquals('2026-07-01', $credit->unlocked_at->format('Y-m-d'));
+        $this->assertEquals('2026-06-30', $credit->unlocked_at->format('Y-m-d'));
+
+        Carbon::setTestNow();
+    }
+
+    /** @test */
+    public function birthday_leave_cannot_be_submitted_before_becoming_eligible(): void
+    {
+        // Birthday on July 1, 1999
+        EmployeeProfile::create([
+            'user_id' => $this->employee->id,
+            'date_of_birth' => '1999-07-01',
+            'joining_date' => '2026-06-01',
+        ]);
+
+        // Submit date is June 28 (Birthday - 3 days - ineligible)
+        Carbon::setTestNow('2026-06-28 12:00:00');
+
+        $response = $this->actingAs($this->employee)->post(route('leaves.store'), [
+            'leave_type' => 'complimentary',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-07-01',
+            'reason' => 'My Birthday Celebration',
+        ]);
+
+        $response->assertSessionHasErrors(['leave_type']);
+
+        // Check no request was created
+        $this->assertEquals(0, LeaveRequest::where('user_id', $this->employee->id)->count());
 
         Carbon::setTestNow();
     }

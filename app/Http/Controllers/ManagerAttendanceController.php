@@ -73,7 +73,7 @@ class ManagerAttendanceController extends Controller
                 return $date->between($leave->start_date, $leave->end_date);
             });
 
-            $status = $record ? $record->status : ($date->isSunday() ? 'weekend' : 'absent');
+            $status = $record ? $record->status : ($date->isSunday() ? 'weekly_off' : 'absent');
 
             if (!$record && $dayLeave) {
                 $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';

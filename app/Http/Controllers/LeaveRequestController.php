@@ -134,59 +134,8 @@ class LeaveRequestController extends Controller
 
         // Handle Complimentary / Birthday Leave (Auto-approved for everyone)
         if ($validated['leave_type'] === 'complimentary') {
-            $available = $user->getAvailableBirthdayYears($startDate);
-            if (empty($available)) {
-                return back()->withErrors(['leave_type' => 'Birthday Leave credit is not available or locked for this date.'])->withInput();
-            }
-            $selectedCredit = $available[0];
-
             try {
-                $leaveRequest = DB::transaction(function () use ($user, $validated, $startDate, $endDate, $selectedCredit) {
-                    $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
-                    $credit = LeaveCredit::where('id', $selectedCredit['credit_id'])->lockForUpdate()->first();
-
-                    if ($credit->status !== 'active' || $credit->used_amount >= $credit->amount) {
-                        throw new \Exception("Birthday Leave credit has already been consumed or is inactive.");
-                    }
-
-                    // Consume the credit
-                    $credit->used_amount = $credit->amount;
-                    $credit->save();
-
-                    $request = LeaveRequest::create([
-                        'user_id' => $lockedUser->id,
-                        'leave_type' => 'complimentary',
-                        'leave_credit_id' => $credit->id,
-                        'start_date' => $startDate,
-                        'end_date' => $endDate,
-                        'total_days' => 1,
-                        'reason' => $validated['reason'],
-                        'status' => 'approved',
-                        'approver_id' => null,
-                        'approved_at' => now(),
-                        'notes' => 'Automatically approved Birthday Leave.',
-                    ]);
-
-                    LeaveRequestLog::create([
-                        'leave_request_id' => $request->id,
-                        'from_status' => null,
-                        'to_status' => 'pending',
-                        'action' => 'applied',
-                        'notes' => 'Applied for Birthday Leave.',
-                        'user_id' => $lockedUser->id,
-                    ]);
-
-                    LeaveRequestLog::create([
-                        'leave_request_id' => $request->id,
-                        'from_status' => 'pending',
-                        'to_status' => 'approved',
-                        'action' => 'approved',
-                        'notes' => 'System automatically approved Birthday Leave.',
-                        'user_id' => $lockedUser->id,
-                    ]);
-
-                    return $request;
-                });
+                $leaveRequest = \App\Services\LeaveBalanceService::submitBirthdayLeave($user, $startDate, $endDate, $validated['reason']);
             } catch (\Exception $e) {
                 return back()->withErrors(['leave_type' => $e->getMessage()])->withInput();
             }

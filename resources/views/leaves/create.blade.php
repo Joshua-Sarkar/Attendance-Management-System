@@ -31,9 +31,11 @@
                     <option value="" disabled {{ old('leave_type') ? '' : 'selected' }}>Select Leave Type</option>
                     <option value="planned" {{ old('leave_type') === 'planned' ? 'selected' : '' }}>Planned Leave</option>
                     <option value="unplanned" {{ old('leave_type') === 'unplanned' ? 'selected' : '' }}>Unplanned Leave</option>
-                    <option value="complimentary" {{ old('leave_type') === 'complimentary' ? 'selected' : '' }} {{ !($hasBirthdayCredit ?? false) ? 'disabled' : '' }}>
-                        Birthday Leave {{ !($hasBirthdayCredit ?? false) ? '(No Birthday Credit Available)' : '' }}
-                    </option>
+                    @if($hasBirthdayCredit ?? false)
+                        <option value="complimentary" {{ old('leave_type') === 'complimentary' ? 'selected' : '' }}>
+                            Birthday Leave
+                        </option>
+                    @endif
                 </select>
                 <x-input-error :messages="$errors->get('leave_type')" class="mt-1" />
             </div>

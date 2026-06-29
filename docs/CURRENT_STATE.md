@@ -6,18 +6,18 @@ This document provides a lightweight operational snapshot of the Attendance Mana
 
 ## 1. System Metadata & Snapshot
 
-* **Current version:** `v1.2-phase-5.0.0`
-* **Current Phase:** Phase 5.0 — Sprint 2 Attendance Engine V2 Upgrade (Completed)
-* **Latest Release Tag:** `v1.2-phase-5.0.0`
+* **Current version:** `v1.2-phase-5.2.0`
+* **Current Phase:** Phase 5.2 — Sprint 2.2 Attendance Administration UX Improvements (Completed)
+* **Latest Release Tag:** `v1.2-phase-5.2.0`
 * **Current Branch:** `main`
-* **Latest Commit:** `v1.2-phase-5.0.0`
+* **Latest Commit:** `v1.2-phase-5.2.0`
 
 ---
 
 ## 2. Codebase Health & Test Metrics
 
 * **Automated Test Suite:** SQLite in-memory Pest tests configuration.
-* **Test Status:** **100% PASS** (112 tests, 586 assertions verified).
+* **Test Status:** **100% PASS** (115 tests, 595 assertions verified).
 * **Code Coverage:** Full coverage across leave ledger transactions, birthday credit grants, supervisor RBAC scopes, Excel uploader hierarchy logic, and profile correction queues.
 
 ---

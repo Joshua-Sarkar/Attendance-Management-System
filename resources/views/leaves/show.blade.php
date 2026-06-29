@@ -47,7 +47,11 @@
                     @elseif($leaveRequest->status === 'pending') bg-cognac-bg text-cognac border-transparent
                     @elseif($leaveRequest->status === 'cancelled') bg-transparent text-vellum-muted border-hairline-strong
                     @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                    {{ $leaveRequest->status }}
+                    @if($leaveRequest->status === 'approved' && $resolvedType === 'complimentary')
+                        Auto Approved
+                    @else
+                        {{ $leaveRequest->status }}
+                    @endif
                 </span>
             </div>
         </div>
