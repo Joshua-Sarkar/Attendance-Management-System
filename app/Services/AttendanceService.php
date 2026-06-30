@@ -22,7 +22,7 @@ class AttendanceService
         $startTime = $department?->shift_start_time ?? '09:30:00';
         $graceMinutes = $department?->grace_minutes ?? 5;
 
-        $threshold = today()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);
+        $threshold = today()->setTimeFromTimeString($startTime)->addMinutes((int) $graceMinutes);
 
         $nowMin = $now->copy()->second(0)->microsecond(0);
         $thresholdMin = $threshold->copy()->second(0)->microsecond(0);

@@ -15,6 +15,10 @@ class Department extends Model
         'grace_minutes',
     ];
 
+    protected $casts = [
+        'grace_minutes' => 'integer',
+    ];
+
     public function users(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(User::class);

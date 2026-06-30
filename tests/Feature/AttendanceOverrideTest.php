@@ -24,6 +24,7 @@ class AttendanceOverrideTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Carbon\Carbon::setTestNow('2026-06-25 09:00:00'); // Thursday
 
         // 1. Setup departments with distinct shifts
         $this->deptEng = Department::create([
@@ -82,6 +83,12 @@ class AttendanceOverrideTest extends TestCase
             'status' => 'active',
             'department_id' => $this->deptHr->id,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        \Carbon\Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** @test */

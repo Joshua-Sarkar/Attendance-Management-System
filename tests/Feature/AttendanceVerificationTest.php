@@ -12,6 +12,18 @@ class AttendanceVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        \Carbon\Carbon::setTestNow('2026-06-25 09:00:00'); // Thursday
+    }
+
+    protected function tearDown(): void
+    {
+        \Carbon\Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     /**
      * Test employee login redirecting to password change first, then access to dashboard.
      */

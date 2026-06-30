@@ -25,6 +25,7 @@ class LeaveManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Carbon\Carbon::setTestNow('2026-06-25 09:00:00'); // Thursday
 
         $this->department = Department::create(['name' => 'Engineering']);
 
@@ -89,6 +90,12 @@ class LeaveManagementTest extends TestCase
             'admin_id' => $this->admin->id,
             'leave_balance' => 10.00,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        \Carbon\Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** @test */

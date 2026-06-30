@@ -123,7 +123,7 @@ class AttendanceController extends Controller
         $streak = 0;
         $startTime = config('attendance.start_time', '09:00');
         $graceMinutes = config('attendance.grace_minutes', 15);
-        $threshold = today()->setTimeFromTimeString($startTime)->addMinutes($graceMinutes);
+        $threshold = today()->setTimeFromTimeString($startTime)->addMinutes((int) $graceMinutes);
         
         $todayIsSunday = today()->isSunday();
         $todayStr = today()->format('Y-m-d');

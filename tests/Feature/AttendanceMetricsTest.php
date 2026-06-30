@@ -21,6 +21,7 @@ class AttendanceMetricsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Carbon\Carbon::setTestNow('2026-06-25 09:00:00'); // Thursday
 
         // Ensure we load config values
         config(['attendance.start_time' => '09:00']);
@@ -51,6 +52,12 @@ class AttendanceMetricsTest extends TestCase
             'status' => 'active',
             'department_id' => $this->department->id,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        \Carbon\Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** @test */
