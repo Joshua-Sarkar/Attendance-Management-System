@@ -25,7 +25,7 @@ The system supports four categories of leave:
 ### Intended Business Rule
 - **Transactional Balances**: The user's `leave_balance` must never be modified directly. Every adjustment must be recorded as a row in the `leave_ledger_entries` audit trail. The `leave_balance` in the `users` table is a cached summary of the ledger sum.
 - **Deduction and Refund**:
-  - When a manager approves a Planned or Unplanned leave, the system deducts the `total_days` from `users.leave_balance` and records a ledger row of type `'deduction'` with a negative amount.
+  - When a manager approves a Planned leave, the system deducts the `total_days` from `users.leave_balance` and records a ledger row of type `'deduction'` with a negative amount.
   - If a user cancels an approved paid leave, the balance must be restored, and a ledger row of type `'refund'` with a positive amount is created.
   - Administrative adjustments must be logged under the `'adjustment'` type.
 - **Manual Overrides Sync**: Administrative overrides to daily attendance (e.g. overriding an absent day to `'paid_leave'`, or changing a `'paid_leave'` day back to `'present'`) must automatically create matching positive/negative `'adjustment'` ledger rows and update the user's `leave_balance` to keep status logs and leave balances fully reconciled.
@@ -35,7 +35,7 @@ The system supports four categories of leave:
 ### Current Implementation
 - All balance deductions, approvals, and manual overrides are run inside database transactions wrapped in `DB::transaction()` with a blocking row lock:
   `User::where('id', $userId)->lockForUpdate()->firstOrFail();`
-- Overrides synchronization is implemented in [AttendanceOverrideController@store](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php):
+- Overrides synchronization is implemented in [AttendanceService@applyBulkOverride](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php):
   - Determines if the day was already deducted (via a previous override or approved leave request) and computes the net change.
   - Checks if negative balance is prevented (`config('attendance.allow_negative_leave_balance') === false`) and aborts with a validation error if the user balance would be exceeded.
   - Updates the balance and writes a transaction record to `leave_ledger_entries`.

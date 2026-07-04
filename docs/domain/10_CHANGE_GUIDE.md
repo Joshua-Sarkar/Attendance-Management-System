@@ -1,41 +1,208 @@
 # 10. Change Guide & Impact Matrix
 
-This document provides developers with a step-by-step modification guide and a Change Impact Matrix to ensure future feature development remains predictable and does not break existing logic.
+This document provides developers with a subsystem-by-subsystem guide and modification playbooks to evaluate dependencies and prevent regressions during future development.
 
 ---
 
-## 1. Typical Implementation Workflow
-
-When making modifications or adding features to AMS-V1, follow this checklist sequence:
-1. **Analyze Rules**: Read the relevant business rule document inside `docs/domain/` to understand the domain constraints.
-2. **Draft Modifications**: Update the rule document if business behaviors are changing, and obtain stakeholder approval first.
-3. **Database Migrations**: Add column adjustments or new tables. Never modify active historical columns without a backup plan.
-4. **Services and Models**: Implement core business calculations in the service layer (`app/Services/`) and encapsulate relations and casts in models (`app/Models/`).
-5. **Controllers and Middleware**: Orchestrate request parameters validation and access controls logic.
-6. **Views (Blade)**: Adapt UI elements following the specs in `07_UI_GUIDELINES.md`.
-7. **Pest Tests**: Add feature or unit tests checking all success paths, boundaries, and unauthorized routes.
-8. **Update Documentation**: Synchronize changes back to this domain knowledge base.
+## 1. Subsystem Change Reference Guides
 
 ---
 
-## 2. Change Impact Matrix
+### 1. Authentication & Security
 
-This matrix maps each major system feature to its configuration, business logic, models, controllers, views, tests, and documentation files. **If a feature changes tomorrow, review the files listed in its row.**
-
-| Feature Name | Business Rules Doc | Database Tables | Models | Services | Controllers | Blade Views | Pest Tests |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Birthday Leave Credits** | `03_LEAVE_RULES.md` | `leave_credits`, `leave_requests` | `User`, `LeaveCredit`, `LeaveRequest` | `LeaveBalanceService` | `LeaveRequestController` | `leaves/create.blade.php` | `LeaveAuthorizationModelTest.php` |
-| **Attendance Overrides** | `02_ATTENDANCE_RULES.md` | `attendances` | `Attendance` | None | `AttendanceOverrideController` | Embedded in dashboard modules | `AttendanceOverrideTest.php` |
-| **Weekly Off Exclusions** | `02_ATTENDANCE_RULES.md` | None (checks dayOfWeek) | `Attendance` | `AttendanceService` | `AttendanceController` | `attendance/my-attendance.blade.php` | `WorkingDaysTest.php` |
-| **Department Shifts** | `02_ATTENDANCE_RULES.md` | `departments` | `Department`, `User` | `AttendanceService` | `DepartmentController` | `departments/*` | `HierarchySplitTest.php` (role check) |
-| **Workforce Excel Import** | `05_ORGANIZATION_RULES.md` | `import_logs`, `users`, `employee_profiles` | `ImportLog`, `User`, `EmployeeProfile` | `EmployeeImportService` | `ImportController` | `admin/import-employees.blade.php` | `ImportEmployeesTest.php` |
-| **Profile Correction Requests** | `05_ORGANIZATION_RULES.md` | `profile_correction_requests` | `ProfileCorrectionRequest` | None | `ProfileCorrectionRequestController` | `admin/correction-requests/index.blade.php` | `ProfileCorrectionRequestTest.php` |
-| **Planned / Unplanned Leaves** | `03_LEAVE_RULES.md` | `leave_requests`, `leave_ledger_entries`, `users` | `LeaveRequest`, `LeaveLedgerEntry`, `User` | `LeaveBalanceService` | `LeaveRequestController` | `leaves/*` | `LeaveManagementTest.php`, `LeaveBalanceTest.php` |
-| **Password Strategy & RBAC** | `01_SYSTEM_RULES.md` | `users` | `User` | None | `PasswordController`, `AuthenticatedSessionController` | `auth/*` | `PasswordStrategySecurityTest.php` |
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [CheckPasswordChange.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Middleware/CheckPasswordChange.php) (Onboarding interceptor)
+  - [PasswordController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/Auth/PasswordController.php) (Change route actions)
+  - [AuthenticatedSessionController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/Auth/AuthenticatedSessionController.php) (Login/logout handling)
+* **Which tests must be updated?**
+  - [PasswordStrategySecurityTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/PasswordStrategySecurityTest.php) (Onboarding reset behaviors)
+  - [AuthenticationTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/Auth/AuthenticationTest.php) (Login flows)
+* **Which documentation must be synchronized?**
+  - [01_SYSTEM_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/01_SYSTEM_RULES.md) (Security controls)
+  - [08_MODULE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/08_MODULE_MAP.md) (File registry)
+* **Which configuration values may be affected?**
+  - `config/auth.php` (Session thresholds)
+  - `config/employees.php` (Default employee password)
 
 ---
 
-## 3. Step-by-Step Playbooks for Common Adjustments
+### 2. Employee Management (Workforce Directory)
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php) (Admin CRUD logic)
+  - [EmployeeService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeService.php) (User-profile save transaction)
+  - [EmployeeProfile.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/EmployeeProfile.php) (Encryption casts)
+  - `resources/views/employees/show.blade.php` (Tabbed profile layout)
+* **Which tests must be updated?**
+  - [EmployeeProfileTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/EmployeeProfileTest.php) (Relations & encryption)
+  - [EmployeeProfileAccessTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/EmployeeProfileAccessTest.php) (RBAC checks)
+* **Which documentation must be synchronized?**
+  - [05_ORGANIZATION_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/05_ORGANIZATION_RULES.md) (PII & Dossier rules)
+  - [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md) (Schemas and maps)
+* **Which configuration values may be affected?**
+  - `config/employees.php` (Default employee password)
+
+---
+
+### 3. Department Management
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [DepartmentController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/DepartmentController.php) (CRUD logic)
+  - [Department.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Department.php) (Model rules)
+  - [AttendanceTimingResolver.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceTimingResolver.php) (Resolving custom shifts)
+* **Which tests must be updated?**
+  - [HierarchySplitTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/HierarchySplitTest.php) (Department accesses checks)
+* **Which documentation must be synchronized?**
+  - [05_ORGANIZATION_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/05_ORGANIZATION_RULES.md) (Department structures)
+* **Which configuration values may be affected?**
+  - [config/attendance.php](file:///c:/Users/Lenovo/AMS-V1/config/attendance.php) (Department overrides config)
+
+---
+
+### 4. Attendance Tracking
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (Clock check-in/out calculations)
+  - [AttendanceTimingResolver.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceTimingResolver.php) (Shift timings resolution)
+  - [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (Minutes calculations & date casts)
+  - [AttendanceController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceController.php) (Clock buttons handler)
+* **Which tests must be updated?**
+  - [AttendanceVerificationTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceVerificationTest.php) (Log registrations)
+  - [AttendanceMetricsTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceMetricsTest.php) (Punctuality buffer math)
+  - [WorkingDaysTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/WorkingDaysTest.php) (Sunday rules)
+  - [TimezoneTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/TimezoneTest.php) (Kolkata offset checks)
+* **Which documentation must be synchronized?**
+  - [02_ATTENDANCE_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/02_ATTENDANCE_RULES.md) (Clock in/out & shifts logic)
+  - [12_SYSTEM_CONFIGURATION.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/12_SYSTEM_CONFIGURATION.md) (Grace configurations)
+* **Which configuration values may be affected?**
+  - `attendance.start_time` / `attendance.grace_minutes` / `attendance.end_time`
+  - `attendance.half_day_threshold_hours` / `attendance.weekly_off_day`
+  - `attendance.new_rules_start_date`
+
+---
+
+### 5. Attendance Overrides & Auditing
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) (Preview and save overrides)
+  - [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (Previews generator & bulk transaction loop)
+  - [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php) (Roster lists and timeline views)
+  - `resources/views/admin/attendance-logs.blade.php` (Alpine tab workspace view layout)
+* **Which tests must be updated?**
+  - [AttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceOverrideTest.php) (Audit trail tests)
+  - [BulkAttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/BulkAttendanceOverrideTest.php) (Conflict previews, leave balance refunds, and exclusions checks)
+* **Which documentation must be synchronized?**
+  - [02_ATTENDANCE_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/02_ATTENDANCE_RULES.md) (Administrative override guidelines)
+  - [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md) (Conflict handling ADR entries)
+* **Which configuration values may be affected?**
+  - `attendance.allow_negative_leave_balance` (Deduction policies check)
+
+---
+
+### 6. Leave Request Management
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [LeaveRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/LeaveRequestController.php) (Leave approval, cancel, and reclassification override endpoints)
+  - [LeaveRequest.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveRequest.php) (Leave type configurations)
+  - [LeaveRequestLog.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveRequestLog.php) (Audit change logs)
+* **Which tests must be updated?**
+  - [LeaveManagementTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveManagementTest.php) (Approvals & cancellations)
+  - [LeaveLeaveRulesPhase56Test.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveLeaveRulesPhase56Test.php) (Type validations checks)
+* **Which documentation must be synchronized?**
+  - [03_LEAVE_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/03_LEAVE_RULES.md) (Planned/Unplanned rules)
+* **Which configuration values may be affected?**
+  - `attendance.leave_annual_allocation` / `attendance.leave_monthly_accrual_rate`
+
+---
+
+### 7. Birthday Leave Credits
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [User.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/User.php) (sync credit & available token loops)
+  - [LeaveCredit.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveCredit.php) (Status properties)
+  - [LeaveBalanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/LeaveBalanceService.php) (`submitBirthdayLeave` consumption write)
+* **Which tests must be updated?**
+  - [LeaveAuthorizationModelTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveAuthorizationModelTest.php) (Unlock buffers, Feb 29 leap shifts, tenure overrides, restores)
+* **Which documentation must be synchronized?**
+  - [03_LEAVE_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/03_LEAVE_RULES.md) (Birthday parameters)
+* **Which configuration values may be affected?**
+  - `attendance.birthday_leave_unlock_days`
+  - `attendance.birthday_leave_expiry_years`
+
+---
+
+### 8. Leave Balance Ledger
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [LeaveLedgerEntry.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveLedgerEntry.php) (Transaction rows writes)
+  - [AccrueLeavesCommand.php](file:///c:/Users/Lenovo/AMS-V1/app/Console/Commands/AccrueLeavesCommand.php) (Accrual console check)
+  - [LeaveBalanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/LeaveBalanceService.php) (Opening credits initializations)
+* **Which tests must be updated?**
+  - [LeaveBalanceTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveBalanceTest.php) (Idempotent commands, cancels refund ledger writes)
+* **Which documentation must be synchronized?**
+  - [03_LEAVE_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/03_LEAVE_RULES.md) (Double-entry parameters)
+* **Which configuration values may be affected?**
+  - `attendance.leave_monthly_accrual_rate`
+
+---
+
+### 9. Workforce Zimyo Import Engine
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [EmployeeImportService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeImportService.php) (Excel parser, manager match lookup checks)
+  - [ImportController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/ImportController.php) (Upload post route)
+  - `resources/views/admin/import-employees.blade.php` (Import UI templates)
+* **Which tests must be updated?**
+  - [ImportEmployeesTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/ImportEmployeesTest.php) (Loops and validation indexes checks)
+* **Which documentation must be synchronized?**
+  - [05_ORGANIZATION_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/05_ORGANIZATION_RULES.md) (Uploader hierarchy rules)
+* **Which configuration values may be affected?**
+  - `config/employees.php` (Default employee password)
+
+---
+
+### 10. Profile Correction Requests
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [ProfileCorrectionRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/ProfileCorrectionRequestController.php) (Resolution updates)
+  - [ProfileCorrectionRequest.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/ProfileCorrectionRequest.php) (Status casts)
+  - `resources/views/admin/correction-requests/index.blade.php` (Queue lists)
+* **Which tests must be updated?**
+  - [ProfileCorrectionRequestTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/ProfileCorrectionRequestTest.php) (Locks and resolution scopes)
+* **Which documentation must be synchronized?**
+  - [05_ORGANIZATION_RULES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/05_ORGANIZATION_RULES.md) (Edit requests rules)
+* **Which configuration values may be affected?**
+  - None.
+
+---
+
+### 11. Dashboards
+
+**If you modify this subsystem...**
+* **Which files must also be reviewed?**
+  - [DashboardController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/DashboardController.php) (Metrics builder)
+  - `resources/views/dashboard.blade.php` (Dashboard cards grids)
+  - `resources/views/components/sidebar.blade.php` (Sidebar layout)
+* **Which tests must be updated?**
+  - [AttendanceAuditTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/AttendanceAuditTest.php) (Statistics aggregation validations)
+* **Which documentation must be synchronized?**
+  - [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md) (Roster metrics lists)
+* **Which configuration values may be affected?**
+  - None.
+
+---
+
+## 2. Typical Playbooks for Common Adjustments
 
 ### A. Adjusting Shift Timings or Grace Periods
 1. **Config file**: Update defaults in `config/attendance.php` if global thresholds change.
@@ -54,10 +221,3 @@ This matrix maps each major system feature to its configuration, business logic,
 2. **Parser Columns**: Edit [EmployeeImportService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeImportService.php) to locate headers mapping candidates in Pass 1. Add extraction keys to `$profileData`.
 3. **UI Preview Tables**: Update the upload summary tables inside `admin/import-employees.blade.php`.
 4. **Validation Test**: Write a mock excel row in `ImportEmployeesTest.php` and assert the database column saves the parsed value.
-
----
-
-## 4. Related Modules & Cross References
-- **[08_MODULE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/08_MODULE_MAP.md)**: Master directory of files.
-- **[12_SYSTEM_CONFIGURATION.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/12_SYSTEM_CONFIGURATION.md)**: Coordinates configurable thresholds locations.
-- **[README.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/README.md)**: Governs standard documentation update workflows.

@@ -212,13 +212,15 @@ erDiagram
   * [AttendanceController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceController.php) (clock check-in/out)
   * [ManagerAttendanceController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/ManagerAttendanceController.php) (roster view list)
   * [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php) (audit query console filters)
+  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) (individual/bulk roster overrides & conflict previews)
 * **Models:**
   * [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (implements `late_minutes` delay math)
 * **Services:**
-  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (computes daily status, averages, and delays)
+  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (computes daily status, averages, overrides preview/saves, and weekly offs)
+  * [AttendanceTimingResolver.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceTimingResolver.php) (resolves department shifts, healthcare overrides, and hours threshold)
 * **Views:**
   * `resources/views/attendance/employee-dashboard.blade.php`
-  * `resources/views/admin/attendance-logs.blade.php` (Audit logs panel)
+  * `resources/views/admin/attendance-logs.blade.php` (tabbed daily roster, overrides console, and audit trail)
 
 #### C. Database Schema
 * **Table:** `attendances` (Logs daily workspace checks)
@@ -260,6 +262,12 @@ erDiagram
     5. Late arrivals trigger half-day classifications, while check-outs check for working-hour policies.
     6. Override reason is mandatory (minimum 5 characters) for both individual and bulk overrides.
     7. Override audit trail loading verifies the overriddenBy relationship mapping and retrieves view data correctly.
+* **Test File:** [BulkAttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/BulkAttendanceOverrideTest.php)
+  * *Scenarios:*
+    1. Admin can preview bulk overrides showing expected affected records and conflicts.
+    2. Enforces conflict handling modes (`skip`, `replace`, `cancel`) for overlaps with leaves or existing overrides.
+    3. Excludes weekends or filters by working days/Sundays.
+    4. Correctly triggers leave balance refunds and deductions transactionally.
 
 ---
 
@@ -321,6 +329,14 @@ erDiagram
     2. Overriding and rejecting birthday leave restores credits and updates daily attendance to `absent`.
     3. Leap year birthdays (February 29) resolve to February 27 in non-leap years.
     4. Birthday Leave cannot be submitted before the employee becomes eligible (submission date validation).
+* **Test File:** [LeaveLeaveRulesPhase56Test.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveLeaveRulesPhase56Test.php)
+  * *Scenarios:*
+    1. Late policy resolves classification dynamically from configuration.
+    2. Healthcare shift timings resolve case-insensitively for names and codes.
+    3. Unpaid leave creation and approval does not deduct regular balance.
+    4. Unpaid leave cancellation and override creates zero-value ledger entries.
+    5. Half day status in override resolves to present status and half day classification.
+    6. Unplanned leave creation and approval does not deduct regular balance.
 
 ---
 

@@ -69,18 +69,16 @@ The system uses three primary font families to distinguish content:
 
 ---
 
-## 4. Current Implementation & Known Inconsistencies
+## 4. Current Implementation & Completed Overhaul
 
 ### Current Implementation
-- Declared in the main layout file [components/ledger-layout.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/ledger-layout.blade.php) and custom CSS.
-- Color tokens are defined as CSS custom variables in the root container.
+- Declared in the main layout file [components/ledger-layout.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/ledger-layout.blade.php) and global CSS variables inside [app.css](file:///c:/Users/Lenovo/AMS-V1/resources/css/app.css).
+- Color tokens are fully mapped as CSS custom variables inside the root container.
 
-### Known Inconsistencies
-- Some layout cards in the dashboard settings retain default Tailwind light-mode whites (`bg-white`) and standard SaaS rounded shadow boxes, which deviate from the flat Soft Cream panel system.
-- Some table rows use small vertical padding (`py-2`) instead of the standardized `py-4` table spacing.
-
-### Future Improvements
-- Refactor the CSS variables to guarantee that all Blade files use semantic tokens (e.g., `bg-panel` instead of hardcoded tailwind utility classes).
+### Completed Design Overhaul (Phase 5.8)
+- All default Tailwind light-mode whites (`bg-white`) and standard SaaS rounded shadow boxes have been refactored into the premium tactile Walnut/Ivory/Brass aesthetic.
+- Table rows follow the standardized vertical padding spacing rules, and clocks/timestamps use the 12-hour format with AM/PM displays.
+- Card metrics sections are split into spaced floating panels with top semantic indicators (Forest, Cognac, Slate, Burgundy).
 
 ---
 

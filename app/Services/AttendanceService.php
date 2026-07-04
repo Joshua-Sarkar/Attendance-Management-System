@@ -820,10 +820,11 @@ class AttendanceService
 
         \Illuminate\Support\Facades\DB::transaction(function () use (
             $users, $dates, $dateStrings, $skipLeaves, $skipOverrides, $conflictHandling,
-            $status, $classification, $reason, $overrideType, $admin, $now, &$appliedCount
+            $status, $classification, $reason, $overrideType, $admin, $now, &$appliedCount, $userIds
         ) {
             $minDate = collect($dates)->first()->format('Y-m-d') . ' 00:00:00';
             $maxDate = collect($dates)->last()->format('Y-m-d') . ' 23:59:59';
+            $savedAttendances = [];
 
             $existingLeaves = \App\Models\LeaveRequest::whereIn('user_id', $users->pluck('id'))
                 ->where('status', 'approved')
@@ -848,52 +849,37 @@ class AttendanceService
                     $leave = null;
                     if (isset($existingLeaves[$lockedUser->id])) {
                         $leave = $existingLeaves[$lockedUser->id]->first(function ($l) use ($date) {
-                            $start = Carbon::parse($l->start_date)->startOfDay();
-                            $end = Carbon::parse($l->end_date)->startOfDay();
-                            return $date->greaterThanOrEqualTo($start) && $date->lessThanOrEqualTo($end);
+                            return Carbon::parse($l->start_date)->startOfDay()->lte($date) &&
+                                Carbon::parse($l->end_date)->endOfDay()->gte($date);
                         });
                     }
 
-                    $hasOverride = $attendance && $attendance->is_overridden;
-                    $hasLeave = $leave !== null;
-
-                    $isConflict = ($hasOverride && !$skipOverrides) || ($hasLeave && !$skipLeaves);
-                    if ($isConflict && $conflictHandling === 'cancel') {
-                        throw new \Exception("Operation cancelled due to conflict for employee {$lockedUser->name} ({$lockedUser->employee_id}) on {$dateStr}.");
+                    // Checks and policy application
+                    if ($skipLeaves && $leave) {
+                        continue;
                     }
-
-                    $shouldSkip = false;
-                    if ($skipOverrides && $hasOverride) {
-                        $shouldSkip = true;
-                    }
-                    if ($skipLeaves && $hasLeave) {
-                        $shouldSkip = true;
-                    }
-                    if ($conflictHandling === 'skip' && $isConflict) {
-                        $shouldSkip = true;
-                    }
-
-                    if ($shouldSkip) {
+                    if ($skipOverrides && $attendance && $attendance->is_overridden) {
                         continue;
                     }
 
-                    // 1. Calculate already deducted amount
-                    $alreadyDeducted = 0.0;
-                    if ($attendance && $attendance->status === 'paid_leave') {
-                        $alreadyDeducted = $attendance->classification === 'half_day' ? 0.5 : 1.0;
-                    } else {
-                        if ($leave && $leave->leave_type !== 'complimentary' && $leave->is_paid) {
-                            $alreadyDeducted = 1.0;
-                        }
+                    if ($conflictHandling === 'cancel' && ($leave || ($attendance && $attendance->is_overridden))) {
+                        $conflictType = $leave ? 'approved leave' : 'existing override';
+                        throw new \Exception("Operation cancelled due to conflict on {$dateStr} for {$lockedUser->name} ({$conflictType}).");
                     }
 
-                    // Resolve target classification for deduction checking
+                    // Leave balance check/adjustment
+                    $alreadyDeducted = 0.0;
+                    if ($attendance && $attendance->is_overridden && $attendance->status === 'paid_leave') {
+                        $alreadyDeducted = $attendance->classification === 'half_day' ? 0.5 : 1.0;
+                    } elseif ($leave && $leave->leave_type !== 'complimentary' && $leave->is_paid) {
+                        $alreadyDeducted = 1.0;
+                    }
+
                     $targetClassification = $classification;
-                    if ($targetClassification === 'automatic' || empty($targetClassification)) {
+                    if ($targetClassification === 'automatic') {
                         $targetClassification = $attendance ? ($attendance->automatic_classification ?? 'full_day') : 'full_day';
                     }
 
-                    // 2. Calculate target deduction amount
                     $targetDeduction = 0.0;
                     if ($status === 'paid_leave') {
                         $targetDeduction = $targetClassification === 'half_day' ? 0.5 : 1.0;
@@ -901,16 +887,14 @@ class AttendanceService
 
                     $adjustment = $alreadyDeducted - $targetDeduction;
 
-                    // 3. Negative Balance Policy check
                     if ($adjustment < 0.0) {
                         $allowNegative = (bool) config('attendance.allow_negative_leave_balance', true);
-                        $netDeductionAmount = abs($adjustment);
-                        if (!$allowNegative && ($lockedUser->leave_balance - $netDeductionAmount < 0.0)) {
-                            throw new \Exception("Insufficient leave balance for {$lockedUser->name} ({$lockedUser->employee_id}). Balance is {$lockedUser->leave_balance} but this override requires deducting {$netDeductionAmount} leave day(s).");
+                        $netDeduction = abs($adjustment);
+                        if (!$allowNegative && ($lockedUser->leave_balance - $netDeduction < 0.0)) {
+                            throw new \Exception("Insufficient leave balance for {$lockedUser->name} ({$lockedUser->employee_id}). Balance is {$lockedUser->leave_balance} but this override requires deducting {$netDeduction} leave day(s).");
                         }
                     }
 
-                    // 4. Save Ledger Entry and update User balance if adjustment is non-zero
                     if ($adjustment != 0.0) {
                         $lockedUser->leave_balance += $adjustment;
                         $lockedUser->save();
@@ -923,7 +907,7 @@ class AttendanceService
                         ]);
                     }
 
-                    // Preserve original computed values if not already overridden
+                    // Preserve automatic values if not previously present
                     if (!$attendance) {
                         $isWeeklyOff = \App\Services\AttendanceTimingResolver::isWeeklyOff($date);
                         $autoStatus = $leave ? ($leave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave') : ($isWeeklyOff ? 'weekly_off' : 'absent');
@@ -954,8 +938,21 @@ class AttendanceService
                     $attendance->override_type = $overrideType;
                     $attendance->save();
 
+                    $savedAttendances[] = $attendance;
                     $appliedCount++;
                 }
+            }
+
+            // Save operation metadata on the first record in the group
+            if (count($savedAttendances) > 0) {
+                $firstAttendance = $savedAttendances[0];
+                $firstAttendance->metadata = [
+                    'conflict_strategy' => $conflictHandling,
+                    'dates_affected' => collect($dates)->map(fn($d) => $d->format('Y-m-d'))->toArray(),
+                    'employees_count' => count($userIds),
+                    'records_modified' => count($savedAttendances),
+                ];
+                $firstAttendance->save();
             }
         });
 

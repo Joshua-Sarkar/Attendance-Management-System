@@ -97,15 +97,28 @@ This document details the business logic and current implementation guidelines f
 - **Traceability**: The system must preserve the original computed status and classification as an audit trail.
 - **Ledger Synchronization**: Overriding attendance to `paid_leave` or resetting it back must synchronously deduct or refund leave balances in the double-entry Leave Ledger.
 - **Negative Balance Constraint**: Overrides must validate the employee's remaining leaves. If configuration `'attendance.allow_negative_leave_balance'` is set to `false`, overrides that push the employee's balance below `0.00` must be rejected.
+- **Concurrency Protections**: All override modifications must execute inside database transactions wrapping pessimistic row-level locks (`lockForUpdate()`) to prevent concurrent updates from corrupting ledger balances.
+- **Bulk Override Workspace**: Administrators must be able to perform roster overrides in bulk, selecting a subset of employees (individually, by department, or all) and a date range (single date, range of dates, or multiple selected dates).
+- **Conflict Handling**: When overriding records that overlap with existing manual overrides or approved leave requests, the administrator must choose how to handle conflicts:
+  - **Skip**: Ignores conflict records, leaving them unchanged.
+  - **Replace**: Overwrites the conflict records, re-evaluating leave balance refunds/deductions.
+  - **Cancel**: Aborts the entire bulk operation if any conflict is detected.
+- **Override Exclusions**: Administrators can choose to filter the bulk overrides using options:
+  - **Working Days Only**: Excludes weekends from the date range.
+  - **Include Sundays**: Explicitly applies overrides to Sundays even if working days only is checked.
+  - **Skip Leaves**: Automatically skips dates covered by approved leave requests.
+  - **Skip Overrides**: Automatically skips dates covered by prior manual overrides.
 
 ### Current Implementation
-- Processed in [AttendanceOverrideController@store](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php).
+- Handled in [AttendanceOverrideController](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) and processed by `getBulkOverridePreview` and `applyBulkOverride` inside [AttendanceService](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php).
 - Selecting **Half Day** in the Override Status dropdown resolves internally to status `present` and classification `half_day`. The separate override classification selection is removed from the form for simplicity.
-- Wraps inside a database transaction (`DB::transaction`) and locks User and Attendance records for updates.
-- Computes `alreadyDeducted` (checks previous `'paid_leave'` override or approved leave request) and `targetDeduction` (checks new override status/classification weight: `1.0` for full day, `0.5` for half day `'paid_leave'`).
-- Net adjustment `adjustment = alreadyDeducted - targetDeduction` is computed:
-  - If balance policy prevents negative balances (`config('attendance.allow_negative_leave_balance') === false`) and the transaction would cause user's balance to fall below zero, it throws an exception aborting the database write.
-  - Otherwise, updates `users.leave_balance` cache and creates a matching row in `leave_ledger_entries` of type `'adjustment'`.
+- The **Preview** method calculates affected record volumes, existing overrides count, leaves count, and returns a detailed status warning/conflict message based on the selected conflict handling parameters.
+- Wraps override commits in a transaction (`DB::transaction`) and locks User and Attendance records:
+  - Computes `alreadyDeducted` (checks previous `'paid_leave'` override or approved leave request) and `targetDeduction` (checks new override status/classification weight: `1.0` for full day, `0.5` for half day `'paid_leave'`).
+  - Net adjustment `adjustment = alreadyDeducted - targetDeduction` is computed:
+    - If balance policy prevents negative balances (`config('attendance.allow_negative_leave_balance') === false`) and the transaction would cause user's balance to fall below zero, it throws an exception aborting the database write.
+    - Otherwise, updates `users.leave_balance` cache and creates a matching row in `leave_ledger_entries` of type `'adjustment'`.
+  - Saves the final status and classification, sets `is_overridden = true`, records the admin ID (`overridden_by`), override reason, and type (`individual` or `bulk`).
 
 ---
 

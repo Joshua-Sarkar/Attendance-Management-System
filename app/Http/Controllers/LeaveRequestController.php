@@ -108,7 +108,7 @@ class LeaveRequestController extends Controller
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'required|string|min:5',
-            'leave_type' => 'required|string|in:planned,unplanned,complimentary,unpaid',
+            'leave_type' => 'required|string|in:planned,unplanned,complimentary',
         ];
 
         $validated = $request->validate($rules);

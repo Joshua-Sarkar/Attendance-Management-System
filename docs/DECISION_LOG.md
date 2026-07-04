@@ -617,6 +617,65 @@ Implement Option B.
   * [HANDOVER.md](file:///c:/Users/Lenovo/AMS-V1/docs/HANDOVER.md)
 * **Related Release:** Sprint 2.3.1 Stabilization (HEAD commit `d89fb6f`)
 
+---
+
+## ADR 22: Department-Specific Shift Policies & Birthday Leave Credits (Phase 5.6)
+
+### Problem
+1. Some departments require custom shifts that differ from the global default shift start and grace period. For example, the Healthcare department has unique shift requirements.
+2. The system lacked an automated model-level engine to grant, sync, and expire birthday leaves dynamically while tracking individual credits validity.
+
+### Chosen Solution
+1. **Dynamic Shifts**: Updated `AttendanceTimingResolver` to check for department shifts. For the Healthcare department, matched case-insensitively by name/code `healthcare` or code `hlt` and hardcode timings: start at `10:00:00`, end at `18:00:00`, and grace minutes `5`.
+2. **Leave Credit System**: Introduced the `leave_credits` table to allocate, track, and expire individual tokens. Setup automatic sync checks `1` day before birthday (Feb 29 birthdays resolve to Feb 27 in non-leap years) and enforce 1-year expiry.
+
+### Consequences
+* **Positive**: Fully data-driven custom shift resolution. Reusable leave credits engine supporting specialized allocations like birthday tokens. Auto-approved complimentary type requests.
+* **Related Files**:
+  * [AttendanceTimingResolver.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceTimingResolver.php)
+  * [User.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/User.php) (birthday credit syncing)
+  * [LeaveCredit.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveCredit.php)
+  * [LeaveAuthorizationModelTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/LeaveAuthorizationModelTest.php)
+
+---
+
+## ADR 23: Bulk Attendance Override Workspace & Conflict Handling (Phase 5.7)
+
+### Problem
+Admins need to correct daily roster records for multiple employees or departments simultaneously over customizable dates ranges. This could clash with active leaves or prior overrides, risking duplicate ledger deductions or corrupted logs.
+
+### Chosen Solution
+1. **Bulk Override Service**: Rebuilt `AttendanceService` to support bulk override processing for individual employees, entire departments, or all active staff.
+2. **Conflict Resolution Filters**: Implemented conflict detection filters: `skip` (ignores conflicts), `replace` (forces override, refunds old and deducts new balance transactionally), or `cancel` (aborts transaction).
+3. **Transaction Safety**: All changes run inside `DB::transaction()` with pessimistic locking (`lockForUpdate()`) to prevent concurrent updates from corrupting ledger balances.
+
+### Consequences
+* **Positive**: Unified, safe bulk uploader override functionality. Conflict preview alerts Admin of overlaps prior to commits. Keeps status logs and double-entry leave balances fully reconciled.
+* **Related Files**:
+  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php)
+  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php)
+  * [BulkAttendanceOverrideTest.php](file:///c:/Users/Lenovo/AMS-V1/tests/Feature/BulkAttendanceOverrideTest.php)
+
+---
+
+## ADR 24: Vercel/Linear Walnut-Ivory Visual Design Overhaul & 12-Hour Clocks (Phase 5.8)
+
+### Problem
+The default Laravel Breeze UI looked generic and didn't fit the premium, tactile editorial design Constitutions required for an institutional workforce operating system. Clocks and times were rendered in military formats.
+
+### Chosen Solution
+1. **Premium Palette & Variables**: Overhauled `app.css` to define high-end display typography, a custom Walnut frame (`#1E1611`), Warm Ivory workspace canvas (`#FAF8F5`), and Soft Cream panels (`#F4EFE6`).
+2. **Tactile Components**: Redesigned all buttons with press transitions, styled datatables with high-contrast text and alternating rows, and refactored flat KPI strips into individual spaced cards.
+3. **Time Formatting**: Formatted all user-facing timestamps to 12-hour AM/PM format using `g:i A` parameters.
+
+### Consequences
+* **Positive**: Visually stunning dashboard and login experience, responsive card grids, tactile interactive elements, and clear, standardized timestamp presentations.
+* **Related Files**:
+  * [app.css](file:///c:/Users/Lenovo/AMS-V1/resources/css/app.css)
+  * [ledger-table.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/ledger-table.blade.php)
+  * [auth-layout.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/auth-layout.blade.php)
+  * [app.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/layouts/app.blade.php)
+
 
 
 

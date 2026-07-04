@@ -140,9 +140,9 @@ class LeaveLeaveRulesPhase56Test extends TestCase
     }
 
     /** @test */
-    public function unpaid_leave_creation_and_approval_does_not_deduct_regular_balance(): void
+    public function unpaid_leave_type_submission_is_rejected_by_validation(): void
     {
-        // 1. Submit Unpaid Leave as Admin (Auto-Approved)
+        // Submit Unpaid Leave as Admin (should fail validation)
         $targetDate = Carbon::today()->addDays(2)->format('Y-m-d');
         
         $response = $this->actingAs($this->admin)->post(route('leaves.store'), [
@@ -152,51 +152,7 @@ class LeaveLeaveRulesPhase56Test extends TestCase
             'reason' => 'Unpaid leave test',
         ]);
 
-        $response->assertRedirect(route('leaves.index'));
-
-        // Admin balance should be unchanged
-        $this->admin->refresh();
-        $this->assertEquals(10.00, $this->admin->leave_balance);
-
-        $request = LeaveRequest::where('user_id', $this->admin->id)->first();
-        $this->assertNotNull($request);
-        $this->assertEquals('approved', $request->status);
-        $this->assertEquals('unpaid', $request->leave_type);
-        $this->assertFalse($request->is_paid);
-
-        // Ledger entry must be 0.00
-        $ledger = LeaveLedgerEntry::where('leave_request_id', $request->id)->first();
-        $this->assertNotNull($ledger);
-        $this->assertEquals(0.00, $ledger->amount);
-
-        // 2. Submit Unpaid Leave as Employee (Starts as Pending)
-        $empDate = Carbon::today()->addDays(5)->format('Y-m-d');
-        $responseEmp = $this->actingAs($this->employee)->post(route('leaves.store'), [
-            'leave_type' => 'unpaid',
-            'start_date' => $empDate,
-            'end_date' => $empDate,
-            'reason' => 'Personal work unpaid',
-        ]);
-
-        $responseEmp->assertRedirect();
-        $requestEmp = LeaveRequest::where('user_id', $this->employee->id)->where('status', 'pending')->first();
-        $this->assertNotNull($requestEmp);
-        $this->assertFalse($requestEmp->is_paid);
-
-        // Approve it as manager
-        $this->actingAs($this->manager)->post(route('leaves.approve', $requestEmp), [
-            'notes' => 'Okay approved.',
-        ]);
-
-        $this->employee->refresh();
-        $this->assertEquals(10.00, $this->employee->leave_balance); // Balance not deducted
-
-        $requestEmp->refresh();
-        $this->assertEquals('approved', $requestEmp->status);
-
-        $ledgerEmp = LeaveLedgerEntry::where('leave_request_id', $requestEmp->id)->first();
-        $this->assertNotNull($ledgerEmp);
-        $this->assertEquals(0.00, $ledgerEmp->amount);
+        $response->assertSessionHasErrors(['leave_type']);
     }
 
     /** @test */

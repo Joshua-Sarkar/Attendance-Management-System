@@ -17,10 +17,13 @@ Payroll calculations are based on daily presence and leave metrics. Compensation
 ### Current Implementation
 - **Status Mapping**: The system generates daily statuses (`present`, `late`, `on_leave`, `wfh`, `absent`, `weekly_off`) and classifications (`full_day`, `half_day`) in the database.
 - **Service Layer**: [AttendanceService@getEmployeeStats](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php#L364-L447) aggregates counts of present, late, absent, on_leave, and wfh days.
-- **Deduction Processing**: There is **no database or controller implementation** for payroll or salary calculation in the current release. The payroll system is deferred to the next development phase (Phase 5).
+- **Deduction Processing**: There is **no database or controller implementation** for payroll or salary calculation in the current release. The payroll system is deferred to the next development phase (Phase 6).
+- **Payroll Profile Setup**: The employee profile (`employee_profiles.payroll_type` column) caches the payroll type (e.g. `'salaried'`, `'contract'`) parsed by the Zimyo Excel Import Engine or manually entered in the Dossier panel, ready for payroll run processing.
 
-### Known Inconsistencies & Discrepancies
-- **No Paid/Unpaid Flag on Leaves**: The system currently categorizes leaves into `planned`, `unplanned`, and `complimentary` in the controller. The previous Paid vs Unpaid categorization was removed. Currently, standard approved leaves deduct standard balance. If standard balance is insufficient, standard employees cannot submit a Planned leave. It is unclear if there is a separate category for "Unpaid" leave requests, though the override status `'unpaid_leave'` exists in `AttendanceOverrideController@store`.
+### Current Leave & Override Classifications
+- **Paid Leaves**: Mapped under `planned` (Planned Leave) and `complimentary` (Birthday Leave) types. Approved planned requests deduct regular balance; complimentary requests consume birthday credit instead, avoiding regular deductions.
+- **Unpaid Leaves**: Mapped under `unpaid` (Unpaid Leave) and `unplanned` (Unplanned Leave) types. They bypass balance checks and deductions, logging a `0.00` ledger entry but triggering salary deductions during payroll preparation.
+- **Attendance Overrides**: Daily override status parameters include `'paid_leave'` and `'unpaid_leave'` tags, which synchronously adjust leave balances and write matching ledger adjustment entries.
 
 ### Future Improvements
 - Create a `PayrollService` to run at the end of each calendar month. The service will query the `attendances` table and `leave_requests` to compute the total payable days:

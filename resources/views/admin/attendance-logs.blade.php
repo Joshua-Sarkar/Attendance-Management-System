@@ -69,8 +69,8 @@
                     <option value="late" {{ $status === 'late' ? 'selected' : '' }}>Late</option>
                     <option value="absent" {{ $status === 'absent' ? 'selected' : '' }}>Absent</option>
                     <option value="weekly_off" {{ $status === 'weekly_off' ? 'selected' : '' }}>Weekly Off</option>
-                    <option value="paid_leave" {{ $status === 'paid_leave' ? 'selected' : '' }}>Paid Leave</option>
-                    <option value="unpaid_leave" {{ $status === 'unpaid_leave' ? 'selected' : '' }}>Unpaid Leave</option>
+                    <option value="paid_leave" {{ $status === 'paid_leave' ? 'selected' : '' }}>Planned Leave (Paid)</option>
+                    <option value="unpaid_leave" {{ $status === 'unpaid_leave' ? 'selected' : '' }}>Unplanned Leave (Unpaid)</option>
                     <option value="wfh" {{ $status === 'wfh' ? 'selected' : '' }}>WFH</option>
                 </select>
             </div>
@@ -233,7 +233,7 @@
                                 @elseif($empStatus === 'wfh') bg-forest-bg text-forest border-transparent
                                 @elseif($empStatus === 'weekly_off') bg-transparent text-vellum-muted border-hairline-strong
                                 @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                @if($empStatus === 'on_leave') Leave @elseif($empStatus === 'paid_leave') Paid Leave @elseif($empStatus === 'unpaid_leave') Unpaid Leave @elseif($empStatus === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $empStatus) }} @endif
+                                @if($empStatus === 'on_leave') Leave @elseif($empStatus === 'paid_leave') Planned Leave (Paid) @elseif($empStatus === 'unpaid_leave') Unplanned Leave (Unpaid) @elseif($empStatus === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $empStatus) }} @endif
                             </span>
                             @if($att && $att->is_overridden)
                                 <span class="text-[9px] text-brass uppercase font-bold block mt-1 font-mono">Overridden</span>
@@ -692,8 +692,8 @@
                                 <select x-model="status" id="override_status" class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
                                     <option value="present">Present</option>
                                     <option value="half_day">Half Day</option>
-                                    <option value="paid_leave">Paid Leave</option>
-                                    <option value="unpaid_leave">Unpaid Leave</option>
+                                    <option value="paid_leave">Planned Leave (Paid)</option>
+                                    <option value="unpaid_leave">Unplanned Leave (Unpaid)</option>
                                     <option value="weekly_off">Weekly Off</option>
                                 </select>
                             </div>
@@ -772,7 +772,7 @@
                             <!-- Confirmation parameters summary box -->
                             <div class="bg-walnut/[0.03] p-4 rounded border border-hairline/25 text-xs text-vellum-muted space-y-1">
                                 <span class="font-bold text-vellum block mb-1 text-[11px] uppercase tracking-wider">Configuration Summary</span>
-                                <div>Override Action: <span class="font-mono text-brass-bright font-semibold" x-text="status === 'half_day' ? 'HALF DAY' : (status === 'present' ? 'PRESENT' : (status === 'paid_leave' ? 'PAID LEAVE' : (status === 'unpaid_leave' ? 'UNPAID LEAVE' : 'WEEKLY OFF')))"></span></div>
+                                <div>Override Action: <span class="font-mono text-brass-bright font-semibold" x-text="status === 'half_day' ? 'HALF DAY' : (status === 'present' ? 'PRESENT' : (status === 'paid_leave' ? 'PLANNED LEAVE (PAID)' : (status === 'unpaid_leave' ? 'UNPLANNED LEAVE (UNPAID)' : 'WEEKLY OFF')))"></span></div>
                                 <div>Conflict Strategy: <span class="font-mono text-brass-bright font-semibold" x-text="conflictHandling.toUpperCase()"></span></div>
                                 <div class="pt-1.5 mt-1 border-t border-hairline/10">Reason: <span class="italic text-vellum font-semibold" x-text="'&ldquo;' + overrideReason + '&rdquo;'"></span></div>
                             </div>
@@ -877,6 +877,13 @@
                         <tr x-show="open" x-cloak class="bg-surface-raised/40">
                             <td colspan="7" class="py-4 px-6">
                                 <div class="text-[11px] font-bold text-vellum-faint uppercase tracking-wider mb-2.5">Affected Employees Registry Detail</div>
+                                
+                                <div class="flex flex-wrap gap-4 text-[12px] bg-walnut/15 border border-hairline/20 p-3 rounded mb-3 text-vellum-muted">
+                                    <div><span class="font-bold text-brass uppercase tracking-wider text-[10.5px]">Dates Affected:</span> <span class="text-vellum font-mono">{{ $override['dates_affected'] }}</span></div>
+                                    <div><span class="font-bold text-brass uppercase tracking-wider text-[10.5px]">Conflict Strategy:</span> <span class="text-vellum font-mono uppercase">{{ $override['conflict_strategy'] }}</span></div>
+                                    <div><span class="font-bold text-brass uppercase tracking-wider text-[10.5px]">Records Modified:</span> <span class="text-vellum font-mono font-bold">{{ $override['records_modified'] }}</span></div>
+                                </div>
+
                                 <div class="overflow-hidden rounded border border-hairline bg-surface">
                                     <table class="w-full text-left border-collapse text-[13.5px]">
                                         <thead>
@@ -922,7 +929,7 @@
                                                             @elseif($item->status === 'wfh') bg-forest-bg text-forest border-transparent
                                                             @elseif($item->status === 'weekly_off') bg-transparent text-vellum-muted border-hairline-strong
                                                             @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                                            @if($item->status === 'on_leave') Leave @elseif($item->status === 'paid_leave') Paid Leave @elseif($item->status === 'unpaid_leave') Unpaid Leave @elseif($item->status === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $item->status) }} @endif
+                                                            @if($item->status === 'on_leave') Leave @elseif($item->status === 'paid_leave') Planned Leave (Paid) @elseif($item->status === 'unpaid_leave') Unplanned Leave (Unpaid) @elseif($item->status === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $item->status) }} @endif
                                                         </span>
                                                     </td>
 

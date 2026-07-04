@@ -1,215 +1,204 @@
-# AMS-V1 — Handover Document
+# AMS-V1 — Handover & Developer Onboarding Guide
 
-This document serves as the primary entry point for developers, maintainers, auditors, and AI assistants onboarding onto the Attendance Management System Version 1 (AMS-V1) project.
+This document serves as the primary onboarding entry point for developers, maintainers, auditors, and AI assistants continuing the development of the Attendance Management System Version 1 (AMS-V1).
 
 ---
 
-## 1. Project Overview
+## 1. Project Overview & Business Goals
 
 * **Project Name:** AMS-V1 (Attendance Management System Version 1)
-* **Purpose:** A centralized, web-based platform to govern workforce profiles, daily check-in logs, and leave requests.
+* **Purpose:** A centralized Human Resource operating system to govern workforce profiles, daily clock logs, and leave requests.
 * **Business Goals:**
-  1. Own workforce personal and banking databases securely by encrypting sensitive records.
+  1. Own workforce personal and banking databases securely by encrypting sensitive identifiers.
   2. Implement strict punctuality logic (shift start times, buffer grace periods, late delays).
   3. Manage leave balance accounts using a double-entry ledger database pattern.
-  4. Streamline initial data imports from external exports (Zimyo platform compatibility).
-* **Current Production Status:** Live in production on Hostinger Linux Shared Server. Codebase has all tests passing and is synchronized under git control.
+  4. Streamline initial data imports from external Zimyo exports.
+  5. Provide administrators with a unified override workspace to preview and commit roster corrections.
 
 ---
 
-## 2. Current Snapshot
+## 2. Technology Stack
 
-* **Current Version:** `v1.2-phase-5.3`
-* **Latest Release Tag:** `v1.2-phase-5.3`
-* **Documentation Baseline Tag:** `v1.2-docs-baseline` (pointing to Phase 4.7 consolidation commit)
-* **Current Branch:** `main`
-* **Latest Commit:** `d89fb6f`
-* **Production URL:** Hostinger production directory root (cPanel mappings active)
-* **Production Database:** MySQL 8.0
-* **Current Deployment Environment:** Linux Shared Web Server (Hostinger PHP 8.2 runtime)
-
----
-
-## 3. Technology Stack
-
-* **Laravel Version:** 12.0
-* **PHP Version:** 8.2+ (verified with PHP 8.1+ null-safety string functions)
+* **Core Framework:** Laravel 12.0
+* **Programming Language:** PHP 8.2+
 * **Database Engine:** MySQL 8.0 (local runs utilize SQLite in-memory engine)
-* **Frontend Stack:** HTML5 Semantic Markup + Blade Layout Templates + Vanilla Javascript (active client-side clock ticker, tilt cards, and count-up loaders)
-* **Styling Framework:** Tailwind CSS v4.0 (PostCSS compilation) augmented with custom glassmorphic panels and dark-gold color tokens in `app.css`
-* **Hosting Environment:** Linux Shared Host (cPanel directory controls)
+* **Frontend Stack:** HTML5 Semantic Markup + Blade Templates + Alpine.js (for reactive tab and modal states) + Vanilla Javascript (active client-side clock ticker)
+* **Styling Baseline:** Vanilla CSS + custom color tokens inside `app.css` (Walnut/Ivory/Brass aesthetic, tactile primary/secondary button states, separated KPI panels, high-contrast tables).
+* **Asset Bundler:** Vite (compiled via `npm run build`)
+* **Hosting Environment:** Linux Shared Host (Hostinger PHP 8.2 runtime with cPanel mappings)
 
 ---
 
-## 4. Active Modules
+## 3. Current Operational Snapshot
 
-### 1. Authentication & RBAC
-* **Purpose:** Authenticates users and isolates menus and record views based on roles (`admin`, `manager`, `employee`). Forces password changes on onboarding.
-* **Current Status:** Operational. Public self-registration is disabled.
-* **Primary Files:**
-  * [CheckPasswordChange.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Middleware/CheckPasswordChange.php) (middleware)
-  * [AuthenticatedSessionController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/Auth/AuthenticatedSessionController.php) (session controller)
-  * [PasswordController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/Auth/PasswordController.php) (password change and provisioning updates)
-
-### 2. Workforce Management
-* **Purpose:** Manages department structures and creates, edits, or deletes employee listings.
-* **Current Status:** Operational. Auto-generates unique Employee IDs. Index directories are fully aligned with Phase 4.7.3 contrast and vertical padding standards.
-* **Primary Files:**
-  * [EmployeeController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/EmployeeController.php)
-  * [DepartmentController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/DepartmentController.php)
-
-### 3. Employee Profiles
-* **Purpose:** Stores personal details, emergency contacts, addresses, previous employment, and encrypted financial/government IDs (Aadhaar, PAN, Bank details).
-* **Current Status:** Operational. Encrypts sensitive fields automatically at rest using model casts.
-* **Primary Files:**
-  * [EmployeeProfile.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/EmployeeProfile.php) (includes casts array)
-  * Views folders under `resources/views/employees/`
-
-### 4. Attendance Tracking
-* **Purpose:** Logs employee check-in and check-out logs and calculates delay minutes relative to the grace threshold.
-* **Current Status:** Operational. Late arrivals are processed dynamically using model properties.
-* **Primary Files:**
-  * [Attendance.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/Attendance.php) (includes late minutes logic)
-  * [AttendanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceService.php) (check-in/out logic)
-
-### 5. Attendance Audit & Override Center
-* **Purpose:** A centralized interface for Admins to search logs, view timelines, and apply individual or bulk overrides on status and classifications (Full/Half Day) with full audit log capabilities.
-* **Current Status:** Operational. Fully database-driven department shift policies.
-* **Primary Files:**
-  * [AttendanceAuditController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceAuditController.php) (read operations)
-  * [AttendanceOverrideController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/AttendanceOverrideController.php) (write overrides)
-  * `resources/views/admin/attendance-logs.blade.php` (UI modals)
-
-### 6. Leave Management
-* **Purpose:** Allows employees to submit leave requests. Handles approval workflows and cancels.
-* **Current Status:** Operational. Leaves are submitted without type parameters; Paid/Unpaid classification is resolved at the approval stage.
-* **Primary Files:**
-  * [LeaveRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/LeaveRequestController.php)
-  * [LeaveRequest.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveRequest.php)
-
-### 7. Leave Balance Ledger
-* **Purpose:** Implements transactional, double-entry leave records.
-* **Current Status:** Operational. Uses database pessimistic locks to prevent race conditions during updates.
-* **Primary Files:**
-  * [LeaveLedgerEntry.php](file:///c:/Users/Lenovo/AMS-V1/app/Models/LeaveLedgerEntry.php) (ledger table model)
-  * [LeaveBalanceService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/LeaveBalanceService.php)
-
-### 8. Employee Import Engine
-* **Purpose:** Parses Zimyo Excel exports, registers missing departments, maps hierarchies in two passes, and initializes opening balances.
-* **Current Status:** Operational. Renders import metrics, log listings, and warnings in style compliance with Phase 4.7.3.
-* **Primary Files:**
-  * [EmployeeImportService.php](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeImportService.php)
-  * [ImportController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/ImportController.php)
-
-### 9. Profile Correction Requests
-* **Purpose:** Allows employees to submit profile corrections, notifying Admins via a sidebar count badge.
-* **Current Status:** Operational. Renders request log tables using high-contrast text and desaturated tag styles.
-* **Primary Files:**
-  * [ProfileCorrectionRequestController.php](file:///c:/Users/Lenovo/AMS-V1/app/Http/Controllers/ProfileCorrectionRequestController.php)
-  * [sidebar.blade.php](file:///c:/Users/Lenovo/AMS-V1/resources/views/components/sidebar.blade.php) (badge element)
-
-### 10. Scheduled Commands
-* **Purpose:** Console commands for backing up data and managing leave balance credits.
-* **Current Status:** Operational.
-* **Primary Files:**
-  * [AccrueLeavesCommand.php](file:///c:/Users/Lenovo/AMS-V1/app/Console/Commands/AccrueLeavesCommand.php) (`leaves:accrue` adds 2 credits monthly, idempotent)
-  * [InitializeBalancesCommand.php](file:///c:/Users/Lenovo/AMS-V1/app/Console/Commands/InitializeBalancesCommand.php) (`leaves:initialize-balances` configures initial credits)
+* **Current Version:** `v1.2-phase-5.8`
+* **Current Branch:** `main`
+* **Latest Commit:** `9971257630271a6897d6299a2469e1f46047c214` (Phase 5.7 merge; Phase 5.8 visual updates pending staging release commit)
+* **Pest Test Suite Status:** **100% PASS** (130 tests, 692 assertions verified).
+* **Production URL:** Managed via cPanel domain mappings.
+* **Production Database:** MySQL 8.0.
 
 ---
 
-## 5. Current Capabilities By Role
+## 4. Architectural Patterns & Core Services
 
-### Admin
-* Full employee and department CRUD.
-* Access to Zimyo excel files uploader.
-* Override capabilities on leave requests.
-* Queue view to review and resolve correction requests.
-* Inspection access to global attendance logs and late metrics dashboards.
+### A. Service-Oriented Architecture (SOA)
+All complex business calculations and transactional writes reside in the Service layer (`app/Services/`) to keep Controllers thin and ensure code reusability across HTTP requests, API routes, and scheduled Artisan console commands.
 
-### Manager
-* Ability to view direct reports' daily attendance records.
-* Ability to approve (Paid/Unpaid) or reject leave requests for assigned employees.
+### B. Isolated Timing Resolver
+[AttendanceTimingResolver](file:///c:/Users/Lenovo/AMS-V1/app/Services/AttendanceTimingResolver.php) is the single source of truth for resolving shift start/end times, grace boundaries, and weekend checks. Decoupled from heavy models to prevent circular dependency errors.
 
-### Employee
-* Interactive check-in/out dashboard buttons.
-* Personal calendars showing monthly attendance rates, streak details, and work hours.
-* Leave request and cancellation submissions.
-* Correction request submissions.
+### C. Double-Entry Leave Ledger
+Leave balance changes are transactionally recorded in the `leave_ledger_entries` table. The user's `leave_balance` in the `users` table is a cached summary of the ledger sum. Concurrency safety is enforced using database row locks (`lockForUpdate`).
+
+### D. Two-Pass Import Engine
+[EmployeeImportService](file:///c:/Users/Lenovo/AMS-V1/app/Services/EmployeeImportService.php) processes spreadsheets in two passes: Pass 1 inserts User, Profile, and opening balances. Pass 2 maps hierarchical supervisor relationships, preventing circular loops and dependency order crashes.
 
 ---
 
-## 6. Current Database Summary
+## 5. Subsystem Business Rules
 
-AMS-V1 uses 9 primary tables. Relationships are managed at the database level using foreign keys:
+### A. Daily Check-in & Delay Rules
+* **Check-in/out**: Employees can check in once and check out once per day.
+* **Tardiness**: Arrival after the resolved shift start time plus grace minutes classifies the day as `late` and assigns the `half_day` classification (by default `'late_arrival'`).
+* **Insufficient Hours**: A checkout with less than 4.0 hours (unless overridden) updates the classification to `half_day` (reason `'insufficient_hours'`).
+* **Weekly Off**: Sundays default to a non-working `weekly_off` status and are excluded from absenteeism and streak calculations.
+* **Rule B (Approved Leave Overrides)**: Approved leave requests dynamically mark dates as `on_leave` or `wfh` if no check-in exists. A physical check-in overrides the approved leave, setting the status to `present` or `late`.
 
-* `users`
-* `departments` (each employee belongs to a department)
-* `attendances` (each record represents a user check-in per day)
-* `leave_requests` (linked to `users` with an option for approval details)
-* `leave_request_logs` (logs request status changes)
-* `employee_profiles` (1:1 extension mapping of the `users` table)
-* `import_logs` (logs bulk user import details)
-* `profile_correction_requests` (records employee edit requests)
-* `leave_ledger_entries` (audit logs tracking leave balance modifications)
+### B. Department Shift Policies
+* **Dynamic Shifts**: Departments can specify custom shift start, shift end, and grace minutes.
+* **Healthcare Shift**: Matched case-insensitively by name/code `healthcare` or code `hlt`. Hard-overridden in configurations to always resolve to **10:00 - 18:00** shift times with **5 minutes grace** buffer.
 
----
+### C. Leave Request Management
+* **Submission types**: Employees must select their leave type on submission: `planned`, `unplanned`, `complimentary`, or `unpaid`.
+* **Paid vs Unpaid Logic**:
+  * **Paid**: `planned` and `complimentary` (Birthday Leave) are Paid. Approved planned requests deduct regular balance; complimentary requests consume birthday credit instead.
+  * **Unpaid**: `unpaid` and `unplanned` are Unpaid. They bypass balance checks and deductions, logging a `0.00` ledger entry. Used by Payroll to calculate salary deductions.
+* **Auto-Approval**: Admins are auto-approved. Complimentary (Birthday Leave) requests are auto-approved for everyone if an active credit token exists.
+* **Decision Overrides**: Admins can override any leave request decision (approving pending/rejected items or cancelling approved items), which transactionally adjusts balances and writes ledger updates.
 
-## 7. Current Known Issues
+### D. Birthday Leave Tokens
+* **Credit sync**: Synced `1` day before birthday (configurable). Valid for `1` year.
+* **Leap Year**: Feb 29 birthdays resolve to Feb 27 in non-leap years.
+* **Tenure Constraint**: Credits cannot be generated for years preceding the employee's `joining_date`.
+* **Deduction check**: Auto-approves a 1-day complimentary leave request, setting the credit as consumed (`used_amount = 1.00`) and logging a `0.00` ledger trail.
 
-Currently, there are no known critical issues. The application has 100% test coverage with 116 tests (605 assertions) fully green.
-
----
-
-* **Active Phase:** Sprint 2.3.1 — Repository Stabilization & Documentation Synchronization (Completed).
-* **Last Completed Phase:** Sprint 2.3 — Attendance Administration V3 (v1.2-phase-5.3).
-* **Next Planned Phase:** **Phase 5 — Payroll Integration**.
-
----
-
-## 9. Immediate Next Priorities
-
-1. **Phase 5 (Payroll Module):** Create calculation algorithms to determine unpaid hours based on check-in logs and unpaid leaves, mapping outputs into downloadable payslips.
-
----
-
-## 10. Documentation Map
-
-Refer to these documentation files inside the `/docs` directory:
-
-1. [HANDOVER.md](file:///c:/Users/Lenovo/AMS-V1/docs/HANDOVER.md): The primary entry point for developers and AI continuity prompts.
-2. [CURRENT_STATE.md](file:///c:/Users/Lenovo/AMS-V1/docs/CURRENT_STATE.md): Lightweight snapshot of version, commit, health, and priorities.
-3. [TECHNICAL_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/TECHNICAL_MAP.md): Unified codebase paths, database schemas, and Pest tests mapped by subsystem.
-4. [DEPLOYMENT_GUIDE.md](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md): Setup scripts, cPanel deployment playbooks, backup tasks, SemVer rules, and rollback guides.
-5. [AMS_HISTORY.md](file:///c:/Users/Lenovo/AMS-V1/docs/AMS_HISTORY.md): Narration of requirements evolution, project phase commits, and annotated release tags.
-6. [UI_OVERHAUL_SPEC.md](file:///c:/Users/Lenovo/AMS-V1/docs/UI_OVERHAUL_SPEC.md): Consistency audits, component inventories, design debt items, and Phase 4.9 readiness parameters.
-7. [DECISION_LOG.md](file:///c:/Users/Lenovo/AMS-V1/docs/DECISION_LOG.md): Immutable Architectural Decision Records (ADRs) logs database.
-8. [GIT_STANDARDS.md](file:///c:/Users/Lenovo/AMS-V1/docs/GIT_STANDARDS.md): Conventional Commits formats, annotated tags criteria, and audit checklists.
-9. [PRODUCTION_READINESS.md](file:///c:/Users/Lenovo/AMS-V1/docs/PRODUCTION_READINESS.md): Production readiness matrix, subsystem statuses (Completed/Planned/Future), environment specifications, and known limitations.
+### E. Override Workspace & Conflict Handling
+* **Bulk workspace**: Admins can search daily logs, view timelines, and apply overrides to multiple employees or departments across single/range/multiple dates.
+* **Conflict options**:
+  * `skip`: Conflict records (existing manual overrides or approved leaves) are skipped.
+  * `replace`: Performs the override, adjusts the user's leave balance cache, and writes ledger corrections.
+  * `cancel`: Aborts the entire transaction if any conflict is detected.
+* **Exclusions**: Optional filters to skip active leaves, skip overrides, exclude weekends, or include Sundays.
 
 ---
 
-## 11. Recovery & Rollback Quick Guide
+## 6. How to Run Locally
 
-For the standard deploy routines, configuration cache optimizations, code releases checkout instructions, database rollbacks, and recovery snapshots workflows, refer directly to:
-* [DEPLOYMENT_GUIDE.md: Section 2 (Hostinger Production Deployment Workflow)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md#2-hostinger-production-deployment-workflow)
-* [DEPLOYMENT_GUIDE.md: Section 6 (Rollback Procedures)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md#6-rollback-procedures)
-* [DEPLOYMENT_GUIDE.md: Section 7 (Emergency Recovery Procedures)](file:///c:/Users/Lenovo/AMS-V1/docs/DEPLOYMENT_GUIDE.md#7-emergency-recovery-procedures)
+### Prerequisites
+* PHP 8.2+
+* Composer
+* Node.js & npm
+* SQLite
+
+### Local Setup
+1. **Clone & Install Dependencies:**
+   ```bash
+   git clone <repo-url> ams-v1
+   cd ams-v1
+   composer install
+   npm install
+   ```
+2. **Setup Configurations:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+   *Verify .env database parameters:*
+   ```env
+   DB_CONNECTION=sqlite
+   ```
+3. **Database Seeds:**
+   ```bash
+   touch database/database.sqlite
+   php artisan migrate --seed
+   ```
+4. **Compile Assets & Serve:**
+   ```bash
+   npm run build
+   php artisan serve
+   ```
 
 ---
 
-## 12. AI Continuation Prompt
+## 7. How to Test & Deploy
 
-To continue development in a new chat session, copy and paste this prompt:
+### Running Tests
+Execute the Pest verification suite to run the 130 tests:
+```bash
+vendor/bin/pest
+```
 
+### Production Deployment (Hostinger cPanel)
+1. **Build locally**: Run `npm run build` and push build assets.
+2. **SSH to Hostinger**: Navigate to deployment directory and pull the latest `main` branch.
+3. **Optimized install**:
+   ```bash
+   composer install --no-dev --optimize-autoloader
+   ```
+4. **Force Migrations**:
+   ```bash
+   php artisan migrate --force
+   ```
+5. **Optimize Caches (CRITICAL):**
+   ```bash
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   ```
+   > [!IMPORTANT]
+   > Direct calls to `env()` outside of files in `config/` resolve to `null` once the configuration cache is compiled. Application code must read environment parameters exclusively using the `config('key')` helper.
+
+---
+
+## 8. Extending Subsystem Modules
+
+To add features or adjust behaviors, follow the **Canonical Documentation Workflow**:
+1. **Update specifications first**: Modify the corresponding rule document under `docs/domain/`.
+2. **Database Migrations**: Add column adjustments. Never alter historical columns without backups.
+3. **Services & Models**: Write calculations in the service layer, keeping models encapsulated.
+4. **Controllers & Middleware**: Add parameter validation and RBAC checks.
+5. **Views (Blade)**: Adapt UI elements following the specs in [07_UI_GUIDELINES.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/07_UI_GUIDELINES.md).
+6. **Tests**: Add Pest coverage verifying success paths and boundary limits.
+7. **Synchronize Maps**: Update [08_MODULE_MAP.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/08_MODULE_MAP.md) and [10_CHANGE_GUIDE.md](file:///c:/Users/Lenovo/AMS-V1/docs/domain/10_CHANGE_GUIDE.md).
+
+---
+
+## 9. Current Risks & Future Roadmap
+
+### A. Known Risks
+* **ID generation collision**: Incrementing maximum sequential employee ID code can raise collision errors if two creations happen at the exact same millisecond. Caught by database unique keys.
+* **Cascade Hard Deletes**: Deleting a User account deletes historical check-in logs and ledger lines.
+  - *Future Fix:* Migrate to Soft Deletes.
+* **RBAC hardcoding**: Lack of standard Laravel policies increases the risk of role-leak regressions in new features.
+  - *Future Fix:* Migrate permission scopes to Laravel Spatie Permission package or native Policies/Gates.
+
+### B. Future Roadmap
+1. **Phase 6 — Payroll Integration**: Calculate unpaid hours and unpaid leaves, generating downloadable payslips.
+2. **Geofencing & Biometrics**: Link coordinates or biometric check devices via webhooks.
+3. **Report Exporter**: Automated PDF export for audit logs.
+
+---
+
+## 10. AI Continuation Prompt
+For downstream AI models continuing development:
 ```text
 Please read the handover document at docs/HANDOVER.md to understand the current project state, layout paths, and development goals.
 
 Then, review these files in order:
-1. docs/CURRENT_STATE.md (to confirm active version snapshot and metadata)
+1. docs/CURRENT_STATE.md (to confirm active version snapshot and test metrics)
 2. docs/TECHNICAL_MAP.md (to locate codebase modules and database tables)
-3. docs/DEPLOYMENT_GUIDE.md (to review deployment setup scripts)
+3. docs/DEPLOYMENT_GUIDE.md (to review deployment cache optimization commands)
 
-Treat the project documentation inside `/docs` as the source of truth for the codebase.
-
-The current target task is to initiate Phase 5 — Payroll Integration. Review the handover roadmap and wait for further instructions.
+The current target task is to initiate Phase 6 — Payroll Integration. Review the handover roadmap and wait for further instructions.
 ```

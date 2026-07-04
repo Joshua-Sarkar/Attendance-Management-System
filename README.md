@@ -174,11 +174,15 @@ Successfully tested against a real-world workforce dataset.
 * Zimyo Excel Import Engine & Web Import Interface
 * Profile Correction Requests Queue with sidebar badges
 * Production Configuration Hardening (caching compliance)
-* Automated Pest/PHPUnit Test Suite (103 tests, 548 assertions passing)
+* Attendance Engine V2 (dynamic department shifts & Healthcare overrides)
+* Attendance Administration V3 (Alpine tab logs workspace & Sunday weekly off engine)
+* Bulk Attendance Overrides Workspace & conflict handling preview/commit workflow
+* Walnut-Ivory tactile visual design overhaul and 12-hour AM/PM format clocks
+* Automated Pest/PHPUnit Test Suite (130 tests, 692 assertions passing)
 
 ### Planned
 
-* Phase 5 — Payroll Integration algorithms (unpaid hours and salary deductions calculations)
+* Phase 6 — Payroll Integration algorithms (unpaid hours and salary deductions calculations)
 
 ### Future
 

@@ -48,9 +48,6 @@ class AttendanceAuditController extends Controller
         $overridesQuery = \App\Models\Attendance::where('is_overridden', true)
             ->with(['user.department', 'overriddenBy']);
 
-        if ($date) {
-            $overridesQuery->whereDate('date', $date);
-        }
         if ($departmentId) {
             $overridesQuery->whereHas('user', function ($q) use ($departmentId) {
                 $q->where('department_id', $departmentId);
@@ -74,7 +71,6 @@ class AttendanceAuditController extends Controller
             return $timeStr . '_' . $item->overridden_by . '_' . md5($item->override_reason);
         })->map(function ($group) {
             $first = $group->first();
-            
             $count = $group->count();
             
             // Resolve Scope details
@@ -88,12 +84,41 @@ class AttendanceAuditController extends Controller
                 }
             }
             
+            // Extract metadata if present
+            $meta = $first->metadata;
+            $conflictStrategy = $meta['conflict_strategy'] ?? 'replace';
+            
+            if (!empty($meta['dates_affected'])) {
+                $datesAffected = implode(', ', $meta['dates_affected']);
+            } else {
+                $datesAffected = $group->pluck('date')
+                    ->map(fn($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+                    ->unique()
+                    ->sort()
+                    ->implode(', ');
+            }
+            
+            $employeesCount = !empty($meta['employees_count']) ? $meta['employees_count'] : $group->pluck('user_id')->unique()->count();
+            $recordsModified = !empty($meta['records_modified']) ? $meta['records_modified'] : $count;
+
+            $statusLabel = $first->status;
+            if ($statusLabel === 'paid_leave') {
+                $statusLabel = 'Planned Leave (Paid)';
+            } elseif ($statusLabel === 'unpaid_leave') {
+                $statusLabel = 'Unplanned Leave (Unpaid)';
+            } else {
+                $statusLabel = ucwords(str_replace('_', ' ', $statusLabel));
+            }
+
             return [
                 'timestamp' => $first->overridden_at,
                 'administrator' => $first->overriddenBy?->name ?? 'System',
-                'action' => 'Override status to ' . ucwords(str_replace('_', ' ', $first->status)) . ($first->classification ? ' (' . ($first->classification === 'half_day' ? 'Half Day' : 'Full Day') . ')' : ''),
+                'action' => 'Override status to ' . $statusLabel . ($first->classification ? ' (' . ($first->classification === 'half_day' ? 'Half Day' : 'Full Day') . ')' : ''),
                 'scope' => $scope,
-                'affected_count' => $count,
+                'affected_count' => $employeesCount,
+                'records_modified' => $recordsModified,
+                'dates_affected' => $datesAffected,
+                'conflict_strategy' => $conflictStrategy,
                 'reason' => $first->override_reason,
                 'items' => $group,
             ];

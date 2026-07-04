@@ -320,4 +320,91 @@ class BulkAttendanceOverrideTest extends TestCase
             'is_overridden' => true,
         ]);
     }
+
+    /** @test */
+    public function audit_trail_verifications()
+    {
+        // 1. Setup a historical override record (no metadata)
+        $historicalDate = '2026-06-20';
+        $historicalTime = Carbon::parse('2026-06-20 12:00:00');
+        Attendance::create([
+            'user_id' => $this->employee1->id,
+            'date' => $historicalDate . ' 00:00:00',
+            'status' => 'present',
+            'classification' => 'full_day',
+            'is_overridden' => true,
+            'overridden_by' => $this->admin->id,
+            'overridden_at' => $historicalTime,
+            'override_reason' => 'Historical manual correction',
+            'override_type' => 'bulk',
+        ]);
+
+        // Verify historical override is loaded in view correctly with fallback mappings
+        $response1 = $this->actingAs($this->admin)->get(route('admin.attendance.logs'));
+        $response1->assertStatus(200);
+        $grouped1 = $response1->viewData('groupedOverrides');
+        
+        $this->assertNotEmpty($grouped1);
+        $historicalGroup = collect($grouped1)->first(fn($g) => $g['reason'] === 'Historical manual correction');
+        $this->assertNotNull($historicalGroup);
+        $this->assertEquals('replace', $historicalGroup['conflict_strategy']); // fallback
+        $this->assertEquals($historicalDate, $historicalGroup['dates_affected']); // fallback
+        $this->assertEquals(1, $historicalGroup['records_modified']);
+
+        // 2. Perform a new bulk override affecting multiple dates and employees
+        $newTime = Carbon::parse('2026-06-25 15:00:00');
+        Carbon::setTestNow($newTime);
+
+        $response2 = $this->actingAs($this->admin)->post(route('admin.attendance.override.store'), [
+            'scope_type' => 'employee',
+            'employee_ids' => [$this->employee1->id, $this->employee2->id],
+            'date_mode' => 'range',
+            'start_date' => '2026-06-25',
+            'end_date' => '2026-06-26',
+            'working_days_only' => false,
+            'skip_leaves' => false,
+            'skip_overrides' => false,
+            'status' => 'wfh',
+            'classification' => 'full_day',
+            'override_reason' => 'Testing new audit logs logic',
+            'conflict_handling' => 'skip',
+        ]);
+
+        $response2->assertRedirect();
+
+        // Verify the database contains the records and metadata is ONLY on the first record
+        $attendances = Attendance::where('override_reason', 'Testing new audit logs logic')->get();
+        $this->assertCount(4, $attendances); // 2 employees * 2 dates
+
+        // Only one record should have non-null metadata
+        $recordsWithMetadata = $attendances->filter(fn($a) => !is_null($a->metadata));
+        $this->assertCount(1, $recordsWithMetadata);
+        
+        $meta = $recordsWithMetadata->first()->metadata;
+        $this->assertEquals('skip', $meta['conflict_strategy']);
+        $this->assertEquals(['2026-06-25', '2026-06-26'], $meta['dates_affected']);
+        $this->assertEquals(2, $meta['employees_count']);
+        $this->assertEquals(4, $meta['records_modified']);
+
+        // Verify new override generates exactly one audit group in the view
+        $response3 = $this->actingAs($this->admin)->get(route('admin.attendance.logs'));
+        $response3->assertStatus(200);
+        $grouped3 = $response3->viewData('groupedOverrides');
+        
+        $newGroup = collect($grouped3)->first(fn($g) => $g['reason'] === 'Testing new audit logs logic');
+        $this->assertNotNull($newGroup);
+        $this->assertEquals('skip', $newGroup['conflict_strategy']);
+        $this->assertEquals('2026-06-25, 2026-06-26', $newGroup['dates_affected']);
+        $this->assertEquals(4, $newGroup['records_modified']);
+        $this->assertEquals(2, $newGroup['affected_count']);
+
+        // 3. Verify Override dropdown options in response html
+        $html = $response3->getContent();
+        // Option values
+        $this->assertStringContainsString('value="paid_leave">Planned Leave (Paid)</option>', $html);
+        $this->assertStringContainsString('value="unpaid_leave">Unplanned Leave (Unpaid)</option>', $html);
+        $this->assertStringNotContainsString('Unpaid Leave</option>', $html); // Redundant option must be gone
+        
+        Carbon::setTestNow(); // reset
+    }
 }
