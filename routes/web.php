@@ -64,6 +64,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-attendance', [AttendanceController::class, 'myAttendance'])
         ->name('attendance.my-attendance');
 
+    Route::get('/attendance/calendar/data', [\App\Http\Controllers\EmployeeAttendanceCalendarController::class, 'getData'])
+        ->name('attendance.calendar.data');
+
     Route::post('/attendance/check-in', [AttendanceController::class, 'checkIn'])
         ->name('attendance.check-in');
 

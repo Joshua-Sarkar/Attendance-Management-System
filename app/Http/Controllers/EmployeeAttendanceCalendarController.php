@@ -221,7 +221,7 @@ class EmployeeAttendanceCalendarController extends Controller
                 'grace' => $graceMinutes . ' minutes',
                 'payrollImpact' => $payrollImpact,
                 'notes' => $notes,
-                'dateLabel' => $currentDate->toLocaleDateString('en-US', ['month' => 'long', 'day' => 'numeric', 'year' => 'numeric']),
+                'dateLabel' => $currentDate->format('F j, Y'),
                 'dayName' => $currentDate->format('l'),
             ];
 
