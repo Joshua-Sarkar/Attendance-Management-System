@@ -1,0 +1,117 @@
+[33mcommit 4e5d1f19f6b82080d888adb09e7bd385cb726627[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Joshua Sarkar <j.sarkar7106@gmail.com>
+Date:   Sat Jul 4 12:13:01 2026 +0530
+
+    Checkpoint before attendance calendar integration
+
+[1mdiff --git a/app/Http/Controllers/EmployeeAttendanceCalendarController.php b/app/Http/Controllers/EmployeeAttendanceCalendarController.php[m
+[1mindex 476193e..15e0109 100644[m
+[1m--- a/app/Http/Controllers/EmployeeAttendanceCalendarController.php[m
+[1m+++ b/app/Http/Controllers/EmployeeAttendanceCalendarController.php[m
+[36m@@ -221,7 +221,7 @@[m [mpublic function getData(Request $request): JsonResponse[m
+                 'grace' => $graceMinutes . ' minutes',[m
+                 'payrollImpact' => $payrollImpact,[m
+                 'notes' => $notes,[m
+[31m-                'dateLabel' => $currentDate->toLocaleDateString('en-US', ['month' => 'long', 'day' => 'numeric', 'year' => 'numeric']),[m
+[32m+[m[32m                'dateLabel' => $currentDate->format('F j, Y'),[m
+                 'dayName' => $currentDate->format('l'),[m
+             ];[m
+ [m
+[1mdiff --git a/resources/views/attendance/my-attendance.blade.php b/resources/views/attendance/my-attendance.blade.php[m
+[1mindex 80c33e0..d18eb0e 100644[m
+[1m--- a/resources/views/attendance/my-attendance.blade.php[m
+[1m+++ b/resources/views/attendance/my-attendance.blade.php[m
+[36m@@ -160,128 +160,6 @@[m
+         </div>[m
+     </div>[m
+ [m
+[31m-    <!-- 30-Day Statistics Widget (Briefing Strip Layout) -->[m
+[31m-    <div class="space-y-3">[m
+[31m-        <h4 class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Last 30 Days Statistics</h4>[m
+[31m-        <div class="grid grid-cols-2 md:grid-cols-6 border border-hairline bg-surface rounded overflow-hidden">[m
+[31m-            <!-- Present Days -->[m
+[31m-            <div class="p-5 border-r border-b md:border-b-0 border-hairline last:border-none flex flex-col justify-between">[m
+[31m-                <span class="text-[10px] font-semibold text-vellum-faint uppercase tracking-wider">Days Present</span>[m
+[31m-                <div class="font-display font-medium text-2xl my-2 text-forest">{{ $stats['present'] }}</div>[m
+[31m-                <span class="text-[11px] text-vellum-muted">Roster verified</span>[m
+[31m-            </div>[m
+[31m-[m
+[31m-            <!-- Late Days -->[m
+[31m-            <div class="p-5 border-r border-b md:border-b-0 border-hairline last:border-none flex flex-col justify-between">[m
+[31m-                <span class="text-[10px] font-semibold text-vellum-faint uppercase tracking-wider">Days Late</span>[m
+[31m-                <div class="font-display font-medium text-2xl my-2 text-cognac">{{ $stats['late'] }}</div>[m
+[31m-                <span class="text-[11px] text-vellum-muted">Past grace</span>[m
+[31m-            </div>[m
+[31m-[m
+[31m-            <!-- Absent Days -->[m
+[31m-            <div class="p-5 border-r border-b md:border-b-0 border-hairline last:border-none flex flex-col justify-between">[m
+[31m-                <span class="text-[10px] font-semibold text-vellum-faint uppercase tracking-wider">Days Absent</span>[m
+[31m-                <div class="font-display font-medium text-2xl my-2 text-burgundy">{{ $stats['absent'] }}</div>[m
+[31m-                <span class="text-[11px] text-vellum-muted">Unverified</span>[m
+[31m-            </div>[m
+[31m-[m
+[31m-            <!-- On Leave Days -->[m
+[31m-            <div class="p-5 border-r border-b md:border-b-0 border-hairline last:border-none flex flex-col justify-between">[m
+[31m-                <span class="text-[10px] font-semibold text-vellum-faint uppercase tracking-wider">On Leave</span>[m
+[31m-                <div class="font-display font-medium text-2xl my-2 text-slate">{{ $stats['on_leave'] ?? 0 }}</div>[m
+[31m-                <span class="text-[11px] text-vellum-muted">Approved off</span>[m
+[31m-            </div>[m
+[31m-[m
+[31m-            <!-- WFH Days -->[m
+[31m-            <div class="p-5 border-r border-hairline last:border-none flex flex-col justify-between">[m
+[31m-                <span class="text-[10px] font-semibold text-vellum-faint uppercase tracking-wider">WFH Days</span>[m
+[31m-                <div class="font-display font-medium text-2xl my-2 text-forest">{{ $stats['wfh'] ?? 0 }}</div>[m
+[31m-                <span class="text-[11px] text-vellum-muted">Remote roster</span>[m
+[31m-            </div>[m
+[31m-[m
+[31m-            <!-- Total Hours Worked -->[m
+[31m-            <div class="p-5 border-hairline last:border-none flex flex-col justify-between">[m
+[31m-                <span class="text-[10px] font-semibold text-vellum-faint uppercase tracking-wider">Total Hours</span>[m
+[31m-                <div class="font-display font-medium text-2xl my-2 text-vellum">[m
+[31m-                    {{ number_format($stats['total_hours'], 1) }}<span class="text-sm font-sans font-normal text-vellum-muted">h</span>[m
+[31m-                </div>[m
+[31m-                <span class="text-[11px] text-vellum-muted">Aggregated hours</span>[m
+[31m-            </div>[m
+[31m-        </div>[m
+[31m-    </div>[m
+[31m-[m
+[31m-    <!-- 30-Day Logs Table (Ledger) -->[m
+[31m-    <div class="panel">[m
+[31m-        <div class="panel-head mb-4 border-b border-hairline pb-2">[m
+[31m-            <h2>30-Day Attendance Logs</h2>[m
+[31m-            <div class="meta">personal ledger</div>[m
+[31m-        </div>[m
+[31m-        [m
+[31m-        <div class="ledger flex flex-col">[m
+[31m-            @foreach($history as $day)[m
+[31m-                @php[m
+[31m-                    $status = $day['status'];[m
+[31m-                    $dateStr = $day['date']->format('M d, Y');[m
+[31m-                    $dayName = $day['day_of_week'];[m
+[31m-                    $checkInStr = $day['check_in'] ? $day['check_in']->timezone('Asia/Kolkata')->format('h:i A') : '—';[m
+[31m-                    $checkOutStr = $day['check_out'] ? $day['check_out']->timezone('Asia/Kolkata')->format('h:i A') : '—';[m
+[31m-                    [m
+[31m-                    $durationStr = $day['hours'] ? ' · ' . number_format($day['hours'], 1) . 'h worked' : '';[m
+[31m-                    $classificationStr = ($status !== 'weekend' && isset($day['classification']) && $day['classification'] === 'half_day') ? ' · Half Day' : '';[m
+[31m-                    [m
+[31m-                    $desc = '';[m
+[31m-                    if ($status === 'present') {[m
+[31m-                        $desc = 'Checked in at ' . $checkInStr . ' · Checked out at ' . $checkOutStr . $durationStr . $classificationStr;[m
+[31m-                    } elseif ($status === 'late') {[m
+[31m-                        $desc = 'Checked in late at ' . $checkInStr . ' · ' . (isset($day['late_minutes']) ? $day['late_minutes'] . 'm past grace' : 'past grace') . $durationStr . $classificationStr;[m
+[31m-                    } elseif ($status === 'on_leave') {[m
+[31m-                        $desc = 'Approved leave' . $classificationStr;[m
+[31m-                    } elseif ($status === 'wfh') {[m
+[31m-                        $desc = 'Working from home' . $durationStr . $classificationStr;[m
+[31m-                    } elseif ($status === 'weekly_off') {[m
+[31m-                        $desc = 'Weekly Off · Non-working day';[m
+[31m-                    } elseif ($status === 'paid_leave') {[m
+[31m-                        $desc = 'Approved paid leave' . $classificationStr;[m
+[31m-                    } elseif ($status === 'unpaid_leave') {[m
+[31m-                        $desc = 'Approved unpaid leave' . $classificationStr;[m
+[31m-                    } elseif ($status === 'weekend') {[m
+[31m-                        $desc = 'Weekend · Non-working day';[m
+[31m-                    } else {[m
+[31m-                        $desc = 'No check-in recorded' . $classificationStr;[m
+[31m-                    }[m
+[31m-                @endphp[m

@@ -219,6 +219,7 @@ class EmployeeAttendanceCalendarController extends Controller
                 'department' => $employee->department?->name ?? '—',
                 'shift' => $shiftStart && $shiftEnd ? $shiftStart->format('h:i A') . ' – ' . $shiftEnd->format('h:i A') : '09:00 AM – 05:30 PM',
                 'grace' => $graceMinutes . ' minutes',
+                'lateThreshold' => $shiftStart ? $shiftStart->copy()->addMinutes($graceMinutes)->format('h:i A') : '—',
                 'payrollImpact' => $payrollImpact,
                 'notes' => $notes,
                 'dateLabel' => $currentDate->format('F j, Y'),
