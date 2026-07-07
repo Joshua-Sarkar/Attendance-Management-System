@@ -14,6 +14,19 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    protected static function booted()
+    {
+        static::saved(function ($user) {
+            if ($user->wasChanged('leave_balance')) {
+                $lb = \App\Models\LeaveBalance::where('user_id', $user->id)->first();
+                if ($lb && (float)$lb->remaining_leave !== (float)$user->leave_balance) {
+                    $lb->remaining_leave = $user->leave_balance;
+                    $lb->saveQuietly();
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'employee_id',
         'name',
@@ -78,6 +91,21 @@ class User extends Authenticatable
     public function employeeProfile(): HasOne
     {
         return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function payrollProfile(): HasOne
+    {
+        return $this->hasOne(PayrollProfile::class);
+    }
+
+    public function leaveBalance(): HasOne
+    {
+        return $this->hasOne(LeaveBalance::class);
+    }
+
+    public function externalIdentifiers(): HasMany
+    {
+        return $this->hasMany(EmployeeExternalIdentifier::class);
     }
 
     public function leaveLedgerEntries(): HasMany

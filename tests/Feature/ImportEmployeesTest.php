@@ -294,14 +294,28 @@ test('admin can access import page and upload file successfully', function () {
         ->get(route('admin.import.show'));
     $response->assertStatus(200);
 
-    // 3. Upload file as Admin
+    // 3. Upload file as Admin to trigger preview
     $uploadResponse = $this->actingAs($admin)
         ->post(route('admin.import.handle'), [
             'file' => $uploadedFile,
+            'mode' => 'create',
         ]);
     
     $uploadResponse->assertRedirect();
-    $uploadResponse->assertSessionHas('success');
+    $uploadResponse->assertSessionHas('import_preview');
+
+    $preview = session('import_preview');
+
+    // 3b. Confirm import as Admin
+    $confirmResponse = $this->actingAs($admin)
+        ->post(route('admin.import.confirm'), [
+            'temp_file_path' => $preview['temp_file_path'],
+            'mode' => 'create',
+            'original_filename' => 'employees.xlsx',
+        ]);
+
+    $confirmResponse->assertRedirect(route('admin.import.show'));
+    $confirmResponse->assertSessionHas('success');
 
     // 4. Assert user was created
     $user = User::where('employee_id', 'EMP00100')->first();

@@ -185,6 +185,12 @@ class LeaveRequestController extends Controller
                         $lockedUser->leave_balance -= $totalDays;
                         $lockedUser->save();
                         $deductedAmount = -$totalDays;
+
+                        $lb = $lockedUser->leaveBalance;
+                        if ($lb) {
+                            $lb->utilized_leave += $totalDays;
+                            $lb->saveQuietly();
+                        }
                     }
 
                     LeaveLedgerEntry::create([
@@ -336,6 +342,12 @@ class LeaveRequestController extends Controller
                         $lockedUser->leave_balance += $lockedRequest->total_days;
                         $lockedUser->save();
 
+                        $lb = $lockedUser->leaveBalance;
+                        if ($lb) {
+                            $lb->utilized_leave = max(0.00, $lb->utilized_leave - $lockedRequest->total_days);
+                            $lb->saveQuietly();
+                        }
+
                         LeaveLedgerEntry::create([
                             'user_id' => $lockedUser->id,
                             'leave_request_id' => $lockedRequest->id,
@@ -425,6 +437,12 @@ class LeaveRequestController extends Controller
                     
                     $lockedUser->leave_balance -= $lockedRequest->total_days;
                     $lockedUser->save();
+
+                    $lb = $lockedUser->leaveBalance;
+                    if ($lb) {
+                        $lb->utilized_leave += $lockedRequest->total_days;
+                        $lb->saveQuietly();
+                    }
 
                     LeaveLedgerEntry::create([
                         'user_id' => $lockedUser->id,
@@ -553,6 +571,12 @@ class LeaveRequestController extends Controller
                         $lockedUser->leave_balance += $lockedRequest->total_days;
                         $lockedUser->save();
 
+                        $lb = $lockedUser->leaveBalance;
+                        if ($lb) {
+                            $lb->utilized_leave = max(0.00, $lb->utilized_leave - $lockedRequest->total_days);
+                            $lb->saveQuietly();
+                        }
+
                         LeaveLedgerEntry::create([
                             'user_id' => $lockedUser->id,
                             'leave_request_id' => $lockedRequest->id,
@@ -679,6 +703,12 @@ class LeaveRequestController extends Controller
                         $lockedUser->leave_balance += $lockedRequest->total_days;
                         $lockedUser->save();
 
+                        $lb = $lockedUser->leaveBalance;
+                        if ($lb) {
+                            $lb->utilized_leave = max(0.00, $lb->utilized_leave - $lockedRequest->total_days);
+                            $lb->saveQuietly();
+                        }
+
                         LeaveLedgerEntry::create([
                             'user_id' => $lockedUser->id,
                             'leave_request_id' => $lockedRequest->id,
@@ -733,6 +763,12 @@ class LeaveRequestController extends Controller
                         }
                         $lockedUser->leave_balance -= $lockedRequest->total_days;
                         $lockedUser->save();
+
+                        $lb = $lockedUser->leaveBalance;
+                        if ($lb) {
+                            $lb->utilized_leave += $lockedRequest->total_days;
+                            $lb->saveQuietly();
+                        }
 
                         $lockedRequest->update([
                             'is_paid' => true,

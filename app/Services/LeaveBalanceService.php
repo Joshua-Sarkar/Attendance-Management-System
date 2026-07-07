@@ -108,6 +108,26 @@ class LeaveBalanceService
                 'type' => 'opening_balance',
                 'description' => 'Opening leave balance',
             ]);
+
+            $user->payrollProfile()->create([
+                'base_salary' => null,
+                'salary_effective_date' => null,
+                'payroll_enabled' => false,
+                'import_source' => 'Manual',
+            ]);
+
+            $user->leaveBalance()->create([
+                'planned_leave' => 0.00,
+                'unplanned_leave' => 0.00,
+                'paternity_leave' => 0.00,
+                'maternity_leave' => 0.00,
+                'compensatory_leave' => 0.00,
+                'pending_leave' => 0.00,
+                'utilized_leave' => 0.00,
+                'carry_forward' => 0.00,
+                'remaining_leave' => 2.00,
+                'import_source' => 'Manual',
+            ]);
         });
     }
 }

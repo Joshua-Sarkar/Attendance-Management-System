@@ -899,6 +899,12 @@ class AttendanceService
                         $lockedUser->leave_balance += $adjustment;
                         $lockedUser->save();
 
+                        $lb = $lockedUser->leaveBalance;
+                        if ($lb) {
+                            $lb->utilized_leave = max(0.00, $lb->utilized_leave - $adjustment);
+                            $lb->saveQuietly();
+                        }
+
                         \App\Models\LeaveLedgerEntry::create([
                             'user_id' => $lockedUser->id,
                             'amount' => $adjustment,

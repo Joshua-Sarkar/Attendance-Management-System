@@ -394,59 +394,144 @@
             </div>
 
             <!-- BANKING & REGISTRY -->
-            <div id="payroll" x-show="activeSection === 'payroll'" class="scroll-mt-6 border-b border-hairline pb-8">
-                <h4 class="text-sm font-semibold text-brass uppercase tracking-wider mb-4">Banking & Government Registries</h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Payment Type</span>
-                        <span class="text-sm font-medium text-vellum capitalize">{{ $user->employeeProfile?->payment_type ?? 'N/A' }}</span>
+            <!-- PAYROLL & LEAVES -->
+            <div id="payroll" x-show="activeSection === 'payroll'" class="scroll-mt-6 space-y-8 border-b border-hairline pb-8">
+                <!-- Payroll Information -->
+                <div>
+                    <h4 class="text-sm font-semibold text-brass uppercase tracking-wider mb-4 font-display">Payroll Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Base Salary</span>
+                            <span class="text-sm font-medium text-vellum font-mono">
+                                {{ $user->payrollProfile?->base_salary !== null ? '₹ ' . number_format($user->payrollProfile->base_salary, 2) : 'N/A' }}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Salary Effective Date</span>
+                            <span class="text-sm font-medium text-vellum font-mono">
+                                {{ $user->payrollProfile?->salary_effective_date?->format('M d, Y') ?? 'N/A' }}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Payroll Enabled</span>
+                            <span class="text-sm font-medium text-vellum">
+                                @if($user->payrollProfile?->payroll_enabled)
+                                    <span class="px-2 py-0.5 text-[9.5px] font-mono font-semibold uppercase tracking-[0.5px] rounded bg-forest-bg text-forest border border-transparent">
+                                        Enabled
+                                    </span>
+                                @else
+                                    <span class="px-2 py-0.5 text-[9.5px] font-mono font-semibold uppercase tracking-[0.5px] rounded bg-surface-raised text-vellum-muted border border-hairline">
+                                        Disabled
+                                    </span>
+                                @endif
+                            </span>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Bank Name</span>
-                        <span class="text-sm font-medium text-vellum">{{ $user->employeeProfile?->bank_name ?? 'N/A' }}</span>
+                </div>
+
+                <!-- Detailed Leave Balances -->
+                <div>
+                    <h4 class="text-sm font-semibold text-brass uppercase tracking-wider mb-4 font-display">Detailed Leave Balances</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Planned Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->planned_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Unplanned Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->unplanned_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Paternity Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->paternity_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Maternity Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->maternity_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Compensatory Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->compensatory_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Carry Forward</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->carry_forward ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider font-bold">Total Allocation</span>
+                            <span class="text-sm font-medium text-vellum font-mono font-bold">{{ number_format($user->leaveBalance?->total_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Pending Leave Requests</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->pending_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Utilized Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->utilized_leave ?? 0.00, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-brass uppercase tracking-wider font-bold">Remaining Leave</span>
+                            <span class="text-sm font-bold text-brass font-mono">{{ number_format($user->leaveBalance?->remaining_leave ?? 0.00, 2) }} days</span>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Account Holder</span>
-                        <span class="text-sm font-medium text-vellum">{{ $user->employeeProfile?->account_holder_name ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Account Number</span>
-                        <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->account_no ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">IFSC Code</span>
-                        <span class="text-sm font-medium text-brass font-mono uppercase select-all">{{ $user->employeeProfile?->ifsc_code ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">PF UAN</span>
-                        <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->pf_uan ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Passport Number</span>
-                        <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->passport_no ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Aadhar Card</span>
-                        <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->aadhar_card ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">PAN Card</span>
-                        <span class="text-sm font-medium text-brass font-mono uppercase select-all">{{ $user->employeeProfile?->pan ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">PF Number</span>
-                        <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->pf_no ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">ESI Number</span>
-                        <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->esi_number ?? 'N/A' }}</span>
-                    </div>
-                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
-                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Date of Gratuity</span>
-                        <span class="text-sm font-medium text-vellum font-mono">{{ $user->employeeProfile?->date_of_gratuity?->format('M d, Y') ?? 'N/A' }}</span>
+                </div>
+
+                <!-- Banking & Registries -->
+                <div>
+                    <h4 class="text-sm font-semibold text-brass uppercase tracking-wider mb-4 font-display">Banking & Government Registries</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Payment Type</span>
+                            <span class="text-sm font-medium text-vellum capitalize">{{ $user->employeeProfile?->payment_type ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Bank Name</span>
+                            <span class="text-sm font-medium text-vellum">{{ $user->employeeProfile?->bank_name ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Account Holder</span>
+                            <span class="text-sm font-medium text-vellum">{{ $user->employeeProfile?->account_holder_name ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Account Number</span>
+                            <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->account_no ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">IFSC Code</span>
+                            <span class="text-sm font-medium text-brass font-mono uppercase select-all">{{ $user->employeeProfile?->ifsc_code ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">PF UAN</span>
+                            <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->pf_uan ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Passport Number</span>
+                            <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->passport_no ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Aadhar Card</span>
+                            <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->aadhar_card ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">PAN Card</span>
+                            <span class="text-sm font-medium text-brass font-mono uppercase select-all">{{ $user->employeeProfile?->pan ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">PF Number</span>
+                            <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->pf_no ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">ESI Number</span>
+                            <span class="text-sm font-medium text-vellum font-mono select-all">{{ $user->employeeProfile?->esi_number ?? 'N/A' }}</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Date of Gratuity</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ $user->employeeProfile?->date_of_gratuity?->format('M d, Y') ?? 'N/A' }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
+
 
             <!-- FUTURE TIMELINE -->
             <div id="timeline" x-show="activeSection === 'timeline'" class="scroll-mt-6 border-b border-hairline pb-8">

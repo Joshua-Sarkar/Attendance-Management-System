@@ -13,12 +13,17 @@ class ImportLog extends Model
         'rows_processed',
         'created_count',
         'updated_count',
+        'skipped_count',
         'error_count',
+        'duration_seconds',
         'errors',
+        'metadata',
     ];
 
     protected $casts = [
         'errors' => 'array',
+        'metadata' => 'array',
+        'duration_seconds' => 'decimal:2',
     ];
 
     public function runByUser(): BelongsTo
