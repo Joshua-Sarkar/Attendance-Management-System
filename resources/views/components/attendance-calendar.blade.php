@@ -293,12 +293,12 @@
                                     selected && selected.iso === day.iso ? 'ring-2 ring-inset ring-brass bg-[#FAF9F5] z-30 shadow-lg scale-[1.01]' : '',
                                     
                                     /* Legend Filter highlight or dim */
-                                    legendFilter !== null && day.status !== legendFilter ? 'opacity-[0.25]' : '',
-                                    legendFilter !== null && day.status === legendFilter ? 'ring-2 ring-inset ring-brass/80 bg-surface z-10 scale-[1.01]' : '',
+                                    legendFilter !== null && (day.status === 'late' ? 'present' : day.status) !== legendFilter ? 'opacity-[0.25]' : '',
+                                    legendFilter !== null && (day.status === 'late' ? 'present' : day.status) === legendFilter ? 'ring-2 ring-inset ring-brass/80 bg-surface z-10 scale-[1.01]' : '',
                                     
                                     /* Legend Hover dim or scale */
-                                    legendHover !== null && day.status !== legendHover && legendFilter === null ? 'opacity-[0.45]' : '',
-                                    legendHover !== null && day.status === legendHover && legendFilter === null ? 'scale-[1.02] border-brass z-10 bg-surface shadow-md' : ''
+                                    legendHover !== null && (day.status === 'late' ? 'present' : day.status) !== legendHover && legendFilter === null ? 'opacity-[0.45]' : '',
+                                    legendHover !== null && (day.status === 'late' ? 'present' : day.status) === legendHover && legendFilter === null ? 'scale-[1.02] border-brass z-10 bg-surface shadow-md' : ''
                                 ]"
                                 :disabled="!day.inRange"
                                 :style="`height: 128px;`"
@@ -675,18 +675,9 @@ function attendanceCalendar(config) {
         tooltipY: 0,
         tooltipTransform: '',
         statusList: [
-            { key: 'present', label: 'Present', color: '#234E39' },
-            { key: 'absent', label: 'Absent', color: '#6E1A24' },
-            { key: 'half', label: 'Half Day (Automatic)', color: '#C1652C' },
-            { key: 'planned', label: 'Planned Leave', color: '#234E39' },
-            { key: 'upa', label: 'Unplanned Approved (UPA)', color: '#234E39' },
-            { key: 'upr', label: 'Unplanned Rejected (UPR)', color: '#6E1A24' },
-            { key: 'hdp', label: 'Half Day Planned (HDP)', color: '#234E39' },
-            { key: 'hd_upa', label: 'Half Day Unplanned Approved (HD-UPA)', color: '#234E39' },
-            { key: 'hd_upr', label: 'Half Day Unplanned Rejected (HD-UPR)', color: '#6E1A24' },
-            { key: 'bday', label: 'Birthday Leave', color: '#7C5A9E' },
-            { key: 'off', label: 'Weekly Off', color: '#6D645A' },
-            { key: 'future', label: 'Future (-)', color: '#9C9180' },
+            @foreach(\App\Services\AttendanceStateRegistry::getStates() as $key => $details)
+                { key: '{{ $key }}', label: '{{ $details['label'] }}', color: '{{ $details['color'] }}' },
+            @endforeach
         ],
         toggleChips: [
             { key: 'onlyLate', label: 'Only Late' },
@@ -830,68 +821,46 @@ function attendanceCalendar(config) {
         },
 
         statusColor(key) {
-            const s = this.statusList.find(s => s.key === key);
+            const displayKey = key === 'late' ? 'present' : key;
+            const s = this.statusList.find(s => s.key === displayKey);
             return s ? s.color : '#6D645A';
         },
 
         tooltipStatusColor(key) {
+            const displayStatus = key === 'late' ? 'present' : key;
             const colors = {
-                present: '#234E39',
-                absent: '#6E1A24',
-                half: '#C1652C',
-                planned: '#234E39',
-                upa: '#234E39',
-                upr: '#6E1A24',
-                hdp: '#234E39',
-                hd_upa: '#234E39',
-                hd_upr: '#6E1A24',
-                bday: '#7C5A9E',
-                off: '#6D645A',
-                future: '#9C9180'
+                @foreach(\App\Services\AttendanceStateRegistry::getStates() as $k => $details)
+                    '{{ $k }}': '{{ $details['color'] }}',
+                @endforeach
             };
-            return colors[key] || '#9C9180';
+            return colors[displayStatus] || '#9C9180';
         },
 
         statusLabel(key) {
-            const s = this.statusList.find(s => s.key === key);
+            const displayKey = key === 'late' ? 'present' : key;
+            const s = this.statusList.find(s => s.key === displayKey);
             return s ? s.label : key;
         },
 
         statusBadgeStyle(status) {
+            const displayStatus = status === 'late' ? 'present' : status;
             const styles = {
-                present: { bg: '#D1E7DD', text: '#0A3622' },
-                absent: { bg: '#F8D7DA', text: '#58151C' },
-                half: { bg: '#FFE8CC', text: '#803D00' },
-                planned: { bg: '#D1E7DD', text: '#0A3622' },
-                upa: { bg: '#D1E7DD', text: '#0A3622' },
-                upr: { bg: '#F8D7DA', text: '#58151C' },
-                hdp: { bg: '#D1E7DD', text: '#0A3622' },
-                hd_upa: { bg: '#D1E7DD', text: '#0A3622' },
-                hd_upr: { bg: '#F8D7DA', text: '#58151C' },
-                bday: { bg: '#F3E8FF', text: '#4C1D95' },
-                off: { bg: '#E2E3E5', text: '#212529' },
-                future: { bg: '#FAF8F5', text: '#6D645A' }
+                @foreach(\App\Services\AttendanceStateRegistry::getStates() as $k => $details)
+                    '{{ $k }}': { bg: '{{ $details['bg_color'] }}', text: '{{ $details['text_color'] }}' },
+                @endforeach
             };
-            const s = styles[status] || { bg: '#FAF8F5', text: '#6D645A' };
+            const s = styles[displayStatus] || { bg: '#FAF8F5', text: '#6D645A' };
             return `background-color: ${s.bg}; color: ${s.text}; border: 1px solid rgba(156, 124, 56, 0.25);`;
         },
 
         statusDotStyle(status) {
+            const displayStatus = status === 'late' ? 'present' : status;
             const dots = {
-                present: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
-                absent: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
-                half: { color: '#FD7E14', glow: '0 0 6px 2px rgba(253, 126, 20, 0.45)' },
-                planned: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
-                upa: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
-                upr: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
-                hdp: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
-                hd_upa: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
-                hd_upr: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
-                bday: { color: '#8B5CF6', glow: '0 0 6px 2px rgba(139, 92, 246, 0.4)' },
-                off: { color: '#6C757D', glow: 'none' },
-                future: { color: '#9C9180', glow: 'none' }
+                @foreach(\App\Services\AttendanceStateRegistry::getStates() as $k => $details)
+                    '{{ $k }}': { color: '{{ $details['dot_color'] }}', glow: '{{ $details['glow_color'] }}' },
+                @endforeach
             };
-            const d = dots[status] || { color: '#6C757D', glow: 'none' };
+            const d = dots[displayStatus] || { color: '#6C757D', glow: 'none' };
             return `background-color: ${d.color}; box-shadow: ${d.glow};`;
         },
 

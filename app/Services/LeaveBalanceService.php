@@ -124,6 +124,16 @@ class LeaveBalanceService
     }
 
     /**
+     * Shared helper to validate leave balance.
+     */
+    protected static function validateLeaveBalance(User $user, float $totalDays, string $leaveType): void
+    {
+        if ($user->leave_balance < $totalDays) {
+            throw new \Exception("Insufficient leave balance. You have {$user->leave_balance} days available, but requested {$totalDays} days.");
+        }
+    }
+
+    /**
      * Submit/Apply for leave with comprehensive validations.
      */
     public static function applyRequest(User $user, array $data): LeaveRequest
@@ -133,6 +143,17 @@ class LeaveBalanceService
             $endDate = \Carbon\Carbon::parse($data['end_date'])->startOfDay();
             $isHalfDay = filter_var($data['is_half_day'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $totalDays = $isHalfDay ? 0.5 : ((int)$startDate->diffInDays($endDate) + 1);
+
+            // Date validations
+            if ($data['leave_type'] === 'planned') {
+                if ($startDate->lt(\Carbon\Carbon::today())) {
+                    throw new \Exception('Planned Leave may only be requested for Today or Future dates.');
+                }
+            } elseif ($data['leave_type'] === 'unplanned') {
+                if ($startDate->gt(\Carbon\Carbon::today()) || $endDate->gt(\Carbon\Carbon::today())) {
+                    throw new \Exception('Unplanned Leave may only be requested for Past or Today dates.');
+                }
+            }
 
             // Overlap Validation
             $overlap = LeaveRequest::where('user_id', $user->id)
@@ -162,23 +183,15 @@ class LeaveBalanceService
             }
 
             // Leave Balance Validation
-            if ($data['leave_type'] === 'planned') {
-                if ($user->leave_balance < $totalDays) {
-                    throw new \Exception("Insufficient leave balance. You have {$user->leave_balance} days available, but requested {$totalDays} days.");
-                }
+            if (in_array($data['leave_type'], ['planned', 'unplanned'])) {
+                self::validateLeaveBalance($user, $totalDays, $data['leave_type']);
             }
 
             $isPaid = ($data['leave_type'] === 'planned' || $data['leave_type'] === 'complimentary');
 
-            $status = 'pending';
-            $approverId = null;
-            $approvedAt = null;
-
-            if ($user->role === 'admin' && app()->environment('testing')) {
-                $status = 'approved';
-                $approverId = $user->id;
-                $approvedAt = now();
-            }
+            $status = ($user->role === 'admin') ? 'approved' : 'pending';
+            $approverId = ($user->role === 'admin') ? $user->id : null;
+            $approvedAt = ($user->role === 'admin') ? now() : null;
             
             $leaveRequest = LeaveRequest::create([
                 'user_id' => $user->id,
@@ -229,7 +242,7 @@ class LeaveBalanceService
             LeaveRequestLog::create([
                 'leave_request_id' => $leaveRequest->id,
                 'from_status' => null,
-                'to_status' => $status,
+                'to_status' => $status === 'approved' ? 'pending' : $status,
                 'action' => 'applied',
                 'notes' => 'Applied.',
                 'user_id' => $user->id,
@@ -241,7 +254,7 @@ class LeaveBalanceService
                     'from_status' => 'pending',
                     'to_status' => 'approved',
                     'action' => 'approved',
-                    'notes' => 'Auto-approved for admin in testing.',
+                    'notes' => 'Auto-approved for admin.',
                     'user_id' => $user->id,
                 ]);
             }
@@ -275,11 +288,12 @@ class LeaveBalanceService
                 'notes' => $notes,
             ]);
 
+            // Balance Check for both planned and unplanned
+            if (in_array($lockedRequest->leave_type, ['planned', 'unplanned'])) {
+                self::validateLeaveBalance($lockedUser, $totalDays, $lockedRequest->leave_type);
+            }
+
             if ($isPaid) {
-                // Balance Check
-                if ($lockedUser->leave_balance < $totalDays) {
-                    throw new \Exception("Insufficient leave balance. Employee has {$lockedUser->leave_balance} days available, but requested {$totalDays} days.");
-                }
 
                 // Deduct balance
                 self::adjustBalance(

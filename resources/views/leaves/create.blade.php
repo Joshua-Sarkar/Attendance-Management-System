@@ -101,8 +101,44 @@
             const startDateInput = document.getElementById('start_date');
             const endDateInput = document.getElementById('end_date');
             const durationInput = document.getElementById('duration');
+            const leaveTypeSelect = document.getElementById('leave_type');
             const previewContainer = document.getElementById('duration_preview');
             const durationSpan = document.getElementById('duration_days');
+
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            function handleLeaveTypeChange() {
+                const leaveType = leaveTypeSelect.value;
+                if (leaveType === 'unplanned') {
+                    startDateInput.max = todayStr;
+                    endDateInput.max = todayStr;
+                    startDateInput.removeAttribute('min');
+                    
+                    if (startDateInput.value && startDateInput.value > todayStr) {
+                        startDateInput.value = '';
+                    }
+                    if (endDateInput.value && endDateInput.value > todayStr) {
+                        endDateInput.value = '';
+                    }
+                } else if (leaveType === 'planned') {
+                    startDateInput.min = todayStr;
+                    startDateInput.removeAttribute('max');
+                    endDateInput.removeAttribute('max');
+                    
+                    if (startDateInput.value && startDateInput.value < todayStr) {
+                        startDateInput.value = '';
+                    }
+                } else {
+                    startDateInput.removeAttribute('min');
+                    startDateInput.removeAttribute('max');
+                    endDateInput.removeAttribute('max');
+                }
+                calculateDuration();
+            }
 
             function handleDurationChange() {
                 if (durationInput.value === 'half_day') {
@@ -160,6 +196,32 @@
 
             endDateInput.addEventListener('change', calculateDuration);
             durationInput.addEventListener('change', handleDurationChange);
+            leaveTypeSelect.addEventListener('change', handleLeaveTypeChange);
+
+            // Form Submit validation
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                const leaveType = leaveTypeSelect.value;
+                const startVal = startDateInput.value;
+                const endVal = endDateInput.value;
+                
+                if (leaveType === 'unplanned') {
+                    if (startVal > todayStr || endVal > todayStr) {
+                        e.preventDefault();
+                        alert('Unplanned Leave may only be requested for Past or Today dates.');
+                        return false;
+                    }
+                } else if (leaveType === 'planned') {
+                    if (startVal && startVal < todayStr) {
+                        e.preventDefault();
+                        alert('Planned Leave may only be requested for Today or Future dates.');
+                        return false;
+                    }
+                }
+            });
+
+            // Run initial check
+            handleLeaveTypeChange();
         });
     </script>
 </x-workflow-layout>

@@ -287,7 +287,7 @@ class LeaveManagementTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_create_paid_leave_and_receive_automatic_approval_with_deduction()
+    public function admin_creates_paid_leave_and_it_is_auto_approved()
     {
         $startDate = Carbon::today()->addDays(2)->format('Y-m-d');
         $endDate = Carbon::today()->addDays(4)->format('Y-m-d');
@@ -313,7 +313,7 @@ class LeaveManagementTest extends TestCase
         $this->assertEquals($originalBalance - 3, $this->admin->fresh()->leave_balance);
 
         $leave = LeaveRequest::where('user_id', $this->admin->id)->first();
-        // Assert audit trail records applied & approved
+        // Assert audit trail records applied and approved
         $this->assertDatabaseHas('leave_request_logs', [
             'leave_request_id' => $leave->id,
             'action' => 'applied',
@@ -325,10 +325,10 @@ class LeaveManagementTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_create_unplanned_leave_and_receive_automatic_approval_without_deduction()
+    public function admin_creates_unplanned_leave_and_it_is_auto_approved()
     {
-        $startDate = Carbon::today()->addDays(2)->format('Y-m-d');
-        $endDate = Carbon::today()->addDays(4)->format('Y-m-d');
+        $startDate = Carbon::today()->subDays(4)->format('Y-m-d');
+        $endDate = Carbon::today()->subDays(2)->format('Y-m-d');
 
         $originalBalance = $this->admin->leave_balance;
 

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Models\LeaveRequest;
 use App\Services\AttendanceService;
+use App\Services\AttendanceStateRegistry;
 use Illuminate\Http\Request;
 
 class AttendanceAuditController extends Controller
@@ -30,14 +32,35 @@ class AttendanceAuditController extends Controller
         // Fetch all employees matching search/department filters for the specified date
         $employees = $this->attendanceService->getFilteredAttendance($date, $departmentId, $search, $request->user());
 
-        // Filter by status in-memory because of dynamic status logic (absent status, leaves, wfh etc.)
+        $parsedDate = \Carbon\Carbon::parse($date);
+
+        // N+1 Query Prevention: Eager-load leave requests for all fetched employees on the selected date
+        $employeeIds = $employees->pluck('id')->toArray();
+        $dateStr = $parsedDate->format('Y-m-d');
+        $leaves = LeaveRequest::whereIn('user_id', $employeeIds)
+            ->whereIn('status', ['approved', 'rejected'])
+            ->where('start_date', '<=', $dateStr . ' 23:59:59')
+            ->where('end_date', '>=', $dateStr . ' 00:00:00')
+            ->get()
+            ->groupBy('user_id');
+
+        // Map resolved state to each employee using the canonical state resolver
+        foreach ($employees as $emp) {
+            $empLeave = isset($leaves[$emp->id]) ? $leaves[$emp->id]->first() : null;
+            $emp->resolved_state = $this->attendanceService->resolveStateForDate($emp, $parsedDate, $emp->today_attendance, $empLeave);
+        }
+
+        // Filter by status in-memory using the canonical registry mapping
         if ($status) {
-            $employees = $employees->filter(function ($emp) use ($status, $date) {
-                $att = $emp->today_attendance;
-                $parsedDate = \Carbon\Carbon::parse($date);
-                $isWeeklyOff = \App\Services\AttendanceTimingResolver::isWeeklyOff($parsedDate);
-                $resolvedStatus = $att ? $att->status : ($isWeeklyOff ? 'weekly_off' : 'absent');
-                return $resolvedStatus === $status;
+            $employees = $employees->filter(function ($emp) use ($status) {
+                $resolvedStatus = $emp->resolved_state['status'];
+                if ($status === 'late') {
+                    return $resolvedStatus === 'late';
+                }
+                if ($status === 'present') {
+                    return in_array($resolvedStatus, ['present', 'late']);
+                }
+                return AttendanceStateRegistry::getDisplayStatus($resolvedStatus) === $status;
             });
         }
 
@@ -60,7 +83,11 @@ class AttendanceAuditController extends Controller
             });
         }
         if ($status) {
-            $overridesQuery->where('status', $status);
+            if ($status === 'present') {
+                $overridesQuery->whereIn('status', ['present', 'late']);
+            } else {
+                $overridesQuery->where('status', $status);
+            }
         }
 
         $overrides = $overridesQuery->orderByDesc('overridden_at')->get();
@@ -101,14 +128,7 @@ class AttendanceAuditController extends Controller
             $employeesCount = !empty($meta['employees_count']) ? $meta['employees_count'] : $group->pluck('user_id')->unique()->count();
             $recordsModified = !empty($meta['records_modified']) ? $meta['records_modified'] : $count;
 
-            $statusLabel = $first->status;
-            if ($statusLabel === 'paid_leave') {
-                $statusLabel = 'Planned Leave (Paid)';
-            } elseif ($statusLabel === 'unpaid_leave') {
-                $statusLabel = 'Unplanned Leave (Unpaid)';
-            } else {
-                $statusLabel = ucwords(str_replace('_', ' ', $statusLabel));
-            }
+            $statusLabel = AttendanceStateRegistry::getLabel($first->status);
 
             return [
                 'timestamp' => $first->overridden_at,

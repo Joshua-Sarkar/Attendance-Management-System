@@ -118,19 +118,6 @@ class LeaveRequestController extends Controller
         $endDate = Carbon::parse($validated['end_date'])->startOfDay();
         $isHalfDay = ($validated['duration'] ?? 'full_day') === 'half_day';
 
-        // 1. Leave Date Restrictions
-        if ($validated['leave_type'] === 'planned') {
-            if ($startDate->lt(today())) {
-                return back()->withErrors(['start_date' => 'Planned Leave may only be requested for Today or Future dates.'])->withInput();
-            }
-        } elseif ($validated['leave_type'] === 'unplanned') {
-            if (!app()->environment('testing')) {
-                if ($endDate->gt(today())) {
-                    return back()->withErrors(['end_date' => 'Unplanned Leave may only be requested for Past or Today dates.'])->withInput();
-                }
-            }
-        }
-
         // 2. Duration / Half Day Restrictions
         if ($isHalfDay) {
             if (!$startDate->equalTo($endDate)) {
@@ -148,12 +135,17 @@ class LeaveRequestController extends Controller
             ]);
 
             $successMsg = $leaveRequest->status === 'approved' 
-                ? 'Birthday Leave submitted and automatically approved.'
+                ? 'Leave request submitted and automatically approved.'
                 : 'Leave request submitted successfully and is pending approval.';
 
             return redirect()->route('leaves.index')->with('success', $successMsg);
         } catch (\Exception $e) {
-            $errorField = $validated['leave_type'] === 'complimentary' ? 'leave_type' : 'start_date';
+            $errorField = 'start_date';
+            if ($validated['leave_type'] === 'complimentary') {
+                $errorField = 'leave_type';
+            } elseif ($validated['leave_type'] === 'unplanned') {
+                $errorField = 'end_date';
+            }
             return back()->withErrors([$errorField => $e->getMessage()])->withInput();
         }
     }

@@ -62,6 +62,49 @@ class EmployeeService
 
     public function delete(User $user): void
     {
-        $user->delete();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
+            // Nullify relationships where this user is manager/admin
+            \App\Models\User::where('manager_id', $user->id)->update(['manager_id' => null]);
+            \App\Models\User::where('admin_id', $user->id)->update(['admin_id' => null]);
+
+            // 1. ProfileCorrectionRequest
+            \App\Models\ProfileCorrectionRequest::where('user_id', $user->id)->delete();
+
+            // 2. LeaveRequestLog
+            $leaveRequestIds = \App\Models\LeaveRequest::where('user_id', $user->id)->pluck('id')->toArray();
+            \App\Models\LeaveRequestLog::whereIn('leave_request_id', $leaveRequestIds)->delete();
+            \App\Models\LeaveRequestLog::where('user_id', $user->id)->delete();
+
+            // 3. LeaveLedgerEntry
+            \App\Models\LeaveLedgerEntry::where('user_id', $user->id)->delete();
+
+            // 4. LeaveRequest
+            \App\Models\LeaveRequest::where('user_id', $user->id)->delete();
+
+            // 5. LeaveCredit
+            \App\Models\LeaveCredit::where('user_id', $user->id)->delete();
+
+            // 6. LeaveBalance
+            \App\Models\LeaveBalance::where('user_id', $user->id)->delete();
+
+            // 7. SalaryHistory & PayrollProfile
+            $payrollProfile = \App\Models\PayrollProfile::where('user_id', $user->id)->first();
+            if ($payrollProfile) {
+                \App\Models\SalaryHistory::where('payroll_profile_id', $payrollProfile->id)->delete();
+                $payrollProfile->delete();
+            }
+
+            // 8. EmployeeExternalIdentifier
+            \App\Models\EmployeeExternalIdentifier::where('user_id', $user->id)->delete();
+
+            // 9. Attendance
+            \App\Models\Attendance::where('user_id', $user->id)->delete();
+
+            // 10. EmployeeProfile
+            \App\Models\EmployeeProfile::where('user_id', $user->id)->delete();
+
+            // 11. User record
+            $user->delete();
+        });
     }
 }

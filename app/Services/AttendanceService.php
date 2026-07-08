@@ -256,6 +256,16 @@ class AttendanceService
 
     /**
      * Core resolution rules for a single date.
+     *
+     * Deterministic State Priority Order:
+     * 1. Override: Managed manually by admin.
+     * 2. Attendance: Physical check-ins (present/late/half-day).
+     * 3. Birthday Leave: Complimentary paid leaves.
+     * 4. Approved Leave: Casual, sick, planned, or unplanned leaves.
+     * 5. Weekly Off: Saturdays/Sundays depending on department.
+     * 6. Future: Dates after today.
+     * 7. Rejected Leave: Logged details of rejected applications.
+     * 8. Absent: Fallback state for regular unpaid/untracked days.
      */
     public function resolveStateForDate(User $user, Carbon $date, ?Attendance $record = null, ?LeaveRequest $leave = null): array
     {
@@ -283,36 +293,7 @@ class AttendanceService
             }
         }
 
-        if ($isFuture && !$hasApprovedLeave && !$isTestBypass) {
-            return [
-                'date' => $date,
-                'iso' => $date->format('Y-m-d'),
-                'status' => 'future',
-                'automatic_status' => 'future',
-                'classification' => 'full_day',
-                'automatic_classification' => 'full_day',
-                'is_overridden' => false,
-                'hours' => 0.0,
-                'check_in_time' => null,
-                'check_out_time' => null,
-                'salary_deduction' => 0.0,
-                'leave_deduction' => 0.0,
-                'payroll_impact' => 'None',
-                'leave_type' => null,
-                'notes' => 'Future date.',
-                'check_in_device' => '—',
-                'check_in_location' => '—',
-                'check_out_device' => '—',
-                'check_out_location' => '—',
-                'approved_by' => '—',
-                'shift_start' => null,
-                'shift_end' => null,
-                'timings' => null,
-            ];
-        }
-
         $timings = AttendanceTimingResolver::resolveTimings($user, $date);
-        $graceThresholdTime = $timings['grace_threshold']->format('H:i:s');
         $shiftStart = $timings['shift_start'];
         $shiftEnd = $timings['shift_end'];
         
@@ -340,85 +321,8 @@ class AttendanceService
             $approvedBy = $record->overriddenBy?->name ?? 'Administrator';
         }
 
-        // 1. If physical check-in exists
-        if ($checkInTime) {
-            if ($record && $record->is_overridden) {
-                $notes = 'Overridden: ' . $record->override_reason;
-                $statusName = $record->status;
-                $className = $record->classification;
-
-                if ($className === 'half_day') {
-                    $classification = 'half_day';
-                    if (in_array($statusName, ['paid_leave', 'planned'])) {
-                        $status = 'hdp';
-                        $salaryDeduction = 0.0;
-                        $leaveDeduction = 0.5;
-                    } elseif (in_array($statusName, ['unpaid_leave', 'unplanned'])) {
-                        $status = 'hd_upa';
-                        $salaryDeduction = 0.0;
-                        $leaveDeduction = 0.5;
-                    } elseif ($statusName === 'absent') {
-                        $status = 'hd_upr';
-                        $salaryDeduction = 0.5;
-                        $leaveDeduction = 0.0;
-                    } else {
-                        $status = $statusName === 'late' ? 'late' : 'half';
-                        $salaryDeduction = 0.5;
-                        $leaveDeduction = 0.0;
-                    }
-                } else {
-                    $classification = 'full_day';
-                    if (in_array($statusName, ['present', 'late', 'wfh'])) {
-                        $status = $statusName;
-                        $salaryDeduction = 0.0;
-                        $leaveDeduction = 0.0;
-                    } elseif (in_array($statusName, ['paid_leave', 'planned'])) {
-                        $status = 'planned';
-                        $salaryDeduction = 0.0;
-                        $leaveDeduction = 1.0;
-                    } elseif (in_array($statusName, ['unpaid_leave', 'unplanned'])) {
-                        $status = 'upa';
-                        $salaryDeduction = 0.0;
-                        $leaveDeduction = 1.0;
-                    } elseif ($statusName === 'absent') {
-                        $status = 'absent';
-                        $salaryDeduction = 1.0;
-                        $leaveDeduction = 0.0;
-                    } elseif (in_array($statusName, ['weekly_off', 'off'])) {
-                        $status = 'off';
-                        $salaryDeduction = 0.0;
-                        $leaveDeduction = 0.0;
-                    }
-                }
-            } else {
-                $checkInTimeStr = $checkInTime->format('H:i:s');
-                $lateArrivalClassification = config('attendance.late_arrival_classification', 'half_day');
-                
-                if ($lateArrivalClassification === 'full_day') {
-                    $isLateHalfDay = false;
-                } else {
-                    $isLateHalfDay = ($checkInTimeStr > $graceThresholdTime) && ($checkInTimeStr > '09:35:00');
-                }
-                
-                $isHoursHalfDay = $checkOutTime && $hours < 4.0;
-                
-                if ($isLateHalfDay || $isHoursHalfDay) {
-                    $classification = 'half_day';
-                    $status = $isHoursHalfDay ? 'half' : 'late';
-                    $salaryDeduction = 0.5;
-                    $leaveDeduction = 0.0;
-                    $notes = $isHoursHalfDay ? 'Half Day — Under 4 working hours.' : 'Half Day — Late check-in after 9:35 AM.';
-                } else {
-                    $classification = 'full_day';
-                    $status = $checkInTimeStr > $graceThresholdTime ? 'late' : 'present';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.0;
-                    $notes = $status === 'late' ? 'Late check-in past grace period.' : 'Checked in on time.';
-                }
-            }
-        }
-        // 2. If no check-in, but override exists
-        elseif ($record && $record->is_overridden) {
+        // 1. Override
+        if ($isOverridden) {
             $notes = 'Overridden: ' . $record->override_reason;
             $statusName = $record->status;
             $className = $record->classification;
@@ -467,7 +371,37 @@ class AttendanceService
                 }
             }
         }
-        // 3. If no check-in, but approved leave exists
+        // 2. Attendance
+        elseif ($checkInTime) {
+            $checkInMin = $checkInTime->copy()->second(0)->microsecond(0);
+            $graceThresholdMin = $timings['grace_threshold']->copy()->second(0)->microsecond(0);
+            
+            $lateArrivalClassification = config('attendance.late_arrival_classification', 'half_day');
+            
+            if ($lateArrivalClassification === 'full_day') {
+                $isLateHalfDay = false;
+            } else {
+                $halfDayThreshold = $date->copy()->setTime(9, 35, 0);
+                $isLateHalfDay = $checkInMin->greaterThan($graceThresholdMin) && $checkInMin->greaterThan($halfDayThreshold);
+            }
+            
+            $isHoursHalfDay = $checkOutTime && $hours < 4.0;
+            
+            if ($isLateHalfDay || $isHoursHalfDay) {
+                $classification = 'half_day';
+                $status = $isHoursHalfDay ? 'half' : 'late';
+                $salaryDeduction = 0.5;
+                $leaveDeduction = 0.0;
+                $notes = $isHoursHalfDay ? 'Half Day — Under 4 working hours.' : 'Half Day — Late check-in after 9:35 AM.';
+            } else {
+                $classification = 'full_day';
+                $status = $checkInMin->greaterThan($graceThresholdMin) ? 'late' : 'present';
+                $salaryDeduction = 0.0;
+                $leaveDeduction = 0.0;
+                $notes = $status === 'late' ? 'Late check-in past grace period.' : 'Checked in on time.';
+            }
+        }
+        // 3 & 4. Birthday Leave / Approved Leave
         elseif ($leave && $leave->status === 'approved') {
             $leaveType = $leave->leave_type_label;
             $notes = 'Leave approved: ' . ($leave->notes ?? $leave->reason);
@@ -504,7 +438,21 @@ class AttendanceService
                 }
             }
         }
-        // 4. If no check-in, but rejected leave exists
+        // 5. Weekly Off
+        elseif (AttendanceTimingResolver::isWeeklyOff($date)) {
+            $status = 'off';
+            $salaryDeduction = 0.0;
+            $leaveDeduction = 0.0;
+            $notes = 'Weekly off.';
+        }
+        // 6. Future
+        elseif ($isFuture && !$isTestBypass) {
+            $status = 'future';
+            $salaryDeduction = 0.0;
+            $leaveDeduction = 0.0;
+            $notes = 'Future date.';
+        }
+        // 7. Rejected Leave
         elseif ($leave && $leave->status === 'rejected') {
             $leaveType = $leave->leave_type_label;
             $notes = 'Leave rejected: ' . $leave->rejection_reason;
@@ -533,26 +481,12 @@ class AttendanceService
                 }
             }
         }
-        // 5. Default: weekly off or absent
+        // Fallback: Absent
         else {
-            if ($record && $record->status === 'weekly_off') {
-                $status = 'off';
-                $salaryDeduction = 0.0;
-                $leaveDeduction = 0.0;
-                $notes = 'Weekly off.';
-            } else {
-                if (AttendanceTimingResolver::isWeeklyOff($date)) {
-                    $status = 'off';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.0;
-                    $notes = 'Weekly off.';
-                } else {
-                    $status = 'absent';
-                    $salaryDeduction = 1.0;
-                    $leaveDeduction = 0.0;
-                    $notes = $record ? 'Absent.' : 'No check-in recorded.';
-                }
-            }
+            $status = 'absent';
+            $salaryDeduction = 1.0;
+            $leaveDeduction = 0.0;
+            $notes = $record ? 'Absent.' : 'No check-in recorded.';
         }
 
         $payrollImpact = $salaryDeduction > 0.0 ? 'Deduction applied' : 'None';

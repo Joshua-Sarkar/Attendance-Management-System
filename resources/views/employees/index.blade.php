@@ -200,6 +200,16 @@
                            class="px-3 py-1.5 bg-surface-raised hover:bg-surface-raised/80 text-vellum border border-hairline rounded text-[11px] uppercase tracking-wider transition">
                             Edit
                         </a>
+
+                        @if(auth()->user()->role === 'admin' && auth()->user()->id !== $employee->id)
+                            <form method="POST" action="{{ route('employees.destroy', $employee) }}" onsubmit="return confirm('WARNING: This action is permanent. Deleting this employee will permanently remove their employee record, payroll profile, leave balances, salary history, external identifiers, import metadata, attendance records, leave requests, and all related audit trails. This action CANNOT be undone. Are you sure you want to permanently delete this employee?');" class="inline-block">
+                                @csrf
+                                @method('DELETE')
+                                <x-danger-button type="submit" class="!px-3 !py-1.5 !text-[11px] uppercase tracking-wider transition">
+                                    Delete
+                                </x-danger-button>
+                            </form>
+                        @endif
                     </div>
                 </td>
             </tr>

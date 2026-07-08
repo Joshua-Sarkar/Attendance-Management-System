@@ -167,6 +167,9 @@ class LeaveBalanceTest extends TestCase
         $admin->refresh();
         $this->assertEquals(1.00, $admin->leave_balance);
 
+        $leaveRequest = LeaveRequest::where('user_id', $admin->id)->first();
+        $this->assertEquals('approved', $leaveRequest->status);
+
         // Verify ledger deduction entry
         $this->assertTrue(LeaveLedgerEntry::where('user_id', $admin->id)
             ->where('type', 'deduction')

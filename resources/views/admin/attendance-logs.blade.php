@@ -65,13 +65,11 @@
                 <select name="status" id="status"
                         class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
                     <option value="">All Statuses</option>
-                    <option value="present" {{ $status === 'present' ? 'selected' : '' }}>Present</option>
-                    <option value="late" {{ $status === 'late' ? 'selected' : '' }}>Late</option>
-                    <option value="absent" {{ $status === 'absent' ? 'selected' : '' }}>Absent</option>
-                    <option value="weekly_off" {{ $status === 'weekly_off' ? 'selected' : '' }}>Weekly Off</option>
-                    <option value="paid_leave" {{ $status === 'paid_leave' ? 'selected' : '' }}>Planned Leave (Paid)</option>
-                    <option value="unpaid_leave" {{ $status === 'unpaid_leave' ? 'selected' : '' }}>Unplanned Leave (Unpaid)</option>
-                    <option value="wfh" {{ $status === 'wfh' ? 'selected' : '' }}>WFH</option>
+                    @foreach(\App\Services\AttendanceStateRegistry::getStates() as $key => $details)
+                        <option value="{{ $key }}" {{ $status === $key ? 'selected' : '' }}>
+                            {{ $details['label'] }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
 
@@ -129,7 +127,6 @@
                     ['label' => 'Check In', 'class' => ''],
                     ['label' => 'Check Out', 'class' => ''],
                     ['label' => 'Details', 'class' => ''],
-                    ['label' => 'Classification', 'class' => ''],
                     ['label' => 'Status', 'class' => ''],
                     ['label' => 'Actions', 'class' => 'text-right']
                 ];
@@ -138,38 +135,35 @@
             <x-ledger-table :headers="$headers">
                 @forelse($employees as $emp)
                     @php
-                        $att = $emp->today_attendance;
-                        $isWeeklyOff = \App\Services\AttendanceTimingResolver::isWeeklyOff(\Carbon\Carbon::parse($date));
-                        $empStatus = $att ? $att->status : ($isWeeklyOff ? 'weekly_off' : 'absent');
+                        $state = $emp->resolved_state;
+                        $empStatus = $state['status'];
                         
-                        $checkInStr = $att?->check_in_time ? $att->check_in_time->timezone('Asia/Kolkata')->format('h:i A') : '—';
-                        $checkOutStr = $att?->check_out_time ? $att->check_out_time->timezone('Asia/Kolkata')->format('h:i A') : '—';
+                        $checkInStr = $state['check_in_time'] ? $state['check_in_time']->timezone('Asia/Kolkata')->format('h:i A') : '—';
+                        $checkOutStr = $state['check_out_time'] ? $state['check_out_time']->timezone('Asia/Kolkata')->format('h:i A') : '—';
                         
-                        $durationStr = '';
-                        if ($att && $att->check_in_time) {
-                            $endTime = $att->check_out_time ?? ($date === today()->format('Y-m-d') ? now() : null);
-                            $hours = $endTime ? $att->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0 : null;
-                            $durationStr = $hours ? number_format($hours, 1) . 'h worked' : '';
-                        }
+                        $durationStr = $state['hours'] > 0 ? number_format($state['hours'], 1) . 'h worked' : '';
                         
                         $details = '—';
                         if ($empStatus === 'present') {
                             $details = $durationStr ?: 'Checked in';
                         } elseif ($empStatus === 'late') {
-                            $details = $att->late_minutes . 'm past grace' . ($durationStr ? ' · ' . $durationStr : '');
-                        } elseif ($empStatus === 'on_leave') {
-                            $details = 'Approved leave';
-                        } elseif ($empStatus === 'paid_leave') {
-                            $details = 'Approved paid leave';
-                        } elseif ($empStatus === 'unpaid_leave') {
-                            $details = 'Approved unpaid leave';
-                        } elseif ($empStatus === 'wfh') {
-                            $details = 'Working from home' . ($durationStr ? ' · ' . $durationStr : '');
-                        } elseif ($empStatus === 'weekly_off') {
-                            $details = 'Weekly Off · Non-working day';
+                            $att = $emp->today_attendance;
+                            $lateMinutes = $att ? $att->late_minutes : 0;
+                            if (!$lateMinutes && $state['check_in_time']) {
+                                $timings = $state['timings'];
+                                if ($timings && $timings['grace_threshold']) {
+                                    $checkInMin = $state['check_in_time']->copy()->second(0)->microsecond(0);
+                                    $graceThreshold = $timings['grace_threshold']->copy()->second(0)->microsecond(0);
+                                    $lateMinutes = $checkInMin->gt($graceThreshold) ? (int)$checkInMin->diffInMinutes($graceThreshold, true) : 0;
+                                }
+                            }
+                            $details = $lateMinutes . 'm past grace' . ($durationStr ? ' · ' . $durationStr : '');
                         } else {
-                            $details = 'No check-in recorded · flagged for review';
+                            $details = $state['notes'] ?? '—';
                         }
+                        
+                        $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($empStatus);
+                        $displayLabel = \App\Services\AttendanceStateRegistry::getLabel($empStatus);
                     @endphp
                     <tr class="hover:bg-brass/[0.04] transition duration-150 text-[16px]">
                         <!-- Employee ID -->
@@ -206,35 +200,18 @@
                             {{ $details }}
                         </td>
 
-                        <!-- Classification -->
-                        <td class="py-4 px-4 text-[16px] font-medium text-vellum-muted">
-                            @if($att && $att->classification === 'half_day')
-                                <span class="text-brass font-semibold">Half Day</span>
-                                @if($att->is_overridden)
-                                    <span class="text-[10px] text-vellum-faint block">Overridden</span>
-                                @elseif($att->automatic_classification_reason)
-                                    <span class="text-[10px] text-vellum-faint block">
-                                        {{ $att->automatic_classification_reason === 'late_arrival' ? 'Late Arrival' : 'Hours' }}
-                                    </span>
-                                @endif
-                            @elseif($att && $att->classification === 'full_day')
-                                <span>Full Day</span>
-                            @else
-                                <span>—</span>
-                            @endif
-                        </td>
-
                         <!-- Status -->
                         <td class="py-4 px-4">
-                            <span class="tag {{ $empStatus }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-0.5 rounded border
-                                @if($empStatus === 'present') bg-forest-bg text-forest border-transparent
-                                @elseif($empStatus === 'late' || $empStatus === 'half_day') bg-cognac-bg text-cognac border-transparent
-                                @elseif($empStatus === 'on_leave' || $empStatus === 'leave' || $empStatus === 'paid_leave' || $empStatus === 'unpaid_leave') bg-slate-bg text-slate border-transparent
-                                @elseif($empStatus === 'wfh') bg-forest-bg text-forest border-transparent
-                                @elseif($empStatus === 'weekly_off') bg-transparent text-vellum-muted border-hairline-strong
-                                @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                @if($empStatus === 'on_leave') Leave @elseif($empStatus === 'paid_leave') Planned Leave (Paid) @elseif($empStatus === 'unpaid_leave') Unplanned Leave (Unpaid) @elseif($empStatus === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $empStatus) }} @endif
+                            <span class="tag {{ $displayStatus }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-0.5 rounded border
+                                @if($displayStatus === 'present') bg-forest-bg text-forest border-transparent
+                                @elseif($displayStatus === 'absent' || $displayStatus === 'upr' || $displayStatus === 'hd_upr') bg-burgundy-bg text-burgundy border-transparent
+                                @elseif($displayStatus === 'half') bg-cognac-bg text-cognac border-transparent
+                                @elseif($displayStatus === 'off') bg-transparent text-vellum-muted border-hairline-strong
+                                @elseif($displayStatus === 'future') bg-transparent text-vellum-faint border-hairline
+                                @else bg-slate-bg text-slate border-transparent @endif">
+                                {{ $displayLabel }}
                             </span>
+                            @php $att = $emp->today_attendance; @endphp
                             @if($att && $att->is_overridden)
                                 <span class="text-[9px] text-brass uppercase font-bold block mt-1 font-mono">Overridden</span>
                             @endif
@@ -250,7 +227,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="py-8 text-center text-vellum-faint border border-dashed border-hairline-strong rounded mt-1 text-[13px]">
+                        <td colspan="8" class="py-8 text-center text-vellum-faint border border-dashed border-hairline-strong rounded mt-1 text-[13px]">
                             No active employees found matching the filters.
                         </td>
                     </tr>

@@ -1,3 +1,6 @@
+@php
+    $resolvedType = $leaveRequest->leave_type ?? ($leaveRequest->leave_credit_id ? 'complimentary' : null);
+@endphp
 <x-dossier-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-vellum leading-tight font-display">

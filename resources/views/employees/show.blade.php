@@ -96,6 +96,16 @@
                             Reset Password
                         </x-danger-button>
                     </form>
+
+                    @if(auth()->user()->id !== $user->id)
+                        <form method="POST" action="{{ route('employees.destroy', $user) }}" onsubmit="return confirm('WARNING: This action is permanent. Deleting this employee will permanently remove their employee record, payroll profile, leave balances, salary history, external identifiers, import metadata, attendance records, leave requests, and all related audit trails. This action CANNOT be undone. Are you sure you want to permanently delete this employee?');" class="w-full">
+                            @csrf
+                            @method('DELETE')
+                            <x-danger-button type="submit" class="w-full justify-center !h-[36px] text-xs bg-red-700 hover:bg-red-800 text-white font-bold border border-red-700 rounded">
+                                Delete Employee
+                            </x-danger-button>
+                        </form>
+                    @endif
                 @endif
 
                 @if(auth()->user()->id === $user->id && auth()->user()->role === 'employee')

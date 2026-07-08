@@ -228,7 +228,7 @@ class LeaveLeaveRulesPhase56Test extends TestCase
     public function unplanned_leave_creation_and_approval_does_not_deduct_regular_balance(): void
     {
         // 1. Submit Unplanned Leave as Employee (Starts as Pending)
-        $empDate = Carbon::today()->addDays(5)->format('Y-m-d');
+        $empDate = Carbon::today()->subDays(5)->format('Y-m-d');
         $responseEmp = $this->actingAs($this->employee)->post(route('leaves.store'), [
             'leave_type' => 'unplanned',
             'start_date' => $empDate,

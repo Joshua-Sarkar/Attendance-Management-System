@@ -127,13 +127,11 @@
                 <div class="p-6 border-r border-hairline last:border-none flex flex-col justify-between">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-slate">On Leave Today</span>
                     <div class="font-display font-bold text-3xl my-2 text-slate">
-                        {{ $stats['on_leave'] }} <span class="text-base text-vellum-muted font-sans font-normal">+{{ $stats['wfh'] }} WFH</span>
+                        {{ $stats['on_leave'] }}
                     </div>
                     <span class="text-xs text-slate truncate font-semibold">
                         @php
-                            $leaveNames = collect($stats['exceptions']['on_leave'])->pluck('name')->merge(
-                                collect($stats['exceptions']['wfh'])->map(fn($w) => $w['name'] . ' (WFH)')
-                            )->join(', ');
+                            $leaveNames = collect($stats['exceptions']['on_leave'])->pluck('name')->join(', ');
                         @endphp
                         {{ $leaveNames ?: 'No leaves on file today' }}
                     </span>

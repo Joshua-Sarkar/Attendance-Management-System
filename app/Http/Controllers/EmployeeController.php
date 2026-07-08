@@ -559,15 +559,8 @@ class EmployeeController extends Controller
     public function destroy(User $user)
     {
         $currentUser = auth()->user();
-        if ($currentUser->role === 'employee') {
+        if ($currentUser->role !== 'admin') {
             abort(403, 'Unauthorized action.');
-        }
-
-        // Manager can only delete employees assigned to them
-        if ($currentUser->role === 'manager') {
-            if ($user->role !== 'employee' || $user->manager_id !== $currentUser->id) {
-                abort(403, 'Unauthorized action.');
-            }
         }
 
         // Admin cannot delete themselves
