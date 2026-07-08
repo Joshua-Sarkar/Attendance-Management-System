@@ -63,58 +63,31 @@ class EmployeeAttendanceCalendarController extends Controller
         // Fetch user relations needed
         $employee->load(['department']);
 
-        // Fetch Attendance records in range
-        $attendances = Attendance::where('user_id', $employee->id)
-            ->where('date', '>=', $gridStart->format('Y-m-d'))
-            ->where('date', '<=', $gridEnd->format('Y-m-d'))
-            ->with(['overriddenBy'])
-            ->get()
-            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
-
-        // Fetch approved LeaveRequests in range
-        $leaves = \App\Models\LeaveRequest::where('user_id', $employee->id)
-            ->where('status', 'approved')
-            ->where('start_date', '<=', $gridEnd->format('Y-m-d') . ' 23:59:59')
-            ->where('end_date', '>=', $gridStart->format('Y-m-d') . ' 00:00:00')
-            ->get();
+        $attendanceService = app(\App\Services\AttendanceService::class);
+        $states = $attendanceService->getAttendanceStatesForRange($employee, $gridStart, $gridEnd);
 
         $gridDays = [];
-        $currentDate = $gridStart->copy();
+        foreach ($states as $dateStr => $state) {
+            $currentDate = Carbon::parse($dateStr);
+            $inRange = $currentDate->between($startDate, $endDate);
 
-        while ($currentDate->lte($gridEnd)) {
-            $dateStr = $currentDate->format('Y-m-d');
-            $record = $attendances->get($dateStr);
-            $dayLeave = $leaves->first(function($leave) use ($currentDate) {
-                $dateStr = $currentDate->format('Y-m-d');
-                $leaveStartStr = $leave->start_date->format('Y-m-d');
-                $leaveEndStr = $leave->end_date->format('Y-m-d');
-                return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
-            });
+            // Shift Timings Info
+            $shiftStart = $state['shift_start'];
+            $shiftEnd = $state['shift_end'];
+            $timings = $state['timings'];
+            $graceMinutes = $timings ? $timings['grace_minutes'] : 15;
 
-            // Resolve shift timings and grace period
-            $timings = AttendanceTimingResolver::resolveTimings($employee, $currentDate);
-            $shiftStart = $timings['shift_start'];
-            $shiftEnd = $timings['shift_end'];
-            $graceMinutes = $timings['grace_minutes'];
-
-            // Resolve status
-            $status = $this->resolveCalendarStatus($currentDate, $record, $dayLeave);
-            $isWorking = in_array($status, ['present', 'late', 'half', 'wfh']);
-
-            // Hours worked
-            $hours = 0.0;
-            if ($record && $record->check_in_time) {
-                $endTime = $record->check_out_time ?? ($currentDate->isToday() ? now() : null);
-                if ($endTime) {
-                    $hours = (float) number_format($record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0, 1);
-                }
-            }
+            $status = $state['status'];
+            $isWorking = in_array($status, ['present', 'late', 'half']);
 
             // Expected shift hours
             $expectedHours = 8.5;
             if ($shiftStart && $shiftEnd) {
-                $expectedHours = (float) number_format($shiftStart->diffInMinutes($shiftEnd, absolute: true) / 60.0, 1);
+                $expectedHours = (float) number_format($shiftStart->diffInMinutes($shiftEnd, true) / 60.0, 1);
             }
+
+            // Hours worked
+            $hours = (float) $state['hours'];
 
             // Overtime hours
             $overtime = 0.0;
@@ -124,73 +97,33 @@ class EmployeeAttendanceCalendarController extends Controller
 
             // Late minutes
             $lateMin = 0;
-            if ($status === 'late' && $record && $record->check_in_time) {
-                $lateMin = $record->late_minutes;
+            if ($state['check_in_time'] && $timings) {
+                $checkInMin = $state['check_in_time']->copy()->second(0)->microsecond(0);
+                $graceThreshold = $timings['grace_threshold']->copy()->second(0)->microsecond(0);
+                if ($checkInMin->gt($graceThreshold)) {
+                    $lateMin = (int) $checkInMin->diffInMinutes($graceThreshold, true);
+                }
             }
 
             // Early exit minutes
             $earlyMin = 0;
-            if ($isWorking && $record && $record->check_out_time) {
-                $checkOutMin = $record->check_out_time->copy()->second(0)->microsecond(0);
+            if ($isWorking && $state['check_out_time'] && $shiftEnd) {
+                $checkOutMin = $state['check_out_time']->copy()->second(0)->microsecond(0);
                 $shiftEndMin = $shiftEnd->copy()->second(0)->microsecond(0);
                 if ($checkOutMin->lt($shiftEndMin)) {
-                    $earlyMin = (int) $checkOutMin->diffInMinutes($shiftEndMin, absolute: true);
+                    $earlyMin = (int) $checkOutMin->diffInMinutes($shiftEndMin, true);
                 }
             }
 
             // Classification string
             $classification = 'Non-Working';
             if ($isWorking) {
-                $classification = ($record && $record->classification === 'half_day') ? 'Half Day' : 'Full Day';
+                $classification = ($state['classification'] === 'half_day') ? 'Half Day' : 'Full Day';
             } elseif ($status === 'off') {
                 $classification = 'Non-Working';
-            } elseif (in_array($status, ['paid', 'unpaid', 'bday'])) {
+            } elseif (in_array($status, ['planned', 'upa', 'upr', 'hdp', 'hd_upa', 'hd_upr', 'bday'])) {
                 $classification = 'Leave';
             }
-
-            // Leave type string
-            $leaveType = '—';
-            if ($dayLeave) {
-                $leaveType = $dayLeave->leave_type_label;
-            }
-
-            // Override info
-            $override = $record ? (bool)$record->is_overridden : false;
-            $overrideReason = $record ? $record->override_reason : '';
-            $approvedBy = 'System — Auto-verified';
-            if ($override && $record->overriddenBy) {
-                $approvedBy = $record->overriddenBy->name;
-            }
-
-            // Device and geo-location details
-            $checkInDevice = '—';
-            $checkInLocation = '—';
-            $checkOutDevice = '—';
-            $checkOutLocation = '—';
-            if ($record && $record->check_in_time) {
-                $checkInDevice = $record->metadata['check_in_device'] ?? 'Biometric Terminal — Gate 2';
-                $checkInLocation = $record->metadata['check_in_location'] ?? ($record->status === 'wfh' ? 'Remote — Geo-verified' : 'HQ, Dehradun');
-            }
-            if ($record && $record->check_out_time) {
-                $checkOutDevice = $record->metadata['check_out_device'] ?? 'Biometric Terminal — Gate 2';
-                $checkOutLocation = $record->metadata['check_out_location'] ?? ($record->status === 'wfh' ? 'Remote — Geo-verified' : 'HQ, Dehradun');
-            }
-
-            // Payroll deduction impact
-            $payrollImpact = 'None';
-            if ($status === 'unpaid' || $status === 'absent') {
-                $payrollImpact = 'Deduction applied';
-            }
-
-            // Day notes
-            $notes = 'No irregularities recorded for this entry.';
-            if ($override) {
-                $notes = 'Adjusted after employee dispute; supporting document on file.';
-            } elseif ($status === 'absent') {
-                $notes = 'No check-in recorded. Awaiting explanation.';
-            }
-
-            $inRange = $currentDate->between($startDate, $endDate);
 
             $gridDays[] = [
                 'iso' => $dateStr,
@@ -200,33 +133,31 @@ class EmployeeAttendanceCalendarController extends Controller
                 'isToday' => $currentDate->isToday(),
                 'status' => $status,
                 'dow' => ($currentDate->dayOfWeekIso - 1),
-                'checkIn' => $record && $record->check_in_time ? $record->check_in_time->timezone('Asia/Kolkata')->format('h:i A') : null,
-                'checkOut' => $record && $record->check_out_time ? $record->check_out_time->timezone('Asia/Kolkata')->format('h:i A') : null,
-                'hours' => $isWorking ? $hours : 0,
+                'checkIn' => $state['check_in_time'] ? $state['check_in_time']->timezone('Asia/Kolkata')->format('h:i A') : null,
+                'checkOut' => $state['check_out_time'] ? $state['check_out_time']->timezone('Asia/Kolkata')->format('h:i A') : null,
+                'hours' => $hours,
                 'expectedHours' => $expectedHours,
                 'overtime' => $overtime,
                 'lateMin' => $lateMin,
                 'earlyMin' => $earlyMin,
                 'classification' => $classification,
-                'leaveType' => $leaveType,
-                'override' => $override,
-                'overrideReason' => $overrideReason,
-                'checkInDevice' => $checkInDevice,
-                'checkInLocation' => $checkInLocation,
-                'checkOutDevice' => $checkOutDevice,
-                'checkOutLocation' => $checkOutLocation,
-                'approvedBy' => $approvedBy,
+                'leaveType' => $state['leave_type'] ?? '—',
+                'override' => (bool)$state['is_overridden'],
+                'overrideReason' => $state['notes'] ?? '',
+                'checkInDevice' => $state['check_in_device'],
+                'checkInLocation' => $state['check_in_location'],
+                'checkOutDevice' => $state['check_out_device'],
+                'checkOutLocation' => $state['check_out_location'],
+                'approvedBy' => $state['approved_by'],
                 'department' => $employee->department?->name ?? '—',
                 'shift' => $shiftStart && $shiftEnd ? $shiftStart->format('h:i A') . ' – ' . $shiftEnd->format('h:i A') : '09:00 AM – 05:30 PM',
                 'grace' => $graceMinutes . ' minutes',
-                'lateThreshold' => $shiftStart ? $shiftStart->copy()->addMinutes($graceMinutes)->format('h:i A') : '—',
-                'payrollImpact' => $payrollImpact,
-                'notes' => $notes,
+                'lateThreshold' => $timings && $timings['grace_threshold'] ? $timings['grace_threshold']->format('h:i A') : '—',
+                'payrollImpact' => $state['payroll_impact'],
+                'notes' => $state['notes'] ?? 'No irregularities recorded.',
                 'dateLabel' => $currentDate->format('F j, Y'),
                 'dayName' => $currentDate->format('l'),
             ];
-
-            $currentDate->addDay();
         }
 
         // Metrics are calculated only for days within the requested range
@@ -237,22 +168,19 @@ class EmployeeAttendanceCalendarController extends Controller
         $present = $count('present');
         $late = $count('late');
         $half = $count('half');
-        $absent = $count('absent');
-        $wfh = $count('wfh');
+        $absent = $count('absent') + $count('upr') + $count('hd_upr');
         $off = $count('off');
-        $paid = $count('paid');
-        $unpaid = $count('unpaid');
-        $bday = $count('bday');
+        $future = $count('future');
+        
+        $leaveDays = $count('planned') + $count('upa') + $count('hdp') + $count('hd_upa') + $count('bday') + $count('on_leave');
 
         // Working days count
-        $workingDaysCount = count(array_filter($rangeDays, fn($d) => $d['status'] !== 'off'));
+        $workingDaysCount = count(array_filter($rangeDays, fn($d) => !in_array($d['status'], ['off', 'future'])));
         $attendanceRate = $workingDaysCount > 0 
-            ? (int) round((($present + $late + $half + $wfh) / $workingDaysCount) * 100) 
+            ? (int) round((($present + $late + $half) / $workingDaysCount) * 100) 
             : 0;
 
-        $leaveDays = $paid + $unpaid + $bday;
-
-        $workedDays = array_filter($rangeDays, fn($d) => in_array($d['status'], ['present', 'late', 'half', 'wfh']) && $d['checkIn']);
+        $workedDays = array_filter($rangeDays, fn($d) => in_array($d['status'], ['present', 'late', 'half']) && $d['checkIn']);
 
         $avgCheckIn = '—';
         $avgCheckOut = '—';

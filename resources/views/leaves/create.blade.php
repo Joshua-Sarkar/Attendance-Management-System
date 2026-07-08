@@ -29,15 +29,26 @@
                 <select name="leave_type" id="leave_type" required
                         class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2.5 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
                     <option value="" disabled {{ old('leave_type') ? '' : 'selected' }}>Select Leave Type</option>
-                    <option value="planned" {{ old('leave_type') === 'planned' ? 'selected' : '' }}>Planned Leave (Paid)</option>
-                    <option value="unplanned" {{ old('leave_type') === 'unplanned' ? 'selected' : '' }}>Unplanned Leave (Unpaid)</option>
+                    <option value="planned" {{ old('leave_type') === 'planned' ? 'selected' : '' }}>Planned Leave</option>
+                    <option value="unplanned" {{ old('leave_type') === 'unplanned' ? 'selected' : '' }}>Unplanned Leave</option>
                     @if($hasBirthdayCredit ?? false)
                         <option value="complimentary" {{ old('leave_type') === 'complimentary' ? 'selected' : '' }}>
-                            Birthday Leave (Paid)
+                            Birthday Leave
                         </option>
                     @endif
                 </select>
                 <x-input-error :messages="$errors->get('leave_type')" class="mt-1" />
+            </div>
+
+            <!-- Duration -->
+            <div>
+                <x-input-label for="duration" value="Duration" />
+                <select name="duration" id="duration" required
+                        class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2.5 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                    <option value="full_day" {{ old('duration') === 'full_day' ? 'selected' : '' }}>Full Day</option>
+                    <option value="half_day" {{ old('duration') === 'half_day' ? 'selected' : '' }}>Half Day</option>
+                </select>
+                <x-input-error :messages="$errors->get('duration')" class="mt-1" />
             </div>
 
             <!-- Date Range Grid -->
@@ -45,7 +56,7 @@
                 <!-- Start Date -->
                 <div>
                     <x-input-label for="start_date" value="Start Date" />
-                    <input type="date" name="start_date" id="start_date" required min="{{ today()->format('Y-m-d') }}" value="{{ old('start_date') }}"
+                    <input type="date" name="start_date" id="start_date" required value="{{ old('start_date') }}"
                            class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2.5 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
                     <x-input-error :messages="$errors->get('start_date')" class="mt-1" />
                 </div>
@@ -53,7 +64,7 @@
                 <!-- End Date -->
                 <div>
                     <x-input-label for="end_date" value="End Date" />
-                    <input type="date" name="end_date" id="end_date" required min="{{ today()->format('Y-m-d') }}" value="{{ old('end_date') }}"
+                    <input type="date" name="end_date" id="end_date" required value="{{ old('end_date') }}"
                            class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2.5 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
                     <x-input-error :messages="$errors->get('end_date')" class="mt-1" />
                 </div>
@@ -89,12 +100,37 @@
         document.addEventListener('DOMContentLoaded', function() {
             const startDateInput = document.getElementById('start_date');
             const endDateInput = document.getElementById('end_date');
+            const durationInput = document.getElementById('duration');
             const previewContainer = document.getElementById('duration_preview');
             const durationSpan = document.getElementById('duration_days');
 
+            function handleDurationChange() {
+                if (durationInput.value === 'half_day') {
+                    endDateInput.value = startDateInput.value;
+                    endDateInput.style.pointerEvents = 'none';
+                    endDateInput.style.opacity = '0.6';
+                    endDateInput.readOnly = true;
+                } else {
+                    endDateInput.style.pointerEvents = 'auto';
+                    endDateInput.style.opacity = '1.0';
+                    endDateInput.readOnly = false;
+                }
+                calculateDuration();
+            }
+
             function calculateDuration() {
                 const startVal = startDateInput.value;
-                const endVal = endDateInput.value;
+                const endVal = durationInput.value === 'half_day' ? startVal : endDateInput.value;
+
+                if (durationInput.value === 'half_day') {
+                    if (startVal) {
+                        durationSpan.textContent = '0.5 days';
+                        previewContainer.classList.remove('hidden');
+                    } else {
+                        previewContainer.classList.add('hidden');
+                    }
+                    return;
+                }
 
                 if (startVal && endVal) {
                     const start = new Date(startVal);
@@ -114,11 +150,16 @@
             }
 
             startDateInput.addEventListener('change', function() {
-                endDateInput.min = startDateInput.value;
+                if (durationInput.value === 'half_day') {
+                    endDateInput.value = startDateInput.value;
+                } else {
+                    endDateInput.min = startDateInput.value;
+                }
                 calculateDuration();
             });
 
             endDateInput.addEventListener('change', calculateDuration);
+            durationInput.addEventListener('change', handleDurationChange);
         });
     </script>
 </x-workflow-layout>

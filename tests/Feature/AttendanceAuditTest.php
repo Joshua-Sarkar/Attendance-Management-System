@@ -32,11 +32,15 @@ class AttendanceAuditTest extends TestCase
         $this->deptEng = Department::create([
             'name' => 'Engineering',
             'code' => 'ENG',
+            'shift_start_time' => '09:00:00',
+            'grace_minutes' => 15,
         ]);
 
         $this->deptSales = Department::create([
             'name' => 'Sales',
             'code' => 'SLS',
+            'shift_start_time' => '09:00:00',
+            'grace_minutes' => 15,
         ]);
 
         $this->admin = User::create([

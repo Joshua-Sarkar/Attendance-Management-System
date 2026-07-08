@@ -28,17 +28,7 @@ class AttendanceController extends Controller
         $startOfMonth = today()->startOfMonth();
         $today = today();
         
-        $monthAttendances = \App\Models\Attendance::where('user_id', $user->id)
-            ->where('date', '>=', $startOfMonth)
-            ->where('date', '<=', $today)
-            ->get()
-            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
-            
-        $monthLeaves = \App\Models\LeaveRequest::where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->where('start_date', '<=', $today->format('Y-m-d') . ' 23:59:59')
-            ->where('end_date', '>=', $startOfMonth->format('Y-m-d') . ' 00:00:00')
-            ->get();
+        $states = $this->attendanceService->getAttendanceStatesForRange($user, $startOfMonth, $today);
             
         $monthPresent = 0;
         $monthAbsent = 0;
@@ -46,92 +36,49 @@ class AttendanceController extends Controller
         $monthWfh = 0;
         $monthHours = 0.0;
         
-        $diffDays = $today->diffInDays($startOfMonth) + 1;
-        for ($i = 0; $i < $diffDays; $i++) {
-            $date = $startOfMonth->copy()->addDays($i);
-            $dateStr = $date->format('Y-m-d');
-            $record = $monthAttendances->get($dateStr);
-            
-            $status = 'absent';
-            $isOverridden = false;
-            if ($record) {
-                $status = $record->status;
-                $isOverridden = $record->is_overridden;
-            } else {
-                $dayLeave = $monthLeaves->first(function($leave) use ($date) {
-                    $dateStr = $date->format('Y-m-d');
-                    $leaveStartStr = $leave->start_date->format('Y-m-d');
-                    $leaveEndStr = $leave->end_date->format('Y-m-d');
-                    return $dateStr >= $leaveStartStr && $dateStr <= $leaveEndStr;
-                });
-                
-                if ($dayLeave) {
-                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
-                } elseif ($date->isSunday()) {
-                    $status = 'weekly_off';
-                }
-            }
-
-            if ($status === 'weekly_off') {
+        foreach ($states as $state) {
+            $status = $state['status'];
+            if ($status === 'off' || $status === 'future') {
                 continue;
             }
             
             if ($status === 'present' || $status === 'late') {
                 $monthPresent++;
-            } elseif ($status === 'wfh') {
-                $monthWfh++;
-            } elseif ($status === 'on_leave' || $status === 'paid_leave' || $status === 'unpaid_leave') {
+            } elseif ($status === 'half') {
+                $monthPresent++;
+            } elseif ($status === 'absent' || $status === 'upr' || $status === 'hd_upr') {
+                $monthAbsent++;
+            } elseif (in_array($status, ['planned', 'upa', 'hdp', 'hd_upa', 'bday'])) {
                 $monthLeave++;
-            } elseif ($status === 'absent') {
-                if (!$date->isSunday() || $isOverridden) {
-                    $monthAbsent++;
-                }
             }
             
-            if ($record && $record->check_in_time) {
-                $endTime = $record->check_out_time ?? ($date->isToday() ? now() : null);
-                if ($endTime) {
-                    $monthHours += $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
-                }
-            }
+            $monthHours += (float) $state['hours'];
         }
+
         $totalMonthWorkingDays = $monthPresent + $monthAbsent + $monthLeave + $monthWfh;
         $monthAttendanceRate = $totalMonthWorkingDays > 0
             ? round((($monthPresent + $monthWfh) / $totalMonthWorkingDays) * 100, 1)
             : 100.0;
             
         $now = \Carbon\Carbon::now();
-        // Leaves remaining (stored as leave_balance in users table)
         $leavesRemaining = $user->leave_balance;
         
         // Current on-time streak
         $historyDays = 90;
         $streakStartDate = today()->subDays($historyDays);
         
-        $allAttendances = \App\Models\Attendance::where('user_id', $user->id)
-            ->where('date', '>=', $streakStartDate)
-            ->where('date', '<=', today())
-            ->get()
-            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
-            
-        $allLeaves = \App\Models\LeaveRequest::where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->where('start_date', '<=', today()->format('Y-m-d') . ' 23:59:59')
-            ->where('end_date', '>=', $streakStartDate->format('Y-m-d') . ' 00:00:00')
-            ->get();
-            
-        $streak = 0;
+        $historyStates = $this->attendanceService->getAttendanceStatesForRange($user, $streakStartDate, today());
+        
         $timings = \App\Services\AttendanceTimingResolver::resolveTimings($user, today());
         $threshold = $timings['grace_threshold'];
         
         $todayIsWeeklyOff = \App\Services\AttendanceTimingResolver::isWeeklyOff(today());
         $todayStr = today()->format('Y-m-d');
-        $todayHasLeave = $allLeaves->first(function($l) use ($todayStr) {
-            return $todayStr >= $l->start_date->format('Y-m-d') && $todayStr <= $l->end_date->format('Y-m-d');
-        }) !== null;
+        $todayState = $historyStates[$todayStr] ?? null;
+        $todayHasLeave = $todayState && in_array($todayState['status'], ['planned', 'upa', 'hdp', 'hd_upa', 'bday']);
+        $todayHasAttendance = $todayState && $todayState['check_in_time'] !== null;
         
-        $todayHasAttendance = isset($allAttendances[$todayStr]);
-        
+        $streak = 0;
         $evalDate = today();
         if (!$todayHasAttendance && !$todayIsWeeklyOff && !$todayHasLeave) {
             if ($now->lessThanOrEqualTo($threshold)) {
@@ -139,36 +86,28 @@ class AttendanceController extends Controller
             }
         }
         
-        for ($d = 0; $d < $historyDays; $d++) {
-            $date = $evalDate->copy()->subDays($d);
-            $dateStr = $date->format('Y-m-d');
-            $record = $allAttendances->get($dateStr);
-            
-            $status = 'absent';
-            if ($record) {
-                $status = $record->status;
-            } else {
-                $dayLeave = $allLeaves->first(function($l) use ($dateStr) {
-                    return $dateStr >= $l->start_date->format('Y-m-d') && $dateStr <= $l->end_date->format('Y-m-d');
-                });
-                
-                if ($dayLeave) {
-                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
-                } elseif (\App\Services\AttendanceTimingResolver::isWeeklyOff($date)) {
-                    $status = 'weekly_off';
-                }
+        $current = $evalDate->copy();
+        while ($current->gte($streakStartDate)) {
+            $dateStr = $current->format('Y-m-d');
+            $state = $historyStates[$dateStr] ?? null;
+            if (!$state) {
+                break;
             }
-
-            if ($status === 'weekly_off' || $status === 'on_leave' || $status === 'paid_leave' || $status === 'unpaid_leave') {
-                continue; // Ignore Weekly Off and approved leaves for streak calculations
+            
+            $status = $state['status'];
+            if ($status === 'off' || in_array($status, ['planned', 'upa', 'hdp', 'hd_upa', 'bday'])) {
+                $current->subDay();
+                continue;
             }
             
             if ($status === 'present') {
                 $streak++;
             } else {
-                break; // Break on late or absent
+                break;
             }
+            $current->subDay();
         }
+
         return view('attendance.employee-dashboard', [
             'user' => $user,
             'today_attendance' => $today_attendance,
@@ -179,7 +118,7 @@ class AttendanceController extends Controller
             'month_attendance_rate' => $monthAttendanceRate,
             'leaves_remaining' => $leavesRemaining,
             'on_time_streak' => $streak,
-            'month_hours' => $monthHours,
+            'month_hours' => round($monthHours, 1),
         ]);
     }
 
@@ -201,61 +140,38 @@ class AttendanceController extends Controller
         // Fetch stats (last 30 days)
         $stats = $this->attendanceService->getEmployeeStats($user, 30);
 
-        // Fetch 30-day history with exact records and dynamic absence/weekend fallback
+        // Fetch 30-day history with exact records from service
         $days = 30;
         $startDate = today()->subDays($days - 1);
-        $attendances = \App\Models\Attendance::where('user_id', $user->id)
-            ->where('date', '>=', $startDate)
-            ->where('date', '<=', today())
-            ->get()
-            ->keyBy(fn($att) => $att->date->format('Y-m-d'));
-
-        $leaves = \App\Models\LeaveRequest::where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->where('start_date', '<=', today())
-            ->where('end_date', '>=', $startDate)
-            ->get();
+        $states = $this->attendanceService->getAttendanceStatesForRange($user, $startDate, today());
 
         $history = [];
         // Loop in reverse chronological order (from today backwards)
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = today()->subDays($i);
             $dateStr = $date->format('Y-m-d');
-            $record = $attendances->get($dateStr);
+            $state = $states[$dateStr] ?? null;
             
-            $hours = null;
-            if ($record && $record->check_in_time) {
-                $endTime = $record->check_out_time ?? ($date->isToday() ? now() : null);
-                if ($endTime) {
-                    $hours = $record->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0;
-                }
-            }
-
-            $status = 'absent';
-            if ($record) {
-                $status = $record->status;
-            } else {
-                $dayLeave = $leaves->first(function($l) use ($dateStr) {
-                    return $dateStr >= $l->start_date->format('Y-m-d') && $dateStr <= $l->end_date->format('Y-m-d');
-                });
-                if ($dayLeave) {
-                    $status = $dayLeave->leave_type === 'work_from_home' ? 'wfh' : 'on_leave';
-                } elseif ($date->isSunday()) {
+            if ($state) {
+                $status = $state['status'];
+                if ($status === 'off') {
                     $status = 'weekly_off';
+                } elseif (in_array($status, ['planned', 'upa', 'hdp', 'hd_upa', 'bday'])) {
+                    $status = 'on_leave';
                 }
-            }
 
-            $history[] = [
-                'date' => $date,
-                'day_of_week' => $date->format('l'),
-                'is_weekend' => $date->isSunday(),
-                'check_in' => $record?->check_in_time,
-                'check_out' => $record?->check_out_time,
-                'status' => $status,
-                'hours' => $hours,
-                'classification' => $record?->classification ?? 'full_day',
-                'is_overridden' => $record?->is_overridden ?? false,
-            ];
+                $history[] = [
+                    'date' => $date,
+                    'day_of_week' => $date->format('l'),
+                    'is_weekend' => $state['status'] === 'off',
+                    'check_in' => $state['check_in_time'],
+                    'check_out' => $state['check_out_time'],
+                    'status' => $status,
+                    'hours' => $state['hours'] > 0 ? $state['hours'] : null,
+                    'classification' => $state['classification'],
+                    'is_overridden' => $state['is_overridden'],
+                ];
+            }
         }
 
         return view('attendance.my-attendance', compact(

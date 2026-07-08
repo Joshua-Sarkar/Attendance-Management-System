@@ -323,14 +323,17 @@
                                     </div>
 
                                     <!-- Middle: Pill Status Badge -->
-                                    <div class="flex-grow flex items-center mt-1.5 mb-1.5">
-                                        <template x-if="day.inRange">
+                                    <div class="flex-grow flex items-center mt-1.5 mb-1.5 justify-center">
+                                        <template x-if="day.inRange && day.status !== 'future'">
                                             <div class="w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold tracking-wide border transition-all duration-150"
                                                  :style="statusBadgeStyle(day.status)">
                                                 <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                                       :style="statusDotStyle(day.status)"></span>
                                                 <span x-text="statusLabel(day.status)"></span>
                                             </div>
+                                        </template>
+                                        <template x-if="day.inRange && day.status === 'future'">
+                                            <span class="text-vellum-faint/60 font-semibold text-base">—</span>
                                         </template>
                                     </div>
 
@@ -339,7 +342,7 @@
                                         <template x-if="day.inRange">
                                             <div class="flex justify-between items-center w-full">
                                                 <!-- Hours Worked -->
-                                                <span x-show="['present', 'late', 'half', 'wfh'].includes(day.status) && day.hours > 0" 
+                                                <span x-show="['present', 'late', 'half'].includes(day.status) && day.hours > 0" 
                                                       class="font-semibold text-vellum-muted"
                                                       x-text="day.hours + ' h'"></span>
                                                 
@@ -673,14 +676,17 @@ function attendanceCalendar(config) {
         tooltipTransform: '',
         statusList: [
             { key: 'present', label: 'Present', color: '#234E39' },
-            { key: 'late', label: 'Late', color: '#8C4E2D' },
-            { key: 'half', label: 'Half Day', color: '#C1652C' },
             { key: 'absent', label: 'Absent', color: '#6E1A24' },
-            { key: 'off', label: 'Weekly Off', color: '#6D645A' },
-            { key: 'wfh', label: 'Work From Home', color: '#3B5368' },
-            { key: 'paid', label: 'Paid Leave', color: '#9C7C38' },
-            { key: 'unpaid', label: 'Unplanned Leave', color: '#6E1A24' },
+            { key: 'half', label: 'Half Day (Automatic)', color: '#C1652C' },
+            { key: 'planned', label: 'Planned Leave', color: '#234E39' },
+            { key: 'upa', label: 'Unplanned Approved (UPA)', color: '#234E39' },
+            { key: 'upr', label: 'Unplanned Rejected (UPR)', color: '#6E1A24' },
+            { key: 'hdp', label: 'Half Day Planned (HDP)', color: '#234E39' },
+            { key: 'hd_upa', label: 'Half Day Unplanned Approved (HD-UPA)', color: '#234E39' },
+            { key: 'hd_upr', label: 'Half Day Unplanned Rejected (HD-UPR)', color: '#6E1A24' },
             { key: 'bday', label: 'Birthday Leave', color: '#7C5A9E' },
+            { key: 'off', label: 'Weekly Off', color: '#6D645A' },
+            { key: 'future', label: 'Future (-)', color: '#9C9180' },
         ],
         toggleChips: [
             { key: 'onlyLate', label: 'Only Late' },
@@ -688,7 +694,6 @@ function attendanceCalendar(config) {
             { key: 'onlyOverride', label: 'Only Overrides' },
             { key: 'onlyLeave', label: 'Only Leave' },
             { key: 'onlyHalf', label: 'Only Half Day' },
-            { key: 'onlyWfh', label: 'Only WFH' },
         ],
         employee: { name: '', dept: '', id: '' },
         gridDays: [],
@@ -831,15 +836,18 @@ function attendanceCalendar(config) {
 
         tooltipStatusColor(key) {
             const colors = {
-                present: '#52B788',
-                wfh: '#88C0D0',
-                late: '#F4A261',
-                half: '#F4A261',
-                absent: '#E76F51',
-                unpaid: '#E76F51',
-                paid: '#D4AF37',
-                bday: '#B392AC',
-                off: '#9C9180'
+                present: '#234E39',
+                absent: '#6E1A24',
+                half: '#C1652C',
+                planned: '#234E39',
+                upa: '#234E39',
+                upr: '#6E1A24',
+                hdp: '#234E39',
+                hd_upa: '#234E39',
+                hd_upr: '#6E1A24',
+                bday: '#7C5A9E',
+                off: '#6D645A',
+                future: '#9C9180'
             };
             return colors[key] || '#9C9180';
         },
@@ -852,14 +860,17 @@ function attendanceCalendar(config) {
         statusBadgeStyle(status) {
             const styles = {
                 present: { bg: '#D1E7DD', text: '#0A3622' },
-                wfh: { bg: '#CFE2FF', text: '#052C65' },
-                late: { bg: '#FFF3CD', text: '#664D03' },
-                half: { bg: '#FFE8CC', text: '#803D00' },
                 absent: { bg: '#F8D7DA', text: '#58151C' },
-                unpaid: { bg: '#F8D7DA', text: '#58151C' },
-                paid: { bg: '#FEF3C7', text: '#78350F' },
+                half: { bg: '#FFE8CC', text: '#803D00' },
+                planned: { bg: '#D1E7DD', text: '#0A3622' },
+                upa: { bg: '#D1E7DD', text: '#0A3622' },
+                upr: { bg: '#F8D7DA', text: '#58151C' },
+                hdp: { bg: '#D1E7DD', text: '#0A3622' },
+                hd_upa: { bg: '#D1E7DD', text: '#0A3622' },
+                hd_upr: { bg: '#F8D7DA', text: '#58151C' },
                 bday: { bg: '#F3E8FF', text: '#4C1D95' },
-                off: { bg: '#E2E3E5', text: '#212529' }
+                off: { bg: '#E2E3E5', text: '#212529' },
+                future: { bg: '#FAF8F5', text: '#6D645A' }
             };
             const s = styles[status] || { bg: '#FAF8F5', text: '#6D645A' };
             return `background-color: ${s.bg}; color: ${s.text}; border: 1px solid rgba(156, 124, 56, 0.25);`;
@@ -868,14 +879,17 @@ function attendanceCalendar(config) {
         statusDotStyle(status) {
             const dots = {
                 present: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
-                wfh: { color: '#0D6EFD', glow: '0 0 6px 2px rgba(13, 110, 253, 0.4)' },
-                late: { color: '#FFC107', glow: '0 0 6px 2px rgba(255, 193, 7, 0.45)' },
-                half: { color: '#FD7E14', glow: '0 0 6px 2px rgba(253, 126, 20, 0.45)' },
                 absent: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
-                unpaid: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
-                paid: { color: '#D97706', glow: '0 0 6px 2px rgba(217, 119, 6, 0.4)' },
+                half: { color: '#FD7E14', glow: '0 0 6px 2px rgba(253, 126, 20, 0.45)' },
+                planned: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
+                upa: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
+                upr: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
+                hdp: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
+                hd_upa: { color: '#198754', glow: '0 0 6px 2px rgba(25, 135, 84, 0.4)' },
+                hd_upr: { color: '#DC3545', glow: '0 0 6px 2px rgba(220, 53, 69, 0.45)' },
                 bday: { color: '#8B5CF6', glow: '0 0 6px 2px rgba(139, 92, 246, 0.4)' },
-                off: { color: '#6C757D', glow: 'none' }
+                off: { color: '#6C757D', glow: 'none' },
+                future: { color: '#9C9180', glow: 'none' }
             };
             const d = dots[status] || { color: '#6C757D', glow: 'none' };
             return `background-color: ${d.color}; box-shadow: ${d.glow};`;
@@ -1000,12 +1014,11 @@ function attendanceCalendar(config) {
             if (f.searchDate && day.iso !== f.searchDate) return false;
             
             // Toggle chips logic
-            if (f.onlyLate && day.status !== 'late') return false;
-            if (f.onlyAbsent && day.status !== 'absent') return false;
+            if (f.onlyLate && day.lateMin === 0) return false;
+            if (f.onlyAbsent && !['absent', 'upr', 'hd_upr'].includes(day.status)) return false;
             if (f.onlyOverride && !day.override) return false;
-            if (f.onlyLeave && !['paid', 'unpaid', 'bday'].includes(day.status)) return false;
+            if (f.onlyLeave && !['planned', 'upa', 'upr', 'hdp', 'hd_upa', 'hd_upr', 'bday'].includes(day.status)) return false;
             if (f.onlyHalf && day.status !== 'half') return false;
-            if (f.onlyWfh && day.status !== 'wfh') return false;
             
             return true;
         }
