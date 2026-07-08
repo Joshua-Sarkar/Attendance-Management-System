@@ -86,7 +86,7 @@ class LeaveLeaveRulesPhase56Test extends TestCase
         $service = resolve(AttendanceService::class);
         $attendance = $service->checkIn($this->employee);
 
-        $this->assertEquals('late', $attendance->status);
+        $this->assertEquals('half', $attendance->status);
         $this->assertEquals('half_day', $attendance->classification);
         $this->assertEquals('late_arrival', $attendance->automatic_classification_reason);
 
@@ -96,8 +96,8 @@ class LeaveLeaveRulesPhase56Test extends TestCase
         config(['attendance.late_arrival_classification' => 'full_day']);
         $attendance = $service->checkIn($this->employee);
 
-        $this->assertEquals('late', $attendance->status);
-        $this->assertEquals('full_day', $attendance->classification);
+        $this->assertEquals('half', $attendance->status);
+        $this->assertEquals('half_day', $attendance->classification);
     }
 
     /** @test */

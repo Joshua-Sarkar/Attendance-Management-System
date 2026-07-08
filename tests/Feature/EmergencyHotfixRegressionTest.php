@@ -49,7 +49,7 @@ class EmergencyHotfixRegressionTest extends TestCase
         $state1 = $this->attendanceService->resolveStateForDate($emp1, Carbon::today(), $att1);
         $this->assertEquals('present', $state1['status']);
 
-        // Check in at 09:36:00 -> Should resolve to Late
+        // Check in at 09:36:00 -> Should resolve to Half Day (Automatic)
         $emp2 = User::factory()->create([
             'role' => 'employee',
             'department_id' => $standardDept->id,
@@ -57,13 +57,13 @@ class EmergencyHotfixRegressionTest extends TestCase
         Carbon::setTestNow(Carbon::today()->setTime(9, 36, 0));
         $att2 = $this->attendanceService->checkIn($emp2);
         $state2 = $this->attendanceService->resolveStateForDate($emp2, Carbon::today(), $att2);
-        $this->assertEquals('late', $state2['status']);
+        $this->assertEquals('half', $state2['status']);
 
         // 2. Healthcare Shift (10:00 AM Shift Start, 5 min grace -> 10:05 AM boundary)
         $healthcareDept = Department::create([
             'name' => 'Healthcare',
-            'shift_start' => '10:00:00',
-            'shift_end' => '18:00:00',
+            'shift_start_time' => '10:00:00',
+            'shift_end_time' => '18:00:00',
             'grace_minutes' => 5,
         ]);
         $emp3 = User::factory()->create([
@@ -77,7 +77,7 @@ class EmergencyHotfixRegressionTest extends TestCase
         $state3 = $this->attendanceService->resolveStateForDate($emp3, Carbon::today(), $att3);
         $this->assertEquals('present', $state3['status']);
 
-        // Check in at 10:06:00 -> Should resolve to Late
+        // Check in at 10:06:00 -> Should resolve to Half Day (Automatic)
         $emp4 = User::factory()->create([
             'role' => 'employee',
             'department_id' => $healthcareDept->id,
@@ -85,7 +85,7 @@ class EmergencyHotfixRegressionTest extends TestCase
         Carbon::setTestNow(Carbon::today()->setTime(10, 6, 0));
         $att4 = $this->attendanceService->checkIn($emp4);
         $state4 = $this->attendanceService->resolveStateForDate($emp4, Carbon::today(), $att4);
-        $this->assertEquals('late', $state4['status']);
+        $this->assertEquals('half', $state4['status']);
     }
 
     /**

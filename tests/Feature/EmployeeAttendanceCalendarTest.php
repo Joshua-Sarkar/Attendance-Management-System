@@ -253,13 +253,13 @@ class EmployeeAttendanceCalendarTest extends TestCase
         $data = $response->json();
         $metrics = $data['metrics'];
 
-        // Present = 1, Late = 1, Leave = 1. Off = 0.
+        // Present = 1, Half = 1, Leave = 1. Off = 0.
         // Total working days = 3 (none are Sunday).
-        // Attendance % = (1 present + 1 late + 0 half + 0 wfh) / 3 working days = 67%
+        // Attendance % = (1 present + 0 late + 1 half + 0 wfh) / 3 working days = 67%
         $this->assertEquals('67%', $metrics['attendanceRate']);
         $this->assertEquals(1, $metrics['presentDays']);
-        $this->assertEquals(1, $metrics['lateDays']);
-        $this->assertEquals(0, $metrics['halfDays']);
+        $this->assertEquals(0, $metrics['lateDays']);
+        $this->assertEquals(1, $metrics['halfDays']);
         $this->assertEquals(0, $metrics['absentDays']);
         $this->assertEquals(1, $metrics['leaveDays']);
 

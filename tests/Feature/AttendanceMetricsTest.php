@@ -93,7 +93,7 @@ class AttendanceMetricsTest extends TestCase
         // Scenario 4: Check-in at 09:16 (Late, 1 min late)
         Carbon::setTestNow(Carbon::today()->setTime(9, 16, 0));
         $att4 = $attendanceService->checkIn($this->employee);
-        $this->assertEquals('late', $att4->status);
+        $this->assertEquals('half', $att4->status);
         $this->assertEquals(1, $att4->late_minutes);
 
         $att4->delete();
@@ -101,7 +101,7 @@ class AttendanceMetricsTest extends TestCase
         // Scenario 5: Check-in at 09:30 (Late, 15 mins late)
         Carbon::setTestNow(Carbon::today()->setTime(9, 30, 0));
         $att5 = $attendanceService->checkIn($this->employee);
-        $this->assertEquals('late', $att5->status);
+        $this->assertEquals('half', $att5->status);
         $this->assertEquals(15, $att5->late_minutes);
 
         // Cleanup

@@ -220,7 +220,7 @@ class AttendanceOverrideTest extends TestCase
         Carbon::setTestNow(Carbon::today()->setTime(9, 36, 0));
         $att = $attendanceService->checkIn($this->employee1);
 
-        $this->assertEquals('late', $att->status);
+        $this->assertEquals('half', $att->status);
         $this->assertEquals('half_day', $att->classification);
         $this->assertEquals('late_arrival', $att->automatic_classification_reason);
         $this->assertEquals(1, $att->late_minutes);
@@ -251,7 +251,7 @@ class AttendanceOverrideTest extends TestCase
         // Check in at 10:06 (late, half day)
         Carbon::setTestNow(Carbon::today()->setTime(10, 6, 0));
         $att3 = $attendanceService->checkIn($this->employee2);
-        $this->assertEquals('late', $att3->status);
+        $this->assertEquals('half', $att3->status);
         $this->assertEquals('half_day', $att3->classification);
         $this->assertEquals('late_arrival', $att3->automatic_classification_reason);
         $this->assertEquals(1, $att3->late_minutes);

@@ -25,17 +25,10 @@ class AttendanceService
 
         $nowMin = $now->copy()->second(0)->microsecond(0);
         $thresholdMin = $threshold->copy()->second(0)->microsecond(0);
-        $halfDayThreshold = $today->copy()->setTime(9, 35, 0);
-
-        $lateArrivalClassification = config('attendance.late_arrival_classification', 'half_day');
 
         if ($nowMin->greaterThan($thresholdMin)) {
-            $status = 'late';
-            if ($lateArrivalClassification === 'full_day') {
-                $classification = 'full_day';
-            } else {
-                $classification = $nowMin->greaterThan($halfDayThreshold) ? 'half_day' : 'full_day';
-            }
+            $status = 'half';
+            $classification = 'half_day';
             $reason = 'late_arrival';
         } else {
             $status = 'present';
@@ -96,12 +89,14 @@ class AttendanceService
                     $attendance->automatic_classification_reason = 'insufficient_hours';
                     if (!$attendance->is_overridden) {
                         $attendance->classification = 'half_day';
+                        $attendance->status = 'half';
                     }
                 } else {
                     $attendance->automatic_classification = 'full_day';
                     $attendance->automatic_classification_reason = null;
                     if (!$attendance->is_overridden) {
                         $attendance->classification = 'full_day';
+                        $attendance->status = 'present';
                     }
                 }
             }
@@ -376,29 +371,21 @@ class AttendanceService
             $checkInMin = $checkInTime->copy()->second(0)->microsecond(0);
             $graceThresholdMin = $timings['grace_threshold']->copy()->second(0)->microsecond(0);
             
-            $lateArrivalClassification = config('attendance.late_arrival_classification', 'half_day');
-            
-            if ($lateArrivalClassification === 'full_day') {
-                $isLateHalfDay = false;
-            } else {
-                $halfDayThreshold = $date->copy()->setTime(9, 35, 0);
-                $isLateHalfDay = $checkInMin->greaterThan($graceThresholdMin) && $checkInMin->greaterThan($halfDayThreshold);
-            }
-            
+            $isLateHalfDay = $checkInMin->greaterThan($graceThresholdMin);
             $isHoursHalfDay = $checkOutTime && $hours < 4.0;
             
             if ($isLateHalfDay || $isHoursHalfDay) {
                 $classification = 'half_day';
-                $status = $isHoursHalfDay ? 'half' : 'late';
+                $status = 'half';
                 $salaryDeduction = 0.5;
                 $leaveDeduction = 0.0;
-                $notes = $isHoursHalfDay ? 'Half Day — Under 4 working hours.' : 'Half Day — Late check-in after 9:35 AM.';
+                $notes = $isHoursHalfDay ? 'Half Day — Under 4 working hours.' : 'Half Day — Late check-in after grace period.';
             } else {
                 $classification = 'full_day';
-                $status = $checkInMin->greaterThan($graceThresholdMin) ? 'late' : 'present';
+                $status = 'present';
                 $salaryDeduction = 0.0;
                 $leaveDeduction = 0.0;
-                $notes = $status === 'late' ? 'Late check-in past grace period.' : 'Checked in on time.';
+                $notes = 'Checked in on time.';
             }
         }
         // 3 & 4. Birthday Leave / Approved Leave
@@ -599,14 +586,32 @@ class AttendanceService
                     'late_minutes' => $lateMinutes,
                 ];
             } elseif ($status === 'half') {
-                $late++;
-                $present++;
-                $exceptions['late'][] = [
-                    'name' => $emp->name,
-                    'employee_id' => $emp->employee_id,
-                    'check_in_time' => $state['check_in_time'],
-                    'late_minutes' => 0,
-                ];
+                $lateMinutes = $emp->today_attendance ? $emp->today_attendance->late_minutes : 0;
+                if (!$lateMinutes && $state['check_in_time'] && $state['timings']) {
+                    $checkInMin = $state['check_in_time']->copy()->second(0)->microsecond(0);
+                    $graceThreshold = $state['timings']['grace_threshold']->copy()->second(0)->microsecond(0);
+                    $lateMinutes = $checkInMin->gt($graceThreshold) ? (int)$checkInMin->diffInMinutes($graceThreshold, true) : 0;
+                }
+
+                if ($lateMinutes > 0) {
+                    $late++;
+                    $present++;
+                    $totalLateMinutes += $lateMinutes;
+                    $lateArrivals[] = [
+                        'name' => $emp->name,
+                        'employee_id' => $emp->employee_id,
+                        'check_in_time' => $state['check_in_time'],
+                        'late_minutes' => $lateMinutes,
+                    ];
+                    $exceptions['late'][] = [
+                        'name' => $emp->name,
+                        'employee_id' => $emp->employee_id,
+                        'check_in_time' => $state['check_in_time'],
+                        'late_minutes' => $lateMinutes,
+                    ];
+                } else {
+                    $present++;
+                }
             } elseif ($status === 'wfh') {
                 $wfh++;
                 $exceptions['wfh'][] = [

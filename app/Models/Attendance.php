@@ -38,12 +38,9 @@ class Attendance extends Model
         'late_minutes',
     ];
 
-    /**
-     * Get the number of minutes late, calculated from the end of the grace period.
-     */
     public function getLateMinutesAttribute(): int
     {
-        if ($this->status !== 'late' || is_null($this->check_in_time)) {
+        if (!in_array($this->status, ['late', 'half']) || is_null($this->check_in_time)) {
             return 0;
         }
 

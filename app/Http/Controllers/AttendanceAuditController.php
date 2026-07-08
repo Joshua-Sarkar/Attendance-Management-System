@@ -55,10 +55,22 @@ class AttendanceAuditController extends Controller
             $employees = $employees->filter(function ($emp) use ($status) {
                 $resolvedStatus = $emp->resolved_state['status'];
                 if ($status === 'late') {
-                    return $resolvedStatus === 'late';
+                    if ($resolvedStatus === 'late') {
+                        return true;
+                    }
+                    if ($resolvedStatus === 'half') {
+                        $checkInTime = $emp->resolved_state['check_in_time'];
+                        $timings = $emp->resolved_state['timings'];
+                        if ($checkInTime && $timings && $timings['grace_threshold']) {
+                            $checkInMin = \Carbon\Carbon::parse($checkInTime)->second(0)->microsecond(0);
+                            $graceThreshold = \Carbon\Carbon::parse($timings['grace_threshold'])->second(0)->microsecond(0);
+                            return $checkInMin->gt($graceThreshold);
+                        }
+                    }
+                    return false;
                 }
                 if ($status === 'present') {
-                    return in_array($resolvedStatus, ['present', 'late']);
+                    return in_array($resolvedStatus, ['present', 'late', 'half']);
                 }
                 return AttendanceStateRegistry::getDisplayStatus($resolvedStatus) === $status;
             });
