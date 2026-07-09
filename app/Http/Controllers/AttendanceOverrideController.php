@@ -66,6 +66,19 @@ class AttendanceOverrideController extends Controller
             }
         }
 
+        if ($request->has('status')) {
+            $status = $request->input('status');
+            if ($status === 'half_day') {
+                $request->merge(['status' => 'half']);
+            } elseif ($status === 'paid_leave') {
+                $request->merge(['status' => 'planned']);
+            } elseif ($status === 'unpaid_leave') {
+                $request->merge(['status' => 'upa']);
+            } elseif ($status === 'weekly_off') {
+                $request->merge(['status' => 'off']);
+            }
+        }
+
         $validated = $request->validate([
             'scope_type' => 'required|string|in:employee,department,all',
             'employee_ids' => 'required_if:scope_type,employee|array',
@@ -82,7 +95,7 @@ class AttendanceOverrideController extends Controller
             'include_sundays' => 'nullable',
             'skip_leaves' => 'nullable',
             'skip_overrides' => 'nullable',
-            'status' => 'required|string|in:present,absent,paid_leave,unpaid_leave,weekly_off,wfh,half_day',
+            'status' => 'required|string|in:' . implode(',', array_merge(array_keys(\App\Services\AttendanceStateRegistry::getStates()), ['wfh'])),
             'classification' => 'nullable|string|in:automatic,full_day,half_day',
             'override_reason' => 'required|string|min:5',
             'conflict_handling' => 'required|string|in:skip,replace,cancel',
@@ -129,6 +142,19 @@ class AttendanceOverrideController extends Controller
             }
         }
 
+        if ($request->has('status')) {
+            $status = $request->input('status');
+            if ($status === 'half_day') {
+                $request->merge(['status' => 'half']);
+            } elseif ($status === 'paid_leave') {
+                $request->merge(['status' => 'planned']);
+            } elseif ($status === 'unpaid_leave') {
+                $request->merge(['status' => 'upa']);
+            } elseif ($status === 'weekly_off') {
+                $request->merge(['status' => 'off']);
+            }
+        }
+
         $validated = $request->validate([
             'scope_type' => 'required|string|in:employee,department,all',
             'employee_ids' => 'required_if:scope_type,employee|array',
@@ -145,7 +171,7 @@ class AttendanceOverrideController extends Controller
             'include_sundays' => 'nullable',
             'skip_leaves' => 'nullable',
             'skip_overrides' => 'nullable',
-            'status' => 'required|string|in:present,absent,paid_leave,unpaid_leave,weekly_off,wfh,half_day',
+            'status' => 'required|string|in:' . implode(',', array_merge(array_keys(\App\Services\AttendanceStateRegistry::getStates()), ['wfh'])),
             'classification' => 'nullable|string|in:automatic,full_day,half_day',
             'override_reason' => 'required|string|min:5',
             'conflict_handling' => 'required|string|in:skip,replace,cancel',

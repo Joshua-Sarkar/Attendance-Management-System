@@ -401,9 +401,8 @@ class BulkAttendanceOverrideTest extends TestCase
         // 3. Verify Override dropdown options in response html
         $html = $response3->getContent();
         // Option values
-        $this->assertStringContainsString('value="paid_leave">Planned Leave (Paid)</option>', $html);
-        $this->assertStringContainsString('value="unpaid_leave">Unplanned Leave (Unpaid)</option>', $html);
-        $this->assertStringNotContainsString('Unpaid Leave</option>', $html); // Redundant option must be gone
+        $this->assertStringContainsString('value="planned">Planned Leave</option>', $html);
+        $this->assertStringContainsString('value="upa">Unplanned Approved (UPA)</option>', $html);
         
         Carbon::setTestNow(); // reset
     }

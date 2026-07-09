@@ -320,50 +320,45 @@ class AttendanceService
         if ($isOverridden) {
             $notes = 'Overridden: ' . $record->override_reason;
             $statusName = $record->status;
-            $className = $record->classification;
+            
+            // Normalize status names from legacy database entries
+            if ($statusName === 'paid_leave') {
+                $statusName = 'planned';
+            } elseif ($statusName === 'unpaid_leave') {
+                $statusName = 'upa';
+            } elseif ($statusName === 'weekly_off') {
+                $statusName = 'off';
+            } elseif ($statusName === 'half_day') {
+                $statusName = 'half';
+            }
 
-            if ($className === 'half_day') {
+            $status = $statusName;
+
+            // Map deductions and classification for all current states
+            if (in_array($status, ['hdp', 'hd_upa'])) {
                 $classification = 'half_day';
-                if (in_array($statusName, ['paid_leave', 'planned'])) {
-                    $status = 'hdp';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.5;
-                } elseif (in_array($statusName, ['unpaid_leave', 'unplanned'])) {
-                    $status = 'hd_upa';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.5;
-                } elseif ($statusName === 'absent') {
-                    $status = 'hd_upr';
-                    $salaryDeduction = 0.5;
-                    $leaveDeduction = 0.0;
-                } else {
-                    $status = $statusName === 'late' ? 'late' : 'half';
-                    $salaryDeduction = 0.5;
-                    $leaveDeduction = 0.0;
-                }
-            } else {
+                $salaryDeduction = 0.0;
+                $leaveDeduction = 0.5;
+            } elseif ($status === 'hd_upr') {
+                $classification = 'half_day';
+                $salaryDeduction = 0.5;
+                $leaveDeduction = 0.0;
+            } elseif ($status === 'half') {
+                $classification = 'half_day';
+                $salaryDeduction = 0.5;
+                $leaveDeduction = 0.0;
+            } elseif ($status === 'planned' || $status === 'upa') {
                 $classification = 'full_day';
-                if (in_array($statusName, ['present', 'late', 'wfh'])) {
-                    $status = $statusName;
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.0;
-                } elseif (in_array($statusName, ['paid_leave', 'planned'])) {
-                    $status = 'planned';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 1.0;
-                } elseif (in_array($statusName, ['unpaid_leave', 'unplanned'])) {
-                    $status = 'upa';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 1.0;
-                } elseif ($statusName === 'absent') {
-                    $status = 'absent';
-                    $salaryDeduction = 1.0;
-                    $leaveDeduction = 0.0;
-                } elseif (in_array($statusName, ['weekly_off', 'off'])) {
-                    $status = 'off';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.0;
-                }
+                $salaryDeduction = 0.0;
+                $leaveDeduction = 1.0;
+            } elseif ($status === 'absent' || $status === 'upr') {
+                $classification = 'full_day';
+                $salaryDeduction = 1.0;
+                $leaveDeduction = 0.0;
+            } else { // present, late, wfh, bday, off, future
+                $classification = 'full_day';
+                $salaryDeduction = 0.0;
+                $leaveDeduction = 0.0;
             }
         }
         // 2. Attendance
@@ -878,11 +873,39 @@ class AttendanceService
         $conflictHandling = $params['conflict_handling'] ?? 'cancel';
 
         $status = $params['status'];
-        $classification = $params['classification'] ?? 'full_day';
-
+        
+        // Normalize status
         if ($status === 'half_day') {
+            $status = 'half';
+        } elseif ($status === 'paid_leave') {
+            $status = 'planned';
+        } elseif ($status === 'unpaid_leave') {
+            $status = 'upa';
+        } elseif ($status === 'weekly_off') {
+            $status = 'off';
+        }
+
+        // Map classification: respect explicitly passed classification, otherwise default based on registry key
+        $classification = $params['classification'] ?? null;
+        if (!$classification || $classification === 'automatic') {
+            if (in_array($status, ['half', 'hdp', 'hd_upa', 'hd_upr'])) {
+                $classification = 'half_day';
+            } else {
+                $classification = 'full_day';
+            }
+        }
+
+        // Map registry status to database status
+        if ($status === 'half') {
             $status = 'present';
-            $classification = 'half_day';
+        } elseif ($status === 'planned' || $status === 'hdp') {
+            $status = 'paid_leave';
+        } elseif ($status === 'upa' || $status === 'hd_upa') {
+            $status = 'unpaid_leave';
+        } elseif ($status === 'upr' || $status === 'hd_upr') {
+            $status = 'absent';
+        } elseif ($status === 'off') {
+            $status = 'weekly_off';
         }
 
         foreach ($userIds as $userId) {
@@ -1024,11 +1047,39 @@ class AttendanceService
         $conflictHandling = $params['conflict_handling'] ?? 'cancel';
 
         $status = $params['status'];
-        $classification = $params['classification'] ?? 'full_day';
-
+        
+        // Normalize status
         if ($status === 'half_day') {
+            $status = 'half';
+        } elseif ($status === 'paid_leave') {
+            $status = 'planned';
+        } elseif ($status === 'unpaid_leave') {
+            $status = 'upa';
+        } elseif ($status === 'weekly_off') {
+            $status = 'off';
+        }
+
+        // Map classification: respect explicitly passed classification, otherwise default based on registry key
+        $classification = $params['classification'] ?? null;
+        if (!$classification || $classification === 'automatic') {
+            if (in_array($status, ['half', 'hdp', 'hd_upa', 'hd_upr'])) {
+                $classification = 'half_day';
+            } else {
+                $classification = 'full_day';
+            }
+        }
+
+        // Map registry status to database status
+        if ($status === 'half') {
             $status = 'present';
-            $classification = 'half_day';
+        } elseif ($status === 'planned' || $status === 'hdp') {
+            $status = 'paid_leave';
+        } elseif ($status === 'upa' || $status === 'hd_upa') {
+            $status = 'unpaid_leave';
+        } elseif ($status === 'upr' || $status === 'hd_upr') {
+            $status = 'absent';
+        } elseif ($status === 'off') {
+            $status = 'weekly_off';
         }
 
         $reason = $params['override_reason'] ?? '';
@@ -1094,8 +1145,16 @@ class AttendanceService
 
                     // Leave balance check/adjustment
                     $alreadyDeducted = 0.0;
-                    if ($attendance && $attendance->is_overridden && in_array($attendance->status, ['paid_leave', 'unplanned_leave'])) {
-                        $alreadyDeducted = $attendance->classification === 'half_day' ? 0.5 : 1.0;
+                    if ($attendance && $attendance->is_overridden) {
+                        $oldStatus = $attendance->status;
+                        $oldClass = $attendance->classification;
+                        if ($oldStatus === 'paid_leave' || $oldStatus === 'planned' || $oldStatus === 'upa') {
+                            $alreadyDeducted = $oldClass === 'half_day' ? 0.5 : 1.0;
+                        } elseif ($oldStatus === 'unpaid_leave' || $oldStatus === 'unplanned') {
+                            $alreadyDeducted = $oldClass === 'half_day' ? 0.5 : 1.0;
+                        } elseif ($oldStatus === 'hdp' || $oldStatus === 'hd_upa') {
+                            $alreadyDeducted = 0.5;
+                        }
                     } elseif ($leave && $leave->status === 'approved' && in_array($leave->leave_type, ['planned', 'unplanned'])) {
                         $alreadyDeducted = $leave->is_half_day ? 0.5 : 1.0;
                     }
@@ -1106,8 +1165,10 @@ class AttendanceService
                     }
 
                     $targetDeduction = 0.0;
-                    if (in_array($status, ['paid_leave', 'unplanned_leave'])) {
+                    if (in_array($status, ['paid_leave', 'unplanned_leave', 'planned', 'upa'])) {
                         $targetDeduction = $targetClassification === 'half_day' ? 0.5 : 1.0;
+                    } elseif (in_array($status, ['hdp', 'hd_upa'])) {
+                        $targetDeduction = 0.5;
                     }
 
                     $adjustment = $alreadyDeducted - $targetDeduction;

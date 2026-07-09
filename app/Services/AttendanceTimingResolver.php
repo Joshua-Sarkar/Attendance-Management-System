@@ -21,18 +21,22 @@ class AttendanceTimingResolver
         if ($department) {
             $code = strtolower(trim($department->code ?? ''));
             $name = strtolower(trim($department->name ?? ''));
-            $isHealthcare = ($code === 'healthcare' || $name === 'healthcare' || $code === 'hlt' || str_contains($name, 'healthcare') || str_contains($code, 'hlt'));
+            $isHealthcare = (
+                $code === 'healthcare' || 
+                $name === 'healthcare' || 
+                $code === 'hlt' || 
+                str_contains($name, 'healthcare') || 
+                str_contains($name, 'health care') || 
+                str_contains($code, 'healthcare') || 
+                str_contains($code, 'health care') || 
+                str_contains($code, 'hlt') || 
+                str_contains($code, 'hc')
+            );
 
             if ($isHealthcare) {
-                $startTime = $department->shift_start_time;
-                if (!$startTime || $startTime === '09:30:00' || $startTime === '09:30') {
-                    $startTime = config('attendance.departments.healthcare.start_time', '10:00:00');
-                }
-                $endTime = $department->shift_end_time;
-                if (!$endTime || $endTime === '17:30:00' || $endTime === '17:30') {
-                    $endTime = config('attendance.departments.healthcare.end_time', '18:00:00');
-                }
-                $graceMinutes = $department->grace_minutes !== null ? (int) $department->grace_minutes : (int) config('attendance.departments.healthcare.grace_minutes', 5);
+                $startTime = '10:00:00';
+                $endTime = '18:00:00';
+                $graceMinutes = 5;
             } else {
                 $startTime = $department->shift_start_time ?? config('attendance.start_time', '09:30:00');
                 $graceMinutes = $department->grace_minutes !== null ? (int) $department->grace_minutes : (int) config('attendance.grace_minutes', 15);

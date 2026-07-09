@@ -667,11 +667,9 @@
                             <div>
                                 <x-input-label for="override_status" value="Override Action" />
                                 <select x-model="status" id="override_status" class="w-full bg-surface-raised border border-hairline rounded text-vellum px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
-                                    <option value="present">Present</option>
-                                    <option value="half_day">Half Day</option>
-                                    <option value="paid_leave">Planned Leave (Paid)</option>
-                                    <option value="unpaid_leave">Unplanned Leave (Unpaid)</option>
-                                    <option value="weekly_off">Weekly Off</option>
+                                    @foreach(\App\Services\AttendanceStateRegistry::getStates() as $key => $details)
+                                        <option value="{{ $key }}">{{ $details['label'] }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>

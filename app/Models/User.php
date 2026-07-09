@@ -206,6 +206,11 @@ class User extends Authenticatable
         $birthMonth = $dob->month;
         $birthDay = $dob->day;
 
+        // Birthday Leave should only exist during the employee's birthday cycle (birth month).
+        if ($date->month !== $birthMonth) {
+            return [];
+        }
+
         $referenceYear = $date->year;
         $yearsToCheck = [$referenceYear - 1, $referenceYear, $referenceYear + 1];
         $availableYears = [];
