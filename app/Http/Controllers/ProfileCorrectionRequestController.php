@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProfileCorrectionRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -104,5 +105,84 @@ class ProfileCorrectionRequestController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Correction request marked as resolved.');
+    }
+
+    /**
+     * Admin adds a profile correction record directly.
+     */
+    public function adminStore(Request $request, User $user)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'field' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'min:5', 'max:1000'], // Every correction requires a reason/message
+            'status' => ['required', 'in:pending,resolved'],
+            'admin_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $status = $request->input('status');
+        $resolvedBy = ($status === 'resolved') ? auth()->user()->id : null;
+        $resolvedAt = ($status === 'resolved') ? now() : null;
+
+        ProfileCorrectionRequest::create([
+            'user_id' => $user->id,
+            'field' => $request->input('field'),
+            'message' => $request->input('message'),
+            'status' => $status,
+            'admin_note' => $request->input('admin_note'),
+            'resolved_by' => $resolvedBy,
+            'resolved_at' => $resolvedAt,
+        ]);
+
+        return redirect()->back()->with('success', 'Correction request added successfully.');
+    }
+
+    /**
+     * Admin updates a profile correction record.
+     */
+    public function adminUpdate(Request $request, ProfileCorrectionRequest $correctionRequest)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'field' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'min:5', 'max:1000'],
+            'status' => ['required', 'in:pending,resolved'],
+            'admin_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $status = $request->input('status');
+        $resolvedBy = ($status === 'resolved') ? auth()->user()->id : null;
+        $resolvedAt = ($status === 'resolved') ? now() : null;
+
+        $correctionRequest->update([
+            'field' => $request->input('field'),
+            'message' => $request->input('message'),
+            'status' => $status,
+            'admin_note' => $request->input('admin_note'),
+            'resolved_by' => $resolvedBy,
+            'resolved_at' => $resolvedAt,
+        ]);
+
+        return redirect()->back()->with('success', 'Correction request updated successfully.');
+    }
+
+    /**
+     * Admin deletes a profile correction record.
+     */
+    public function adminDestroy(ProfileCorrectionRequest $correctionRequest)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $correctionRequest->delete();
+
+        return redirect()->back()->with('success', 'Correction request deleted.');
     }
 }

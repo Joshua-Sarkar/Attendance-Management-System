@@ -36,7 +36,7 @@ class EmployeeService
     public function update(User $user, array $data): User
     {
         $userData = collect($data)->only([
-            'employee_id', 'name', 'email', 'phone', 'password', 'role', 'status', 'joining_date', 'department_id', 'manager_id', 'admin_id'
+            'employee_id', 'name', 'email', 'profile_photo_path', 'phone', 'password', 'role', 'status', 'joining_date', 'department_id', 'manager_id', 'admin_id'
         ])->toArray();
 
         if (!empty($userData['password'])) {
@@ -46,10 +46,27 @@ class EmployeeService
             unset($userData['password_confirmation']);
         }
 
+        // Hierarchy rule enforcement if role is changing from manager to something else
+        if ($user->role === 'manager' && isset($userData['role']) && $userData['role'] !== 'manager') {
+            $hasReports = User::where('manager_id', $user->id)->exists();
+            if ($hasReports) {
+                if (!empty($data['replacement_manager_id'])) {
+                    User::where('manager_id', $user->id)->update(['manager_id' => $data['replacement_manager_id']]);
+                } elseif (!empty($data['confirm_clear_hierarchy'])) {
+                    User::where('manager_id', $user->id)->update(['manager_id' => null]);
+                } else {
+                    throw new \InvalidArgumentException("Resolve Direct Reports: You must assign a replacement manager or confirm clearing the hierarchy.");
+                }
+            }
+        }
+
         $user->update($userData);
 
         $profileData = collect($data)->except([
-            'employee_id', 'name', 'email', 'phone', 'password', 'password_confirmation', 'role', 'status', 'joining_date', 'department_id', 'manager_id', 'admin_id'
+            'employee_id', 'name', 'email', 'profile_photo_path', 'phone', 'password', 'password_confirmation', 'role', 'status', 'joining_date', 'department_id', 'manager_id', 'admin_id',
+            'replacement_manager_id', 'confirm_clear_hierarchy',
+            'planned_leave', 'unplanned_leave', 'paternity_leave', 'maternity_leave', 'compensatory_leave', 'carry_forward', 'utilized_leave',
+            'base_salary', 'salary_effective_date', 'payroll_enabled'
         ])->toArray();
 
         $user->employeeProfile()->updateOrCreate(

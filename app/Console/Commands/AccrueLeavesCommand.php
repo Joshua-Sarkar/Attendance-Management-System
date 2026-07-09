@@ -31,49 +31,20 @@ class AccrueLeavesCommand extends Command
     {
         $this->info('Starting monthly leave accrual...');
         
-        $users = User::where('status', 'active')
-            ->whereIn('role', ['employee', 'manager'])
-            ->get();
-
-        $count = 0;
         $monthYear = now()->format('F Y');
 
-        $startOfMonth = now()->startOfMonth();
-        $endOfMonth = now()->endOfMonth();
-
-        foreach ($users as $user) {
-            // Check if user already has an accrual for this calendar month
-            $alreadyAccrued = LeaveLedgerEntry::where('user_id', $user->id)
-                ->where('type', 'accrual')
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->exists();
-
-            if ($alreadyAccrued) {
-                $this->line("User {$user->name} already accrued for this month. Skipping.");
-                continue;
-            }
-
-            DB::transaction(function () use ($user, $monthYear) {
-                // Increment cached balance
-                $user->leave_balance += 2.00;
-                $user->save();
-
-                // Create ledger entry
-                LeaveLedgerEntry::create([
-                    'user_id' => $user->id,
-                    'amount' => 2.00,
-                    'type' => 'accrual',
-                    'description' => "Monthly accrual for {$monthYear}",
-                ]);
-            });
-
-            $count++;
+        try {
+            $count = \App\Services\LeaveBalanceService::accrueMonthlyLeaves();
+            
+            $msg = "Successfully accrued 2 leaves for {$count} users for {$monthYear}.";
+            $this->info($msg);
+            Log::info("leaves:accrue executed successfully. {$msg}");
+            
+            return Command::SUCCESS;
+        } catch (\Exception $e) {
+            $this->error("Failed to accrue leaves: " . $e->getMessage());
+            Log::error("leaves:accrue failed: " . $e->getMessage());
+            return Command::FAILURE;
         }
-
-        $msg = "Successfully accrued 2 leaves for {$count} users for {$monthYear}.";
-        $this->info($msg);
-        Log::info("leaves:accrue executed successfully. {$msg}");
-
-        return Command::SUCCESS;
     }
 }

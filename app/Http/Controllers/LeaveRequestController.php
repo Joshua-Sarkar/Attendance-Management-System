@@ -93,7 +93,7 @@ class LeaveRequestController extends Controller
     {
         $user = Auth::user();
         $user->syncBirthdayCredits();
-        $hasBirthdayCredit = !empty($user->getAvailableBirthdayYears());
+        $hasBirthdayCredit = \App\Models\User::canUseBirthdayLeave($user, \Carbon\Carbon::today());
         return view('leaves.create', compact('hasBirthdayCredit'));
     }
 
@@ -113,6 +113,12 @@ class LeaveRequestController extends Controller
         ];
 
         $validated = $request->validate($rules);
+
+        if ($validated['leave_type'] === 'complimentary') {
+            if (!\App\Models\User::canUseBirthdayLeave($user, \Carbon\Carbon::today())) {
+                return back()->withErrors(['leave_type' => 'Birthday Leave is not available, locked, or has expired for this date.'])->withInput();
+            }
+        }
 
         $startDate = Carbon::parse($validated['start_date'])->startOfDay();
         $endDate = Carbon::parse($validated['end_date'])->startOfDay();

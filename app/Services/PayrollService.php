@@ -68,4 +68,49 @@ class PayrollService
             'daily_breakdown' => $dailyBreakdown,
         ];
     }
+
+    /**
+     * Administrative update of an employee's payroll profile.
+     */
+    public static function updateProfile(User $user, array $data): void
+    {
+        $profile = $user->payrollProfile()->firstOrCreate([], [
+            'base_salary' => null,
+            'salary_effective_date' => null,
+            'payroll_enabled' => false,
+            'import_source' => 'Manual',
+        ]);
+
+        $baseSalary = isset($data['base_salary']) && $data['base_salary'] !== '' ? (float) $data['base_salary'] : null;
+        $effectiveDate = isset($data['salary_effective_date']) && $data['salary_effective_date'] !== '' ? $data['salary_effective_date'] : null;
+        $payrollEnabled = filter_var($data['payroll_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        // Check if revision is needed
+        $oldSalary = $profile->base_salary !== null ? (float) $profile->base_salary : null;
+        $oldDate = $profile->salary_effective_date !== null ? $profile->salary_effective_date->format('Y-m-d') : null;
+
+        $salaryChanged = $baseSalary !== $oldSalary;
+        $dateChanged = $effectiveDate !== $oldDate;
+
+        if ($salaryChanged || $dateChanged) {
+            if ($baseSalary === null) {
+                $profile->update([
+                    'base_salary' => null,
+                    'salary_effective_date' => null,
+                ]);
+            } else {
+                $profile->recordSalaryRevision(
+                    (float) $baseSalary,
+                    $effectiveDate ?? now()->format('Y-m-d'),
+                    'Administrative update',
+                    auth()->id() ?? null,
+                    'Manual'
+                );
+            }
+        }
+
+        $profile->update([
+            'payroll_enabled' => $payrollEnabled,
+        ]);
+    }
 }

@@ -111,6 +111,22 @@ Route::middleware('auth')->group(function () {
             ->name('admin.corrections.index');
         Route::post('/admin/correction-requests/{correctionRequest}/resolve', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'adminResolve'])
             ->name('admin.corrections.resolve');
+
+        // Admin Corrections Store, Update, Destroy
+        Route::post('/admin/employees/{user}/corrections', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'adminStore'])
+            ->name('admin.corrections.store');
+        Route::put('/admin/corrections/{correctionRequest}', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'adminUpdate'])
+            ->name('admin.corrections.update');
+        Route::delete('/admin/corrections/{correctionRequest}', [\App\Http\Controllers\ProfileCorrectionRequestController::class, 'adminDestroy'])
+            ->name('admin.corrections.destroy');
+
+        // Admin Timeline Entry Store, Update, Destroy
+        Route::post('/admin/employees/{user}/timeline', [\App\Http\Controllers\EmployeeController::class, 'storeTimelineEntry'])
+            ->name('admin.timeline.store');
+        Route::put('/admin/timeline/{entry}', [\App\Http\Controllers\EmployeeController::class, 'updateTimelineEntry'])
+            ->name('admin.timeline.update');
+        Route::delete('/admin/timeline/{entry}', [\App\Http\Controllers\EmployeeController::class, 'destroyTimelineEntry'])
+            ->name('admin.timeline.destroy');
     });
 });
 

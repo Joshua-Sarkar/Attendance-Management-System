@@ -174,6 +174,10 @@ class LeaveBalanceService
                 if (!$user->employeeProfile || !$user->employeeProfile->date_of_birth) {
                     throw new \Exception('You are not eligible for Birthday Leave (Date of Birth is not set).');
                 }
+                if (!\App\Models\User::canUseBirthdayLeave($user, \Carbon\Carbon::today()) ||
+                    !\App\Models\User::canUseBirthdayLeave($user, $startDate)) {
+                    throw new \Exception('Birthday Leave credit is not available, locked, or has expired for this date.');
+                }
                 $available = $user->getAvailableBirthdayYears($startDate);
                 if (empty($available)) {
                     throw new \Exception('Birthday Leave credit is not available, locked, or has expired for this date.');
@@ -574,5 +578,176 @@ class LeaveBalanceService
                 'import_source' => 'Manual',
             ]);
         });
+    }
+
+    public static function updateLeaveBalance(User $user, array $data): void
+    {
+        DB::transaction(function () use ($user, $data) {
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->firstOrFail();
+            $lb = LeaveBalance::where('user_id', $lockedUser->id)->lockForUpdate()->firstOrCreate([
+                'user_id' => $lockedUser->id
+            ], [
+                'planned_leave' => 0.00,
+                'unplanned_leave' => 0.00,
+                'paternity_leave' => 0.00,
+                'maternity_leave' => 0.00,
+                'compensatory_leave' => 0.00,
+                'pending_leave' => 0.00,
+                'utilized_leave' => 0.00,
+                'carry_forward' => 0.00,
+                'remaining_leave' => 2.00,
+                'import_source' => 'Manual',
+            ]);
+
+            $fields = [
+                'planned_leave',
+                'unplanned_leave',
+                'paternity_leave',
+                'maternity_leave',
+                'compensatory_leave',
+                'carry_forward',
+                'pending_leave',
+                'utilized_leave',
+                'remaining_leave',
+            ];
+
+            $changes = [];
+            foreach ($fields as $field) {
+                if (isset($data[$field])) {
+                    $newVal = (float) $data[$field];
+                    $oldVal = (float) ($lb->$field ?? 0.00);
+                    if ($newVal !== $oldVal) {
+                        $lb->$field = $newVal;
+                        $changes[] = ucfirst(str_replace('_', ' ', $field)) . " updated from {$oldVal} to {$newVal}";
+                    }
+                }
+            }
+
+            if (isset($data['birthday_leave'])) {
+                $year = now()->year;
+                $identifier = "birthday_{$year}";
+                $credit = LeaveCredit::where('user_id', $lockedUser->id)
+                    ->where('source_identifier', $identifier)
+                    ->first();
+                if ($credit) {
+                    $newBdayVal = (float) $data['birthday_leave'];
+                    $oldBdayVal = (float) ($credit->amount - $credit->used_amount);
+                    if ($newBdayVal !== $oldBdayVal) {
+                        $credit->used_amount = max(0.00, $credit->amount - $newBdayVal);
+                        if ($newBdayVal > 0 && $credit->status !== 'active') {
+                            $credit->status = 'active';
+                        }
+                        $credit->save();
+                        $changes[] = "Birthday Leave updated from {$oldBdayVal} to {$newBdayVal}";
+                    }
+                }
+            }
+
+            // Recalculate remaining leave only if it is not explicitly provided in the data
+            if (!isset($data['remaining_leave'])) {
+                $calculatedRemaining = (float) (
+                    $lb->planned_leave +
+                    $lb->unplanned_leave +
+                    $lb->paternity_leave +
+                    $lb->maternity_leave +
+                    $lb->compensatory_leave +
+                    $lb->carry_forward -
+                    $lb->utilized_leave
+                );
+
+                $oldRemaining = (float) ($lb->remaining_leave ?? 0.00);
+                if ($oldRemaining !== $calculatedRemaining) {
+                    $lb->remaining_leave = $calculatedRemaining;
+                    $changes[] = "Remaining leave updated from {$oldRemaining} to {$calculatedRemaining} (calculated)";
+                }
+            }
+
+            if (!empty($changes)) {
+                $lb->save();
+
+                $targetRemaining = (float) $lb->remaining_leave;
+                if ((float)$lockedUser->leave_balance !== $targetRemaining) {
+                    $lockedUser->leave_balance = $targetRemaining;
+                    $lockedUser->save();
+                }
+
+                LeaveLedgerEntry::create([
+                    'user_id' => $lockedUser->id,
+                    'amount' => 0.00,
+                    'type' => 'adjustment',
+                    'description' => 'Administrative adjustment: ' . implode(', ', $changes),
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Accrue monthly leaves for all active employees.
+     */
+    public static function accrueMonthlyLeaves(): int
+    {
+        $users = User::where('status', 'active')
+            ->whereIn('role', ['employee', 'manager'])
+            ->get();
+
+        $count = 0;
+        $monthYear = now()->format('F Y');
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        foreach ($users as $user) {
+            // Check if user already has an accrual for this calendar month
+            $alreadyAccrued = LeaveLedgerEntry::where('user_id', $user->id)
+                ->where('type', 'accrual')
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->exists();
+
+            if ($alreadyAccrued) {
+                continue;
+            }
+
+            DB::transaction(function () use ($user, $monthYear) {
+                $lb = LeaveBalance::where('user_id', $user->id)->lockForUpdate()->firstOrCreate([
+                    'user_id' => $user->id
+                ], [
+                    'planned_leave' => 0.00,
+                    'unplanned_leave' => 0.00,
+                    'paternity_leave' => 0.00,
+                    'maternity_leave' => 0.00,
+                    'compensatory_leave' => 0.00,
+                    'pending_leave' => 0.00,
+                    'utilized_leave' => 0.00,
+                    'carry_forward' => 0.00,
+                    'remaining_leave' => 2.00,
+                    'import_source' => 'Manual',
+                ]);
+
+                // add 2 days to remaining_leave
+                $lb->remaining_leave += 2.00;
+                $lb->save();
+
+                // Ensure user's cached leave balance is updated
+                $user->refresh();
+                if ((float)$user->leave_balance !== (float)$lb->remaining_leave) {
+                    $user->leave_balance = $lb->remaining_leave;
+                    $user->save();
+                }
+
+                // create a Leave Ledger entry
+                LeaveLedgerEntry::create([
+                    'user_id' => $user->id,
+                    'amount' => 2.00,
+                    'type' => 'accrual',
+                    'description' => "Monthly accrual for {$monthYear}",
+                ]);
+
+                // create an Audit Trail entry (system log)
+                \Illuminate\Support\Facades\Log::info("Monthly leave accrual processed for user ID: {$user->id} (Employee ID: {$user->employee_id}), added 2.00 days.");
+            });
+
+            $count++;
+        }
+
+        return $count;
     }
 }

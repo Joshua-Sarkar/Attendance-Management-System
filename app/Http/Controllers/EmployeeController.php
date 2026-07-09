@@ -478,7 +478,30 @@ class EmployeeController extends Controller
             'previous_year_experience' => ['nullable', 'string', 'max:255'],
             'years_completed' => ['nullable', 'string', 'max:255'],
             'overall_year_experience' => ['nullable', 'string', 'max:255'],
+            'employee_category' => ['nullable', 'string', 'max:255'],
+            'profile_photo' => ['nullable', 'image', 'max:2048'],
+            'replacement_manager_id' => ['nullable', 'exists:users,id'],
+            'confirm_clear_hierarchy' => ['nullable', 'boolean'],
         ];
+
+        if ($currentUser->role === 'admin') {
+            $payrollRules = [
+                'base_salary' => ['nullable', 'numeric', 'min:0'],
+                'salary_effective_date' => ['nullable', 'date'],
+                'payroll_enabled' => ['nullable', 'boolean'],
+                'planned_leave' => ['nullable', 'numeric', 'min:0'],
+                'unplanned_leave' => ['nullable', 'numeric', 'min:0'],
+                'paternity_leave' => ['nullable', 'numeric', 'min:0'],
+                'maternity_leave' => ['nullable', 'numeric', 'min:0'],
+                'compensatory_leave' => ['nullable', 'numeric', 'min:0'],
+                'carry_forward' => ['nullable', 'numeric', 'min:0'],
+                'utilized_leave' => ['nullable', 'numeric', 'min:0'],
+                'birthday_leave' => ['nullable', 'numeric', 'min:0'],
+                'pending_leave' => ['nullable', 'numeric', 'min:0'],
+                'remaining_leave' => ['nullable', 'numeric'],
+            ];
+            $profileRules = array_merge($profileRules, $payrollRules);
+        }
 
         $rules = array_merge($rules, $profileRules);
 
@@ -551,7 +574,26 @@ class EmployeeController extends Controller
             $validated['role'] = 'employee';
         }
 
-        $this->employeeService->update($user, $validated);
+        // Upload Profile Photo if present
+        if ($request->hasFile('profile_photo')) {
+            $photo = $request->file('profile_photo');
+            $filename = time() . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
+            $path = $photo->storeAs('profile_photos', $filename, 'public');
+            $validated['profile_photo_path'] = $path;
+        }
+
+        try {
+            $this->employeeService->update($user, $validated);
+
+            if ($currentUser->role === 'admin') {
+                \App\Services\PayrollService::updateProfile($user, $validated);
+                \App\Services\LeaveBalanceService::updateLeaveBalance($user, $validated);
+            }
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['role' => $e->getMessage()])->withInput();
+        }
+
+        \Illuminate\Support\Facades\Log::info("Admin updated employee profile for user {$user->name} (ID: {$user->employee_id})");
 
         return redirect()->route('employees.index')->with('success', 'Member updated successfully.');
     }
@@ -592,5 +634,59 @@ class EmployeeController extends Controller
         $user->save();
 
         return back()->with('success', "Password for {$user->name} has been reset to default successfully. They will be forced to change it on next login.");
+    }
+
+    /**
+     * Store manual timeline entry.
+     */
+    public function storeTimelineEntry(Request $request, User $user)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'entry_date' => ['required', 'date'],
+        ]);
+
+        $user->manualTimelineEntries()->create($validated);
+
+        return back()->with('success', 'Manual timeline entry added successfully.');
+    }
+
+    /**
+     * Update manual timeline entry.
+     */
+    public function updateTimelineEntry(Request $request, \App\Models\EmployeeTimelineEntry $entry)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'entry_date' => ['required', 'date'],
+        ]);
+
+        $entry->update($validated);
+
+        return back()->with('success', 'Manual timeline entry updated successfully.');
+    }
+
+    /**
+     * Destroy manual timeline entry.
+     */
+    public function destroyTimelineEntry(\App\Models\EmployeeTimelineEntry $entry)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $entry->delete();
+
+        return back()->with('success', 'Manual timeline entry deleted.');
     }
 }

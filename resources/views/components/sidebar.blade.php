@@ -176,9 +176,13 @@
     <!-- User Information & Logout Chip -->
     <div class="sidebar-foot mt-auto border-t border-hairline/10 pt-4 px-6 flex items-center justify-between gap-2.5">
         <div class="flex items-center gap-2.5 min-w-0">
-            <div class="avatar w-[32px] h-[32px] rounded-full bg-canvas-dark border border-hairline-strong flex items-center justify-center font-display text-[12px] text-brass-bright shrink-0">
-                {{ $initials }}
-            </div>
+            @if($user->profile_photo_path)
+                <img src="{{ asset('storage/' . $user->profile_photo_path) }}" class="avatar w-[32px] h-[32px] rounded-full object-cover border border-hairline-strong shrink-0" alt="{{ $user->name }}">
+            @else
+                <div class="avatar w-[32px] h-[32px] rounded-full bg-canvas-dark border border-hairline-strong flex items-center justify-center font-display text-[12px] text-brass-bright shrink-0">
+                    {{ $initials }}
+                </div>
+            @endif
             <div class="min-w-0">
                 <div class="name text-[13px] font-medium text-vellum-light leading-tight truncate">{{ $user->name }}</div>
                 <div class="role text-[10.5px] text-vellum-light-muted leading-none mt-0.5 capitalize">{{ $role }}</div>

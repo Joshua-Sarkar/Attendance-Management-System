@@ -1,3 +1,12 @@
+@php
+    $year = now()->year;
+    $birthdayCredit = \App\Models\LeaveCredit::where('user_id', $user->id)
+        ->where('source_identifier', "birthday_{$year}")
+        ->first();
+    $birthdayCreditExists = $birthdayCredit !== null;
+    $birthdayBalance = $birthdayCreditExists ? (float) ($birthdayCredit->amount - $birthdayCredit->used_amount) : 0.00;
+@endphp
+
 <x-dossier-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-1.5">
@@ -46,9 +55,13 @@
         <!-- RIGHT COLUMN: EMPLOYEE SUMMARY CARD -->
         <div class="w-full bg-surface border border-hairline rounded p-6 flex flex-col items-center text-center shadow-sm">
             <!-- Avatar box -->
-            <div class="h-20 w-20 rounded bg-brass flex items-center justify-center text-canvas text-3xl font-display font-medium border border-brass mb-4 shadow-sm">
-                {{ substr($user->name, 0, 2) }}
-            </div>
+            @if($user->profile_photo_path)
+                <img src="{{ asset('storage/' . $user->profile_photo_path) }}" class="h-20 w-20 rounded object-cover border border-brass mb-4 shadow-sm" alt="{{ $user->name }}">
+            @else
+                <div class="h-20 w-20 rounded bg-brass flex items-center justify-center text-canvas text-3xl font-display font-medium border border-brass mb-4 shadow-sm">
+                    {{ substr($user->name, 0, 2) }}
+                </div>
+            @endif
             
             <!-- Name -->
             <h3 class="text-lg font-bold text-vellum font-display leading-tight">{{ $user->name }}</h3>
@@ -67,11 +80,11 @@
                 </span>
             </div>
             
-            <!-- Metadata list -->
-            <div class="w-full border-t border-hairline mt-5 pt-4 text-left text-xs space-y-2.5 text-vellum-muted">
+            <!-- Profile Overview Details -->
+            <div class="w-full mt-6 space-y-2.5 border-t border-hairline pt-5 text-left text-xs">
                 <div class="flex justify-between items-center">
                     <span class="font-semibold text-vellum-faint">Department:</span>
-                    <span class="font-medium text-vellum">{{ $user->department?->name ?? 'None' }}</span>
+                    <span class="font-medium text-vellum truncate max-w-[120px]" title="{{ $user->department?->name ?? 'None' }}">{{ $user->department?->name ?? 'None' }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="font-semibold text-vellum-faint">Manager:</span>
@@ -141,11 +154,15 @@
             <!-- IDENTITY BLOCK -->
             <div id="identity" x-show="activeSection === 'identity'" class="scroll-mt-6 flex flex-col md:flex-row items-start md:items-center justify-between border-b border-hairline pb-8">
                 <div class="flex items-center space-x-6">
-                    <div class="h-20 w-20 rounded bg-brass flex items-center justify-center text-canvas text-3xl font-display font-medium shadow-sm border border-brass">
-                        {{ substr($user->name, 0, 2) }}
-                    </div>
+                    @if($user->profile_photo_path)
+                        <img src="{{ asset('storage/' . $user->profile_photo_path) }}" class="h-20 w-20 rounded object-cover shadow-sm border border-brass" alt="{{ $user->name }}">
+                    @else
+                        <div class="h-20 w-20 rounded bg-brass flex items-center justify-center text-canvas text-3xl font-display font-medium shadow-sm border border-brass">
+                            {{ substr($user->name, 0, 2) }}
+                        </div>
+                    @endif
                     <div>
-                        <h3 class="text-2xl font-bold text-vellum font-display">{{ $user->name }}</h3>
+                        <h3 class="text-2xl font-bold text-vellum font-display font-medium">{{ $user->name }}</h3>
                         <p class="text-sm text-vellum-muted mt-1">
                             {{ $user->email }} · ID: <span class="font-mono text-brass font-semibold">{{ $user->employee_id ?? 'N/A' }}</span>
                         </p>
@@ -233,6 +250,10 @@
                     <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
                         <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Employee Type</span>
                         <span class="text-sm font-medium text-vellum">{{ $user->employeeProfile?->employee_type ?? 'N/A' }}</span>
+                    </div>
+                    <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Employee Category</span>
+                        <span class="text-sm font-medium text-vellum">{{ $user->employeeProfile?->employee_category ?? 'N/A' }}</span>
                     </div>
                     <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
                         <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Company</span>
@@ -448,6 +469,10 @@
                             <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->planned_leave ?? 0.00, 2) }} days</span>
                         </div>
                         <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
+                            <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Birthday Leave</span>
+                            <span class="text-sm font-medium text-vellum font-mono">{{ number_format($birthdayBalance, 2) }} days</span>
+                        </div>
+                        <div class="grid grid-cols-[200px_1fr] py-3 border-b border-hairline last:border-none items-center">
                             <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Unplanned Leave</span>
                             <span class="text-sm font-medium text-vellum font-mono">{{ number_format($user->leaveBalance?->unplanned_leave ?? 0.00, 2) }} days</span>
                         </div>
@@ -542,10 +567,17 @@
                 </div>
             </div>
 
-
             <!-- FUTURE TIMELINE -->
             <div id="timeline" x-show="activeSection === 'timeline'" class="scroll-mt-6 border-b border-hairline pb-8">
-                <h4 class="text-sm font-semibold text-brass uppercase tracking-wider mb-6">Future Timeline</h4>
+                <div class="flex justify-between items-center mb-6">
+                    <h4 class="text-sm font-semibold text-brass uppercase tracking-wider">Future Timeline</h4>
+                    @if(auth()->user()->role === 'admin')
+                        <x-primary-button @click="$dispatch('open-modal', 'add-timeline-modal')" class="!h-[32px] text-xs">
+                            + Add Milestone
+                        </x-primary-button>
+                    @endif
+                </div>
+
                 <div class="relative pl-6 border-l-2 border-hairline space-y-6">
                     <!-- Milestone: Birthday -->
                     @if($user->employeeProfile?->date_of_birth)
@@ -589,9 +621,61 @@
                         <div>
                             <span class="text-xs font-mono font-semibold text-brass">October 01, 2026</span>
                             <h5 class="text-sm font-semibold text-vellum mt-0.5">Annual Performance Audit</h5>
-                            <p class="text-xs text-vellum-muted mt-0.5">System-wide workforce review and structural alignment ledger evaluation.</p>
+                            <p class="text-xs text-vellum-muted mt-0.5">System-wide workforce review and structural ledger evaluation.</p>
                         </div>
                     </div>
+
+                    <!-- Manual Milestone Entries -->
+                    @foreach($user->manualTimelineEntries()->orderBy('entry_date')->get() as $entry)
+                        <div class="relative">
+                            <div class="absolute -left-[31px] top-1.5 w-[10px] h-[10px] rounded-full border-2 border-cognac bg-canvas"></div>
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <span class="text-xs font-mono font-semibold text-cognac">{{ $entry->entry_date->format('M d, Y') }}</span>
+                                    <h5 class="text-sm font-semibold text-vellum mt-0.5">{{ $entry->title }}</h5>
+                                    @if($entry->description)
+                                        <p class="text-xs text-vellum-muted mt-0.5">{{ $entry->description }}</p>
+                                    @endif
+                                    <span class="inline-block mt-1 text-[9.5px] font-semibold text-cognac/80 uppercase font-mono tracking-wider">Manual Milestone</span>
+                                </div>
+                                @if(auth()->user()->role === 'admin')
+                                    <div class="flex items-center gap-2">
+                                        <button @click="$dispatch('open-modal', 'edit-timeline-modal-{{ $entry->id }}')" class="text-xs text-brass hover:text-brass-bright font-semibold">Edit</button>
+                                        <form method="POST" action="{{ route('admin.timeline.destroy', $entry) }}" onsubmit="return confirm('Are you sure you want to delete this milestone?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-burgundy-light hover:text-burgundy font-semibold">Delete</button>
+                                        </form>
+
+                                        <!-- Edit Milestone Modal -->
+                                        <x-modal name="edit-timeline-modal-{{ $entry->id }}" :show="false">
+                                            <form method="POST" action="{{ route('admin.timeline.update', $entry) }}" class="p-6">
+                                                @csrf
+                                                @method('PUT')
+                                                <h2 class="font-display font-medium text-lg text-vellum mb-4">Edit Manual Timeline Milestone</h2>
+                                                <div class="mb-4">
+                                                    <x-input-label for="title_{{ $entry->id }}" value="Milestone Title" />
+                                                    <input type="text" name="title" id="title_{{ $entry->id }}" value="{{ $entry->title }}" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                                                </div>
+                                                <div class="mb-4">
+                                                    <x-input-label for="entry_date_{{ $entry->id }}" value="Milestone Date" />
+                                                    <input type="date" name="entry_date" id="entry_date_{{ $entry->id }}" value="{{ $entry->entry_date->format('Y-m-d') }}" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                                                </div>
+                                                <div class="mb-6">
+                                                    <x-input-label for="description_{{ $entry->id }}" value="Description (Optional)" />
+                                                    <textarea name="description" id="description_{{ $entry->id }}" rows="3" class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">{{ $entry->description }}</textarea>
+                                                </div>
+                                                <div class="flex justify-end gap-2.5">
+                                                    <x-secondary-button x-on:click="$dispatch('close-modal', 'edit-timeline-modal-{{ $entry->id }}')">Cancel</x-secondary-button>
+                                                    <x-primary-button type="submit">Save Changes</x-primary-button>
+                                                </div>
+                                            </form>
+                                        </x-modal>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 
@@ -693,7 +777,14 @@
             <!-- PROFILE CORRECTION REQUESTS -->
             @if(auth()->user()->id === $user->id || auth()->user()->role === 'admin')
                 <div id="corrections" x-show="activeSection === 'corrections'" class="scroll-mt-6">
-                    <h4 class="text-sm font-semibold text-brass uppercase tracking-wider mb-4">Profile Correction Requests</h4>
+                    <div class="flex justify-between items-center mb-6">
+                        <h4 class="text-sm font-semibold text-brass uppercase tracking-wider">Profile Correction Requests</h4>
+                        @if(auth()->user()->role === 'admin')
+                            <x-primary-button @click="$dispatch('open-modal', 'add-correction-modal')" class="!h-[32px] text-xs">
+                                + Add Correction
+                            </x-primary-button>
+                        @endif
+                    </div>
 
                     @php
                         $correctionRequests = \App\Models\ProfileCorrectionRequest::where('user_id', $user->id)->latest()->get();
@@ -726,6 +817,58 @@
                                                 Resolved by {{ $req->resolver?->name ?? 'Admin' }} on {{ $req->resolved_at?->format('Y-m-d h:i A') }}
                                             </span>
                                         </div>
+                                    @endif
+
+                                    @if(auth()->user()->role === 'admin')
+                                        <div class="mt-4 pt-2 border-t border-dashed border-hairline flex items-center gap-3">
+                                            <button @click="$dispatch('open-modal', 'edit-correction-modal-{{ $req->id }}')" class="text-xs text-brass hover:text-brass-bright font-semibold">Edit Record</button>
+                                            <form method="POST" action="{{ route('admin.corrections.destroy', $req) }}" onsubmit="return confirm('Are you sure you want to delete this correction request?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-xs text-burgundy-light hover:text-burgundy font-semibold">Delete Record</button>
+                                            </form>
+                                        </div>
+
+                                        <!-- Edit Correction Modal -->
+                                        <x-modal name="edit-correction-modal-{{ $req->id }}" :show="false">
+                                            <form method="POST" action="{{ route('admin.corrections.update', $req) }}" class="p-6">
+                                                @csrf
+                                                @method('PUT')
+                                                <h2 class="font-display font-medium text-lg text-vellum mb-4">Edit Correction Request</h2>
+                                                
+                                                <div class="mb-4">
+                                                    <x-input-label for="field_{{ $req->id }}" value="Field to Correct" />
+                                                    <select name="field" id="field_{{ $req->id }}" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                                                        @foreach(['Phone Number', 'Personal Email', 'Official Email', 'Department', 'Designation', 'Reporting Manager', 'Joining Date', 'Address', 'Bank Details', 'Emergency Contact', 'Other'] as $f)
+                                                            <option value="{{ $f }}" {{ $req->field === $f ? 'selected' : '' }}>{{ $f }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-4">
+                                                    <x-input-label for="message_{{ $req->id }}" value="Reason / Details" />
+                                                    <textarea name="message" id="message_{{ $req->id }}" rows="3" required minlength="5" maxlength="1000" class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">{{ $req->message }}</textarea>
+                                                </div>
+
+                                                <div class="mb-4">
+                                                    <x-input-label for="status_{{ $req->id }}" value="Status" />
+                                                    <select name="status" id="status_{{ $req->id }}" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                                                        <option value="pending" {{ $req->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                                        <option value="resolved" {{ $req->status === 'resolved' ? 'selected' : '' }}>Resolved</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-6">
+                                                    <x-input-label for="admin_note_{{ $req->id }}" value="Admin Note" />
+                                                    <textarea name="admin_note" id="admin_note_{{ $req->id }}" rows="3" class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">{{ $req->admin_note }}</textarea>
+                                                </div>
+
+                                                <div class="flex justify-end gap-2.5">
+                                                    <x-secondary-button x-on:click="$dispatch('close-modal', 'edit-correction-modal-{{ $req->id }}')">Cancel</x-secondary-button>
+                                                    <x-primary-button type="submit">Save Changes</x-primary-button>
+                                                </div>
+                                            </form>
+                                        </x-modal>
                                     @endif
                                 </div>
                             @endforeach
@@ -784,3 +927,78 @@
             </div>
         </form>
     </x-modal>
+
+    @if(auth()->user()->role === 'admin')
+    <!-- Add Timeline Milestone Modal -->
+    <x-modal name="add-timeline-modal" :show="false">
+        <form method="POST" action="{{ route('admin.timeline.store', $user) }}" class="p-6">
+            @csrf
+            <h2 class="font-display font-medium text-lg text-vellum mb-4">Add Manual Timeline Milestone</h2>
+            <div class="mb-4">
+                <x-input-label for="add_title" value="Milestone Title" />
+                <input type="text" name="title" id="add_title" required placeholder="e.g. Promotion, Transfer" class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+            </div>
+            <div class="mb-4">
+                <x-input-label for="add_entry_date" value="Milestone Date" />
+                <input type="date" name="entry_date" id="add_entry_date" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+            </div>
+            <div class="mb-6">
+                <x-input-label for="add_description" value="Description (Optional)" />
+                <textarea name="description" id="add_description" rows="3" placeholder="Additional context details..." class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none"></textarea>
+            </div>
+            <div class="flex justify-end gap-2.5">
+                <x-secondary-button x-on:click="$dispatch('close-modal', 'add-timeline-modal')">Cancel</x-secondary-button>
+                <x-primary-button type="submit">Add Milestone</x-primary-button>
+            </div>
+        </form>
+    </x-modal>
+
+    <!-- Add Correction Modal -->
+    <x-modal name="add-correction-modal" :show="false">
+        <form method="POST" action="{{ route('admin.corrections.store', $user) }}" class="p-6">
+            @csrf
+            <h2 class="font-display font-medium text-lg text-vellum mb-4">Add Correction Entry</h2>
+            
+            <div class="mb-4">
+                <x-input-label for="add_c_field" value="Field to Correct" />
+                <select name="field" id="add_c_field" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                    <option value="">Select a field...</option>
+                    <option value="Phone Number">Phone Number</option>
+                    <option value="Personal Email">Personal Email</option>
+                    <option value="Official Email">Official Email</option>
+                    <option value="Department">Department</option>
+                    <option value="Designation">Designation</option>
+                    <option value="Reporting Manager">Reporting Manager</option>
+                    <option value="Joining Date">Joining Date</option>
+                    <option value="Address">Address</option>
+                    <option value="Bank Details">Bank Details</option>
+                    <option value="Emergency Contact">Emergency Contact</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <x-input-label for="add_c_message" value="Reason / Details (Required)" />
+                <textarea name="message" id="add_c_message" rows="3" required minlength="5" maxlength="1000" placeholder="Please specify the reason/details..." class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <x-input-label for="add_c_status" value="Status" />
+                <select name="status" id="add_c_status" required class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none">
+                    <option value="pending">Pending</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <x-input-label for="add_c_admin_note" value="Admin Note (Optional)" />
+                <textarea name="admin_note" id="add_c_admin_note" rows="3" placeholder="Administrative resolution remarks..." class="w-full bg-canvas border border-hairline text-vellum rounded px-3 py-2 text-sm focus:ring-1 focus:ring-brass focus:border-brass focus:outline-none"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2.5">
+                <x-secondary-button x-on:click="$dispatch('close-modal', 'add-correction-modal')">Cancel</x-secondary-button>
+                <x-primary-button type="submit">Save Entry</x-primary-button>
+            </div>
+        </form>
+    </x-modal>
+    @endif

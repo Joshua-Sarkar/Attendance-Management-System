@@ -31,6 +31,7 @@ class User extends Authenticatable
         'employee_id',
         'name',
         'email',
+        'profile_photo_path',
         'phone',
         'password',
         'role',
@@ -116,6 +117,51 @@ class User extends Authenticatable
     public function leaveCredits(): HasMany
     {
         return $this->hasMany(LeaveCredit::class);
+    }
+
+    public function manualTimelineEntries(): HasMany
+    {
+        return $this->hasMany(EmployeeTimelineEntry::class, 'user_id');
+    }
+
+    /**
+     * Determine if a user is eligible for Birthday Leave on a given date.
+     */
+    public static function canUseBirthdayLeave(User $user, \Carbon\Carbon $date): bool
+    {
+        $profile = $user->employeeProfile;
+        if (!$profile || !$profile->date_of_birth) {
+            return false;
+        }
+
+        $dob = \Carbon\Carbon::parse($profile->date_of_birth);
+        $birthMonth = $dob->month;
+        $birthDay = $dob->day;
+
+        $year = $date->year;
+
+        // Handle February 29 birthdays on non-leap years
+        $isLeapYear = (($year % 4 == 0) && ($year % 100 != 0)) || ($year % 400 == 0);
+        if ($birthMonth === 2 && $birthDay === 29 && !$isLeapYear) {
+            $birthday = \Carbon\Carbon::create($year, 2, 27)->startOfDay();
+        } else {
+            $birthday = \Carbon\Carbon::create($year, $birthMonth, $birthDay)->startOfDay();
+        }
+
+        $unlockDays = (int) config('attendance.birthday_leave_unlock_days', 1);
+        $birthdayCreditDate = $birthday->copy()->subDays($unlockDays)->startOfDay();
+
+        // Must be on or after the credit date (unlock date) for the current year
+        if ($date->lt($birthdayCreditDate)) {
+            return false;
+        }
+
+        // Must be within the birthday cycle (month)
+        if ($date->month !== $birthMonth) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -206,8 +252,8 @@ class User extends Authenticatable
         $birthMonth = $dob->month;
         $birthDay = $dob->day;
 
-        // Birthday Leave should only exist during the employee's birthday cycle (birth month).
-        if ($date->month !== $birthMonth) {
+        // Birthday Leave eligibility check
+        if (!self::canUseBirthdayLeave($this, $date)) {
             return [];
         }
 

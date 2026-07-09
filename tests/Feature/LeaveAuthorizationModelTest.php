@@ -424,4 +424,57 @@ class LeaveAuthorizationModelTest extends TestCase
         $unknown2 = new LeaveRequest(['leave_type' => 'bereavement_leave', 'is_paid' => false]);
         $this->assertEquals('Bereavement Leave', $unknown2->leave_type_label);
     }
+
+    /** @test */
+    public function birthday_leave_time_gating_eligibility(): void
+    {
+        // Birthday: November 6, 1990
+        // Joining: June 1, 2026
+        EmployeeProfile::create([
+            'user_id' => $this->employee->id,
+            'date_of_birth' => '1990-11-06',
+            'joining_date' => '2026-06-01',
+        ]);
+
+        // 1. Two days before birthday (November 4, 2026) -> NOT eligible
+        Carbon::setTestNow('2026-11-04 12:00:00');
+        $this->employee->syncBirthdayCredits();
+        $this->assertFalse(User::canUseBirthdayLeave($this->employee, Carbon::today()));
+
+        // Dropdown visibility on November 4
+        $response = $this->actingAs($this->employee)->get(route('leaves.create'));
+        $response->assertStatus(200);
+        $response->assertDontSee('Birthday Leave');
+
+        // Backend submission rejection on November 4
+        $responseStore = $this->actingAs($this->employee)->post(route('leaves.store'), [
+            'leave_type' => 'complimentary',
+            'start_date' => '2026-11-06',
+            'end_date' => '2026-11-06',
+            'reason' => 'Birthday Leave Celebration Request',
+        ]);
+        $responseStore->assertSessionHasErrors(['leave_type']);
+
+        // 2. One day before birthday (November 5, 2026) -> ELIGIBLE
+        Carbon::setTestNow('2026-11-05 12:00:00');
+        $this->employee->syncBirthdayCredits();
+        $this->assertTrue(User::canUseBirthdayLeave($this->employee, Carbon::today()));
+
+        // Dropdown visibility on November 5
+        $response2 = $this->actingAs($this->employee)->get(route('leaves.create'));
+        $response2->assertStatus(200);
+        $response2->assertSee('Birthday Leave');
+
+        // Backend submission approval on November 5
+        $responseStore2 = $this->actingAs($this->employee)->post(route('leaves.store'), [
+            'leave_type' => 'complimentary',
+            'start_date' => '2026-11-06',
+            'end_date' => '2026-11-06',
+            'reason' => 'Birthday Leave Celebration Request',
+        ]);
+        $responseStore2->assertRedirect();
+        $responseStore2->assertSessionHasNoErrors();
+
+        Carbon::setTestNow();
+    }
 }

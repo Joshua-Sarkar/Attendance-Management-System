@@ -81,6 +81,7 @@ class EmployeeProfile extends Model
         'notice_days',
         'state_name',
         'joining_date',
+        'employee_category',
     ];
 
     protected function casts(): array
