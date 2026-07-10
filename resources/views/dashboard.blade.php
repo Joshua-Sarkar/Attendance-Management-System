@@ -165,27 +165,6 @@
                             
                             // Determine entry details
                             $checkInTimeStr = $att?->check_in_time ? $att->check_in_time->timezone('Asia/Kolkata')->format('h:i A') : '—';
-                            $hoursWorkedStr = '';
-                            if ($att && $att->check_in_time) {
-                                $endTime = $att->check_out_time ?? ($date === today()->format('Y-m-d') ? now() : null);
-                                $hours = $endTime ? $att->check_in_time->diffInMinutes($endTime, absolute: true) / 60.0 : null;
-                                $hoursWorkedStr = $hours ? ' · ' . number_format($hours, 1) . 'h worked' : '';
-                            }
-                            
-                            $desc = '';
-                            if ($status === 'present') {
-                                $desc = 'Checked in' . $hoursWorkedStr . ' · ' . ($emp->department?->name ?? 'N/A');
-                            } elseif ($status === 'late') {
-                                $desc = 'Checked in · ' . $att->late_minutes . 'm past grace' . $hoursWorkedStr;
-                            } elseif ($status === 'on_leave') {
-                                $desc = 'Approved leave · ' . ($emp->department?->name ?? 'N/A');
-                            } elseif ($status === 'wfh') {
-                                $desc = 'Working from home · ' . ($emp->department?->name ?? 'N/A');
-                            } elseif ($status === 'weekend') {
-                                $desc = 'Weekend · Non-working day';
-                            } else {
-                                $desc = 'No check-in recorded · flagged for review';
-                            }
                         @endphp
                         <div class="ledger-row grid grid-cols-[24px_48px_1.8fr_120px] items-center py-4 px-2 border-b border-hairline last:border-none hover:bg-brass/[0.04] transition duration-150">
                             <span class="seal-indicator {{ $status }} w-2 h-2 rounded-full 
@@ -200,7 +179,7 @@
                                     <a href="{{ route('admin.attendance.employee.show', $emp) }}" class="hover:text-brass transition-colors">{{ $emp->name }}</a>
                                     <span class="text-[11px] text-vellum-faint font-mono ml-2">({{ $emp->employee_id }})</span>
                                 </span>
-                                <span class="row-desc text-[12px] text-vellum-muted">{{ $desc }}</span>
+                                <span class="row-desc text-[12px] text-vellum-muted"><x-attendance-subtitle :employee="$emp" :date="$date" :attendance="$att" /></span>
                             </div>
                             <div class="text-right">
                                 <span class="tag {{ $status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border

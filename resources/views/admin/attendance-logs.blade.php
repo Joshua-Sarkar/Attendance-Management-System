@@ -141,27 +141,6 @@
                         $checkInStr = $state['check_in_time'] ? $state['check_in_time']->timezone('Asia/Kolkata')->format('h:i A') : '—';
                         $checkOutStr = $state['check_out_time'] ? $state['check_out_time']->timezone('Asia/Kolkata')->format('h:i A') : '—';
                         
-                        $durationStr = $state['hours'] > 0 ? number_format($state['hours'], 1) . 'h worked' : '';
-                        
-                        $details = '—';
-                        if ($empStatus === 'present') {
-                            $details = $durationStr ?: 'Checked in';
-                        } elseif ($empStatus === 'late') {
-                            $att = $emp->today_attendance;
-                            $lateMinutes = $att ? $att->late_minutes : 0;
-                            if (!$lateMinutes && $state['check_in_time']) {
-                                $timings = $state['timings'];
-                                if ($timings && $timings['grace_threshold']) {
-                                    $checkInMin = $state['check_in_time']->copy()->second(0)->microsecond(0);
-                                    $graceThreshold = $timings['grace_threshold']->copy()->second(0)->microsecond(0);
-                                    $lateMinutes = $checkInMin->gt($graceThreshold) ? (int)$checkInMin->diffInMinutes($graceThreshold, true) : 0;
-                                }
-                            }
-                            $details = $lateMinutes . 'm past grace' . ($durationStr ? ' · ' . $durationStr : '');
-                        } else {
-                            $details = $state['notes'] ?? '—';
-                        }
-                        
                         $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($empStatus);
                         $displayLabel = \App\Services\AttendanceStateRegistry::getLabel($empStatus);
                     @endphp
@@ -197,7 +176,7 @@
 
                         <!-- Details -->
                         <td class="py-4 px-4 text-[16px] text-vellum-muted">
-                            {{ $details }}
+                            <x-attendance-subtitle :employee="$emp" :date="$date" :attendance="$emp->today_attendance" />
                         </td>
 
                         <!-- Status -->
