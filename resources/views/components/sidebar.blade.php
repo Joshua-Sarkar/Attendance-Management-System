@@ -24,7 +24,10 @@
     </div>
 
     <!-- Navigation List -->
-    <nav class="flex-1 px-3.5 py-5 space-y-1.5">
+    <nav x-data="{ 
+        attendanceOpen: {{ (request()->routeIs('admin.attendance.logs') || request()->routeIs('attendance.my-attendance')) ? 'true' : 'false' }}, 
+        payrollOpen: {{ (request()->routeIs('admin.payroll.*') || request()->routeIs('admin.import.*') || request()->routeIs('admin.corrections.*')) ? 'true' : 'false' }} 
+    }" class="flex-1 px-3.5 py-5 space-y-1.5">
         <!-- Dashboard Link (All Roles) -->
         @php
             $dashboardRoute = ($role === 'employee') ? route('employee.dashboard') : route('dashboard');
@@ -44,38 +47,50 @@
             Dashboard
         </a>
 
-        <!-- Attendance Logs Link (Admin Only) - Moved here directly below Dashboard -->
-        @if($role === 'admin')
-            @php
-                $isAttendanceLogsActive = request()->routeIs('admin.attendance.logs');
-            @endphp
-            <a href="{{ route('admin.attendance.logs') }}" 
+        <!-- Attendance Dropdown (Admin/Manager) -->
+        @if($role === 'admin' || $role === 'manager')
+            <div class="space-y-1">
+                <button @click="attendanceOpen = !attendanceOpen" 
+                   class="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light">
+                    <div class="flex items-center gap-3">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 opacity-75">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Attendance</span>
+                    </div>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 transition-transform duration-150" :class="attendanceOpen ? 'rotate-180' : ''">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div x-show="attendanceOpen" x-collapse class="pl-4 space-y-1">
+                    @if($role === 'admin')
+                        <a href="{{ route('admin.attendance.logs') }}" 
+                           class="nav-item flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition duration-150 ease-in-out
+                           {{ request()->routeIs('admin.attendance.logs') ? 'text-brass-bright font-semibold' : 'text-vellum-light-muted hover:text-vellum-light' }}">
+                            Attendance Logs
+                        </a>
+                    @endif
+                    <a href="{{ route('attendance.my-attendance') }}" 
+                       class="nav-item flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition duration-150 ease-in-out
+                       {{ request()->routeIs('attendance.my-attendance') ? 'text-brass-bright font-semibold' : 'text-vellum-light-muted hover:text-vellum-light' }}">
+                        My Attendance
+                    </a>
+                </div>
+            </div>
+        @else
+            <!-- My Attendance Link directly for standard employees -->
+            <a href="{{ route('attendance.my-attendance') }}" 
                class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
-               {{ $isAttendanceLogsActive 
+               {{ request()->routeIs('attendance.my-attendance') 
                    ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                    : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isAttendanceLogsActive ? 'opacity-100' : 'opacity-75' }}">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3.5 2"/>
                 </svg>
-                <span>Attendance Logs</span>
+                My Attendance
             </a>
         @endif
-
-        <!-- My Attendance Link (All Roles) -->
-        @php
-            $isAttendanceActive = request()->routeIs('attendance.my-attendance');
-        @endphp
-        <a href="{{ route('attendance.my-attendance') }}" 
-           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
-           {{ $isAttendanceActive 
-               ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
-               : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isAttendanceActive ? 'opacity-100' : 'opacity-75' }}">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 7v5l3.5 2"/>
-            </svg>
-            My Attendance
-        </a>
 
         <!-- Workforce Link (Admins and Managers) -->
         @if($role === 'admin' || $role === 'manager')
@@ -130,42 +145,49 @@
             Leaves
         </a>
 
-        <!-- Import Employees Link (Admin Only) -->
+        <!-- Payroll Link (Admin Only) -->
         @if($role === 'admin')
-            @php
-                $isImportActive = request()->routeIs('admin.import.*');
-            @endphp
-            <a href="{{ route('admin.import.show') }}" 
-               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
-               {{ $isImportActive 
-                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
-                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isImportActive ? 'opacity-100' : 'opacity-75' }}">
-                    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-                Import Employees
-            </a>
-        @endif
-
-        <!-- Correction Requests Link (Admin Only) -->
-        @if($role === 'admin')
-            @php
-                $isCorrectionsActive = request()->routeIs('admin.corrections.*');
-                $pendingCorrectionsCount = \App\Models\ProfileCorrectionRequest::where('status', 'pending')->count();
-            @endphp
-            <a href="{{ route('admin.corrections.index') }}" 
+            <a href="{{ route('admin.payroll.index') }}" target="_blank"
                class="nav-item flex items-center justify-between px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
-               {{ $isCorrectionsActive 
+               {{ request()->routeIs('admin.payroll.*') 
                    ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
                    : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
                 <div class="flex items-center gap-3">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ $isCorrectionsActive ? 'opacity-100' : 'opacity-75' }}">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ request()->routeIs('admin.payroll.*') ? 'opacity-100' : 'opacity-75' }}">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Payroll</span>
+                </div>
+                <span class="text-[11px] font-mono opacity-60">↗</span>
+            </a>
+            
+            <a href="{{ route('admin.import.show') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
+               {{ request()->routeIs('admin.import.*') 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ request()->routeIs('admin.import.*') ? 'opacity-100' : 'opacity-75' }}">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Import Employees
+            </a>
+
+            <a href="{{ route('admin.corrections.index') }}" 
+               class="nav-item flex items-center justify-between px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
+               {{ request()->routeIs('admin.corrections.*') 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
+                <div class="flex items-center gap-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0 {{ request()->routeIs('admin.corrections.*') ? 'opacity-100' : 'opacity-75' }}">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
                     <span>Correction Requests</span>
                 </div>
+                @php
+                    $pendingCorrectionsCount = \App\Models\ProfileCorrectionRequest::where('status', 'pending')->count();
+                @endphp
                 @if($pendingCorrectionsCount > 0)
-                    <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full bg-burgundy text-vellum border border-hairline-strong">
+                    <span class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 text-[9px] font-bold rounded-full bg-burgundy text-vellum border border-hairline-strong">
                         {{ $pendingCorrectionsCount }}
                     </span>
                 @endif

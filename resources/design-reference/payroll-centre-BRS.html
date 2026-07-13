@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll · AMS-V1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ivory: '#F6F1E1',
+                        cream: '#FBF8EF',
+                        brass: { DEFAULT: '#C6941C', dark: '#9C7014', light: '#F2E4B8' },
+                        forest: { DEFAULT: '#1E3D30', light: '#E3ECE6', dark: '#152D23' },
+                        oxblood: { DEFAULT: '#6B2039', light: '#F2E3E8', dark: '#4E1729' },
+                        ink: { DEFAULT: '#262624', soft: '#6E655C', faint: '#A79C87' },
+                        line: '#E3D8B9',
+                        walnut: { DEFAULT: '#2A1B14', light: '#3E2C20', soft: '#B89E86' },
+                        cognac: { DEFAULT: '#A85D1E', light: '#F1E0CC', dark: '#824613' },
+                    },
+                    fontFamily: {
+                        display: ['Fraunces', 'serif'],
+                        sans: ['IBM Plex Sans', 'sans-serif'],
+                        mono: ['IBM Plex Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        soft: '0 1px 2px rgba(43,38,32,0.04), 0 8px 24px -12px rgba(43,38,32,0.10)',
+                        card: '0 1px 3px rgba(43,38,32,0.05), 0 12px 32px -16px rgba(43,38,32,0.14)',
+                        lift: '0 4px 10px rgba(43,38,32,0.08), 0 20px 40px -20px rgba(43,38,32,0.20)',
+                    },
+                    borderRadius: { '2xl': '1.25rem', '3xl': '1.75rem' },
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #D6C79A transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #D6C79A;
+            border-radius: 8px;
+        }
+
+        body {
+            background: #F6F1E1;
+        }
+
+        .num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .fade-in {
+            animation: fadeIn .35s ease both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .drawer-enter {
+            transition: transform .38s cubic-bezier(.16, 1, .3, 1);
+        }
+
+        .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: #ECE1C2;
+        }
+
+        .skeleton::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+            animation: shimmer 1.4s infinite;
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .brass-underline {
+            background-image: linear-gradient(#C6941C, #C6941C);
+            background-size: 0% 2px;
+            background-repeat: no-repeat;
+            background-position: left bottom;
+            transition: background-size .25s ease;
+        }
+
+        .brass-underline:hover {
+            background-size: 100% 2px;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .ring-soft:focus-visible {
+            outline: 2px solid #C6941C;
+            outline-offset: 2px;
+        }
+
+        ::selection {
+            background: #F2E4B8;
+            color: #2A1B14;
+        }
+
+        .tooltip-trigger:hover .tooltip-bubble {
+            opacity: 1;
+            transform: translateY(0) translateX(-50%);
+            pointer-events: auto;
+        }
+
+        .tooltip-bubble {
+            opacity: 0;
+            transform: translateY(4px) translateX(-50%);
+            transition: all .18s ease;
+            pointer-events: none;
+        }
+
+        .toast-enter {
+            animation: toastIn .3s cubic-bezier(.16, 1, .3, 1) both;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .pipeline-line {
+            background: repeating-linear-gradient(90deg, #E3D8B9 0 6px, transparent 6px 12px);
+        }
+    </style>
+</head>
+
+<body class="font-sans text-ink antialiased" x-data="payrollApp()" x-init="init()">
+
+    <div class="flex min-h-screen">
+
+        <!-- ============ SIDEBAR ============ -->
+        <aside
+            class="hidden lg:flex flex-col w-[252px] shrink-0 bg-walnut border-r border-walnut-light sticky top-0 h-screen">
+            <div class="px-6 pt-7 pb-6 border-b border-walnut-light">
+                <p class="font-display text-[22px] leading-none tracking-tight text-cream">AMS <span
+                        class="text-brass">·</span> V1</p>
+                <p class="text-[11px] uppercase tracking-[0.14em] text-walnut-soft mt-1.5">Payroll Control Center</p>
+            </div>
+            <nav class="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
+                <template x-for="item in navItems" :key="item.id">
+                    <button @click="activeTab = item.id" type="button"
+                        class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors"
+                        :class="activeTab === item.id ? 'bg-brass text-walnut font-medium shadow-soft' : 'text-cream/65 hover:bg-walnut-light hover:text-cream'">
+                        <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                            :class="activeTab === item.id ? 'bg-walnut' : 'bg-brass/60'"></span>
+                        <span x-text="item.label" class="flex-1 text-left"></span>
+                        <span x-show="item.badgeFn ? item.badgeFn() : item.badge"
+                            x-text="item.badgeFn ? item.badgeFn() : item.badge"
+                            class="text-[10.5px] px-1.5 py-0.5 rounded-full"
+                            :class="activeTab === item.id ? 'bg-walnut/15 text-walnut' : 'bg-oxblood/80 text-cream'"></span>
+                    </button>
+                </template>
+            </nav>
+            <div class="px-4 py-5 border-t border-walnut-light">
+                <div class="rounded-2xl bg-walnut-light/70 border border-brass/25 p-4">
+                    <p class="text-[11px] uppercase tracking-wider text-brass font-semibold">Current Cycle</p>
+                    <p class="font-display text-[17px] mt-1 text-cream" x-text="cycle.period"></p>
+                    <p class="text-[12px] text-cream/60 mt-0.5" x-text="cycle.statusLabel"></p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ============ MAIN ============ -->
+        <div class="flex-1 min-w-0">
+
+            <!-- Sticky top bar -->
+            <header class="sticky top-0 z-30 bg-ivory/90 backdrop-blur border-b border-line">
+                <div class="flex items-center justify-between gap-4 px-5 lg:px-9 py-3.5">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="lg:hidden font-display text-lg">AMS</span>
+                        <h1 class="font-display text-[19px] truncate" x-text="currentNavLabel"></h1>
+                        <span
+                            class="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1 rounded-full border"
+                            :class="cycle.status === 'locked' ? 'bg-oxblood-light text-oxblood border-oxblood/20' : cycle.status === 'processing' ? 'bg-brass-light text-brass-dark border-brass/30' : 'bg-forest-light text-forest border-forest/20'">
+                            <span class="w-1.5 h-1.5 rounded-full"
+                                :class="cycle.status === 'locked' ? 'bg-oxblood' : cycle.status === 'processing' ? 'bg-brass' : 'bg-forest'"></span>
+                            <span x-text="cycle.statusLabel"></span>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative hidden md:block">
+                            <input type="text" placeholder="Search employees, IDs, departments…" x-model="globalSearch"
+                                @keydown.enter="activeTab='employees'; filters.search=globalSearch"
+                                class="w-72 text-[13px] bg-cream border border-line rounded-xl pl-9 pr-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none placeholder:text-ink-faint">
+                            <svg class="w-4 h-4 absolute left-3 top-2.5 text-ink-faint" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M21 21l-4.35-4.35M18 10.5a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+                            </svg>
+                        </div>
+                        <button
+                            class="w-9 h-9 rounded-full bg-brass-dark text-cream font-display text-[13px] flex items-center justify-center">RS</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="px-5 lg:px-9 py-7 space-y-8 max-w-[1500px]">
+
+                <!-- ================= 1. DASHBOARD =================
+           Laravel: aggregates come from PayrollCycleSummary (a read model /
+           materialized view rebuilt each time payroll runs), not live joins.
+           Pipeline stages map to payroll_cycles.status transitions. KPIs are
+           policy-aware (e.g. "Gross Payroll" is computed by PayrollEngine
+           using policies.payroll + policies.payrollMapping, not ad hoc SQL).
+      ================================================================= -->
+                <section x-show="activeTab === 'dashboard'" x-cloak class="fade-in space-y-7">
+
+                    <!-- Hero -->
+                    <div
+                        class="rounded-3xl bg-cream border border-line shadow-card p-7 lg:p-9 relative overflow-hidden">
+                        <div class="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-brass-light/40"></div>
+                        <div class="relative flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                            <div>
+                                <p class="text-[11.5px] uppercase tracking-[0.16em] text-brass-dark font-semibold mb-2">
+                                    Active Payroll Cycle</p>
+                                <h2 class="font-display text-[34px] leading-tight">June 2026 <span
+                                        class="text-ink-soft font-normal">Payroll</span></h2>
+                                <p class="text-[13.5px] text-ink-soft mt-1.5">Period 01 Jun – 30 Jun 2026 · Disbursement
+                                    scheduled 05 Jul 2026</p>
+                                <div class="flex items-center gap-2 mt-4">
+                                    <span
+                                        class="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full bg-brass-light text-brass-dark border border-brass/30 font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-brass animate-pulse"></span> Processing
+                                        · 78% complete
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="w-full lg:w-72">
+                                <div class="flex justify-between text-[12px] text-ink-soft mb-1.5">
+                                    <span>Payroll completion</span><span class="num font-medium text-ink">78 /
+                                        100</span>
+                                </div>
+                                <div class="h-2.5 rounded-full bg-brass-light overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-brass to-brass-dark rounded-full"
+                                        style="width:78%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payroll Pipeline -->
+                        <div class="relative mt-8 pt-7 border-t border-line">
+                            <p class="text-[11.5px] uppercase tracking-[0.14em] text-ink-faint font-semibold mb-5">
+                                Payroll Pipeline · June 2026</p>
+                            <div class="flex items-start overflow-x-auto pb-1 -mx-1 px-1">
+                                <template x-for="(stage, idx) in pipeline" :key="stage.id">
+                                    <div class="flex items-start shrink-0">
+                                        <div
+                                            class="tooltip-trigger relative flex flex-col items-center w-[124px] text-center">
+                                            <div class="w-9 h-9 rounded-full flex items-center justify-center border-2 relative z-10"
+                                                :class="stage.status==='done' ? 'bg-forest border-forest text-cream' : stage.status==='current' ? 'bg-brass border-brass text-walnut animate-pulse' : 'bg-cream border-line text-ink-faint'">
+                                                <svg x-show="stage.status==='done'" class="w-4 h-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M4.5 12.75l6 6 9-13.5" />
+                                                </svg>
+                                                <span x-show="stage.status!=='done'"
+                                                    class="text-[12px] font-semibold num" x-text="idx+1"></span>
+                                            </div>
+                                            <p class="text-[11.5px] font-medium mt-2 leading-tight"
+                                                :class="stage.status==='upcoming' ? 'text-ink-faint' : 'text-ink'"
+                                                x-text="stage.label"></p>
+                                            <p class="text-[10.5px] text-ink-faint mt-0.5" x-text="stage.date"></p>
+                                            <div
+                                                class="tooltip-bubble absolute left-1/2 top-full mt-2 w-52 z-20 bg-walnut text-cream text-[11.5px] leading-snug rounded-xl p-3 shadow-lift">
+                                                <span x-text="stage.tip"></span>
+                                            </div>
+                                        </div>
+                                        <div x-show="idx < pipeline.length - 1"
+                                            class="w-10 sm:w-14 h-[2px] mt-[18px] pipeline-line"
+                                            :class="stage.status==='done' ? 'opacity-100' : 'opacity-40'"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- KPI grid -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5 mt-8">
+                            <template x-for="kpi in kpis" :key="kpi.label">
+                                <div
+                                    class="rounded-2xl bg-ivory border border-line p-4 hover:shadow-soft hover:-translate-y-0.5 transition-all">
+                                    <p class="text-[11px] uppercase tracking-wide text-ink-faint font-medium"
+                                        x-text="kpi.label"></p>
+                                    <p class="font-display text-[21px] mt-1.5"
+                                        :class="kpi.tone === 'oxblood' ? 'text-oxblood' : kpi.tone === 'forest' ? 'text-forest' : 'text-ink'">
+                                        <span x-text="kpi.value"></span>
+                                    </p>
+                                    <p class="text-[11px] text-ink-faint mt-0.5" x-text="kpi.sub"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Charts row -->
+                    <div class="grid lg:grid-cols-3 gap-5">
+                        <!-- Department payroll summary -->
+                        <div class="lg:col-span-2 rounded-2xl bg-cream border border-line shadow-soft p-6">
+                            <div class="flex items-center justify-between mb-5">
+                                <h3 class="font-display text-[18px]">Department Payroll Summary</h3>
+                                <span class="text-[11.5px] text-ink-faint">Net disbursement, ₹</span>
+                            </div>
+                            <div class="space-y-5">
+                                <template x-for="d in deptSummary" :key="d.name">
+                                    <div>
+                                        <div class="flex justify-between items-baseline text-[13px] mb-1.5">
+                                            <span class="font-medium" x-text="d.name"></span>
+                                            <span class="num text-ink-soft"
+                                                x-text="'₹' + d.amount.toLocaleString('en-IN')"></span>
+                                        </div>
+                                        <div class="h-2.5 rounded-full bg-brass-light/60 overflow-hidden">
+                                            <div class="h-full rounded-full bg-forest"
+                                                :style="'width:' + (d.amount / maxDept * 100) + '%'"></div>
+                                        </div>
+                                        <div class="grid grid-cols-4 gap-2 mt-2 text-[11px] text-ink-faint">
+                                            <span><span x-text="d.headcount"></span> employees</span>
+                                            <span>Avg ₹<span x-text="d.avgSalary.toLocaleString('en-IN')"></span></span>
+                                            <span><span x-text="d.avgAttendance"></span>% attendance</span>
+                                            <span class="text-oxblood">– ₹<span
+                                                    x-text="d.deductions.toLocaleString('en-IN')"></span> ded.</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Upcoming payroll timeline -->
+                        <div class="rounded-2xl bg-cream border border-line shadow-soft p-6">
+                            <h3 class="font-display text-[18px] mb-5">Upcoming Timeline</h3>
+                            <div
+                                class="space-y-5 relative pl-6 before:absolute before:left-[9px] before:top-1 before:bottom-1 before:w-px before:bg-line">
+                                <template x-for="t in timeline" :key="t.label">
+                                    <div class="relative">
+                                        <span
+                                            class="absolute -left-6 top-0 w-[18px] h-[18px] rounded-full border-2 border-cream flex items-center justify-center"
+                                            :class="t.state==='completed' ? 'bg-forest' : t.state==='delayed' ? 'bg-oxblood' : t.state==='locked' ? 'bg-ink' : 'bg-brass/30'">
+                                            <svg x-show="t.state==='completed'" class="w-2.5 h-2.5 text-cream"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                stroke-width="3.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M4.5 12.75l6 6 9-13.5" />
+                                            </svg>
+                                            <svg x-show="t.state==='delayed'" class="w-2.5 h-2.5 text-cream" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            <svg x-show="t.state==='locked'" class="w-2.5 h-2.5 text-cream" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75M3.75 21.75h16.5a1.5 1.5 0 001.5-1.5v-7.5a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5z" />
+                                            </svg>
+                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-[13px] font-medium" x-text="t.label"></p>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize"
+                                                :class="t.state==='completed' ? 'bg-forest-light text-forest' : t.state==='delayed' ? 'bg-oxblood-light text-oxblood' : t.state==='locked' ? 'bg-ink/10 text-ink' : 'bg-brass-light text-brass-dark'"
+                                                x-text="t.state==='upcoming' ? 'Upcoming' : t.state"></span>
+                                        </div>
+                                        <p class="text-[11.5px] text-ink-faint">{{ }}<span x-text="t.date"></span></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick actions -->
+                    <div class="rounded-2xl bg-cream border border-line shadow-soft p-6">
+                        <h3 class="font-display text-[18px] mb-4">Quick Actions</h3>
+                        <div class="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
+                            <button @click="activeTab='corrections'"
+                                class="group text-left rounded-xl border border-line p-4 hover:border-brass hover:shadow-soft transition-all">
+                                <p class="text-[13.5px] font-medium">Review Corrections</p>
+                                <p class="text-[11.5px] text-ink-faint mt-1">4 employees pending</p>
+                            </button>
+                            <button @click="activeTab='exceptions'"
+                                class="group text-left rounded-xl border border-line p-4 hover:border-oxblood hover:shadow-soft transition-all">
+                                <p class="text-[13.5px] font-medium">Resolve Exceptions</p>
+                                <p class="text-[11.5px] text-ink-faint mt-1">3 flagged records</p>
+                            </button>
+                            <button @click="activeTab='employees'"
+                                class="group text-left rounded-xl border border-line p-4 hover:border-brass hover:shadow-soft transition-all">
+                                <p class="text-[13.5px] font-medium">Open Employee Ledger</p>
+                                <p class="text-[11.5px] text-ink-faint mt-1">32 employees this cycle</p>
+                            </button>
+                            <button @click="activeTab='payslips'"
+                                class="group text-left rounded-xl border border-line p-4 hover:border-brass hover:shadow-soft transition-all">
+                                <p class="text-[13.5px] font-medium">Generate Payslips</p>
+                                <p class="text-[11.5px] text-ink-faint mt-1">Bulk export available</p>
+                            </button>
+                            <button @click="activeTab='lock'"
+                                class="group text-left rounded-xl border border-line p-4 hover:border-forest hover:shadow-soft transition-all">
+                                <p class="text-[13.5px] font-medium">Lock Payroll</p>
+                                <p class="text-[11.5px] text-ink-faint mt-1">Finalize the cycle</p>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= 2. EMPLOYEE PAYROLL TABLE =================
+           Laravel: one row per payroll_lines record for the active cycle,
+           joined to employees + attendance summary. "Category" column is
+           EmployeeLifecycleEngine::categoryFor($employee, $cycleDate) — never
+           a stored flag that can drift from join_date + policy.
+      ================================================================= -->
+                <section x-show="activeTab === 'employees'" x-cloak class="fade-in space-y-5">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <div class="relative flex-1 min-w-[220px]">
+                            <input type="text" x-model="filters.search" placeholder="Search by name or employee ID…"
+                                class="w-full text-[13px] bg-cream border border-line rounded-xl pl-9 pr-3 py-2.5 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                            <svg class="w-4 h-4 absolute left-3 top-3 text-ink-faint" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M21 21l-4.35-4.35M18 10.5a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+                            </svg>
+                        </div>
+                        <select x-model="filters.dept"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Departments</option>
+                            <template x-for="d in departments" :key="d">
+                                <option :value="d" x-text="d"></option>
+                            </template>
+                        </select>
+                        <select x-model="filters.status"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Statuses</option>
+                            <option value="approved">Approved</option>
+                            <option value="pending">Pending Review</option>
+                            <option value="correction">Needs Correction</option>
+                            <option value="locked">Locked</option>
+                        </select>
+                        <select x-model="filters.sort"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="name">Sort: Name</option>
+                            <option value="net">Sort: Net Salary</option>
+                            <option value="gross">Sort: Gross Salary</option>
+                            <option value="attendance">Sort: Attendance %</option>
+                        </select>
+                        <button @click="filters = {search:'',dept:'',status:'',sort:'name'}"
+                            class="text-[12.5px] text-brass-dark font-medium px-3 py-2.5 hover:underline">Reset</button>
+                        <span class="text-[12px] text-ink-faint ml-auto"
+                            x-text="filteredEmployees.length + ' of ' + employees.length + ' employees'"></span>
+                    </div>
+
+                    <div class="rounded-2xl bg-cream border border-line shadow-soft overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-[13px] min-w-[2080px]">
+                                <thead
+                                    class="sticky top-[57px] z-10 bg-brass-light/70 backdrop-blur border-b border-line text-[11px] uppercase tracking-wide text-brass-dark">
+                                    <tr>
+                                        <th
+                                            class="text-left font-semibold px-5 py-3 sticky left-0 bg-brass-light/95 z-20">
+                                            Employee</th>
+                                        <th class="text-left font-semibold px-3 py-3">Department</th>
+                                        <th class="text-left font-semibold px-3 py-3">Category</th>
+                                        <th class="text-right font-semibold px-3 py-3">Attendance %</th>
+                                        <th class="text-right font-semibold px-3 py-3">Working Days</th>
+                                        <th class="text-right font-semibold px-3 py-3">Present</th>
+                                        <th class="text-right font-semibold px-3 py-3">Absent</th>
+                                        <th class="text-right font-semibold px-3 py-3">Paid Lv.</th>
+                                        <th class="text-right font-semibold px-3 py-3">Unpaid Lv.</th>
+                                        <th class="text-right font-semibold px-3 py-3">Half Day</th>
+                                        <th class="text-right font-semibold px-3 py-3">Late Marks</th>
+                                        <th class="text-right font-semibold px-3 py-3">Overtime</th>
+                                        <th class="text-right font-semibold px-3 py-3">Bonuses</th>
+                                        <th class="text-right font-semibold px-3 py-3">Deductions</th>
+                                        <th class="text-right font-semibold px-3 py-3">Gross</th>
+                                        <th class="text-right font-semibold px-3 py-3">Net</th>
+                                        <th class="text-left font-semibold px-3 py-3">Payroll Status</th>
+                                        <th class="text-left font-semibold px-3 py-3">Correction</th>
+                                        <th class="text-left font-semibold px-3 py-3">Lock</th>
+                                        <th class="text-left font-semibold px-3 py-3">Last Modified</th>
+                                        <th class="text-left font-semibold px-3 py-3">Modified By</th>
+                                        <th class="text-left font-semibold px-3 py-3">Import Source</th>
+                                        <th
+                                            class="text-right font-semibold px-5 py-3 sticky right-0 bg-brass-light/95 z-20">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-if="loadingTable">
+                                        <template x-for="n in 5" :key="n">
+                                            <tr class="border-b border-line/70">
+                                                <td class="px-5 py-4" colspan="22">
+                                                    <div class="skeleton h-4 rounded w-full"></div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+                                    <template x-if="!loadingTable">
+                                        <template x-for="emp in filteredEmployees" :key="emp.id">
+                                            <tr @click="openDrawer(emp)"
+                                                class="border-b border-line/70 hover:bg-brass-light/30 cursor-pointer transition-colors">
+                                                <td
+                                                    class="px-5 py-3.5 sticky left-0 bg-cream group-hover:bg-brass-light/30">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <span
+                                                            class="w-8 h-8 rounded-full bg-brass-dark text-cream text-[11px] font-display flex items-center justify-center shrink-0"
+                                                            x-text="emp.initials"></span>
+                                                        <div class="min-w-0">
+                                                            <p class="font-medium truncate" x-text="emp.name"></p>
+                                                            <p class="text-[11px] text-ink-faint"
+                                                                x-text="emp.id + ' · ' + emp.designation"></p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-3 py-3.5 text-ink-soft" x-text="emp.dept"></td>
+                                                <td class="px-3 py-3.5">
+                                                    <span class="text-[11px] px-2 py-1 rounded-full font-medium"
+                                                        :class="employeeCategoryChip(emp)"
+                                                        x-text="employeeCategory(emp)"
+                                                        :title="'Cycle: ' + payrollCycleLabel(emp)"></span>
+                                                </td>
+                                                <td class="px-3 py-3.5 text-right">
+                                                    <span class="num font-medium"
+                                                        :class="attPct(emp) >= 90 ? 'text-forest' : attPct(emp) >= 75 ? 'text-ink' : 'text-oxblood'"
+                                                        x-text="attPct(emp) + '%'"></span>
+                                                </td>
+                                                <td class="px-3 py-3.5 text-right num" x-text="emp.workingDays"></td>
+                                                <td class="px-3 py-3.5 text-right num" x-text="emp.present"></td>
+                                                <td class="px-3 py-3.5 text-right num"
+                                                    x-text="emp.workingDays - emp.present - emp.paidLeave - emp.unpaidLeave">
+                                                </td>
+                                                <td class="px-3 py-3.5 text-right num text-forest"
+                                                    x-text="emp.paidLeave"></td>
+                                                <td class="px-3 py-3.5 text-right num text-oxblood"
+                                                    x-text="emp.unpaidLeave"></td>
+                                                <td class="px-3 py-3.5 text-right num" x-text="emp.halfDay"></td>
+                                                <td class="px-3 py-3.5 text-right num" x-text="emp.late"></td>
+                                                <td class="px-3 py-3.5 text-right num" x-text="emp.overtimeHours + 'h'">
+                                                </td>
+                                                <td class="px-3 py-3.5 text-right num text-forest"
+                                                    x-text="'₹' + emp.bonuses.toLocaleString('en-IN')"></td>
+                                                <td class="px-3 py-3.5 text-right num text-oxblood"
+                                                    x-text="'₹' + emp.deductions.toLocaleString('en-IN')"></td>
+                                                <td class="px-3 py-3.5 text-right num"
+                                                    x-text="'₹' + emp.gross.toLocaleString('en-IN')"></td>
+                                                <td class="px-3 py-3.5 text-right num font-semibold"
+                                                    x-text="'₹' + emp.net.toLocaleString('en-IN')"></td>
+                                                <td class="px-3 py-3.5"><span
+                                                        class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full font-medium"
+                                                        :class="statusChip(emp.status)"><span
+                                                            class="w-1.5 h-1.5 rounded-full"
+                                                            :class="statusDot(emp.status)"></span><span
+                                                            x-text="statusLabel(emp.status)"></span></span></td>
+                                                <td class="px-3 py-3.5">
+                                                    <span class="text-[11px] px-2 py-1 rounded-full font-medium"
+                                                        :class="emp.correctionStatus==='pending' ? 'bg-oxblood-light text-oxblood' : emp.correctionStatus==='resolved' ? 'bg-forest-light text-forest' : 'bg-line/60 text-ink-faint'"
+                                                        x-text="emp.correctionStatus==='pending' ? 'Pending' : emp.correctionStatus==='resolved' ? 'Resolved' : 'None'"></span>
+                                                </td>
+                                                <td class="px-3 py-3.5">
+                                                    <span class="text-[11px] px-2 py-1 rounded-full font-medium"
+                                                        :class="emp.locked ? 'bg-ink/10 text-ink' : 'bg-brass-light text-brass-dark'"
+                                                        x-text="emp.locked ? 'Locked' : 'Unlocked'"></span>
+                                                </td>
+                                                <td class="px-3 py-3.5 text-ink-soft text-[12px] whitespace-nowrap"
+                                                    x-text="emp.lastModified"></td>
+                                                <td class="px-3 py-3.5 text-ink-soft text-[12px] whitespace-nowrap"
+                                                    x-text="emp.modifiedBy"></td>
+                                                <td class="px-3 py-3.5 text-ink-soft text-[12px] whitespace-nowrap"
+                                                    x-text="emp.importSource"></td>
+                                                <td class="px-5 py-3.5 text-right sticky right-0 bg-cream">
+                                                    <div class="flex justify-end gap-1.5" @click.stop>
+                                                        <button @click="openDrawer(emp)"
+                                                            class="text-[11.5px] px-2.5 py-1.5 rounded-lg border border-line hover:border-brass hover:bg-brass-light/40">Review</button>
+                                                        <button @click="openPayslip(emp)"
+                                                            class="text-[11.5px] px-2.5 py-1.5 rounded-lg border border-line hover:border-brass hover:bg-brass-light/40">Payslip</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+                                    <tr x-show="!loadingTable && filteredEmployees.length === 0">
+                                        <td colspan="22" class="px-5 py-16 text-center">
+                                            <p class="font-display text-[18px] text-ink-soft">No employees match these
+                                                filters</p>
+                                            <p class="text-[12.5px] text-ink-faint mt-1">Try adjusting the department,
+                                                status, or search term.</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-[11px] text-ink-faint px-5 py-2.5 border-t border-line bg-ivory/60">Scroll
+                            horizontally for the full computation trail · click any row to open the employee workspace
+                        </p>
+                    </div>
+                </section>
+
+                <!-- ================= 3. SALARY LEDGER =================
+           Laravel: PayrollEngine::explain($employee, $cycle) must return this
+           exact row shape (label, value, explain, calc, auditRef) so every
+           number on a payslip can be traced back to the policy that produced
+           it — this is the explainability contract referenced in BRS "Explainability".
+      ================================================================= -->
+                <section x-show="activeTab === 'ledger'" x-cloak class="fade-in space-y-5">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h2 class="font-display text-[20px]">Salary Breakdown Ledger</h2>
+                            <p class="text-[13px] text-ink-soft mt-0.5">Full computation trail for <span
+                                    class="font-medium" x-text="selectedLedgerEmp?.name"></span> · every value is
+                                traceable</p>
+                        </div>
+                        <select x-model="ledgerEmpId" @change="setLedgerEmp()"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <template x-for="e in employees" :key="e.id">
+                                <option :value="e.id" x-text="e.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="grid lg:grid-cols-[1fr_280px] gap-5">
+                        <div class="rounded-2xl bg-cream border border-line shadow-soft p-2 sm:p-3"
+                            x-show="selectedLedgerEmp">
+                            <template x-for="row in ledgerRows" :key="row.label">
+                                <div class="rounded-xl transition-colors"
+                                    :class="row.emphasis ? 'bg-ivory mt-1' : 'hover:bg-ivory/70'">
+                                    <div class="flex items-center justify-between px-4 py-3 cursor-pointer"
+                                        @click="row.explain && toggleLedgerRow(row.label)">
+                                        <div class="flex items-center gap-2">
+                                            <svg x-show="row.explain"
+                                                class="w-3.5 h-3.5 text-ink-faint transition-transform shrink-0"
+                                                :class="ledgerOpen[row.label] ? 'rotate-90' : ''" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                            </svg>
+                                            <span
+                                                :class="row.emphasis ? 'font-display text-[16px]' : 'text-[13.5px] text-ink-soft'"
+                                                x-text="row.label"></span>
+                                        </div>
+                                        <span class="num text-[14px]"
+                                            :class="row.tone === 'forest' ? 'text-forest font-medium' : row.tone === 'oxblood' ? 'text-oxblood font-medium' : row.emphasis ? 'font-display text-[19px]' : 'text-ink'"
+                                            x-show="!row.skipValue"
+                                            x-text="(row.value < 0 ? '– ₹' + Math.abs(row.value).toLocaleString('en-IN') : '₹' + row.value.toLocaleString('en-IN'))"></span>
+                                        <span
+                                            class="text-[11px] px-2 py-1 rounded-full font-medium bg-brass-light text-brass-dark"
+                                            x-show="row.skipValue"
+                                            x-text="row.calc.split(' → ')[1] || 'Policy-derived'"></span>
+                                    </div>
+                                    <div x-show="row.explain && ledgerOpen[row.label]" x-collapse
+                                        class="px-4 pb-4 pl-9 -mt-1 space-y-2">
+                                        <p class="text-[12.5px] text-ink-soft" x-text="row.explain"></p>
+                                        <p class="text-[12px] font-mono bg-ivory border border-line rounded-lg px-3 py-2 text-ink-soft"
+                                            x-text="row.calc"></p>
+                                        <p class="text-[11px] text-brass-dark">Audit ref: <span
+                                                x-text="row.auditRef"></span></p>
+                                    </div>
+                                    <div class="border-b border-line/70 mx-4" x-show="!row.emphasis"></div>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="rounded-2xl bg-forest text-cream shadow-soft p-5">
+                                <p class="text-[11px] uppercase tracking-wide text-cream/70">Net Payable</p>
+                                <p class="font-display text-[26px] mt-1"
+                                    x-text="selectedLedgerEmp ? '₹'+selectedLedgerEmp.net.toLocaleString('en-IN') : ''">
+                                </p>
+                                <p class="text-[11.5px] text-cream/70 mt-1">June 2026 cycle</p>
+                            </div>
+                            <div class="rounded-2xl bg-cream border border-line shadow-soft p-5">
+                                <p class="text-[11px] uppercase tracking-wide text-ink-faint mb-2">Employee</p>
+                                <p class="text-[13.5px] font-medium" x-text="selectedLedgerEmp?.name"></p>
+                                <p class="text-[11.5px] text-ink-faint"
+                                    x-text="selectedLedgerEmp?.dept + ' · ' + selectedLedgerEmp?.designation"></p>
+                                <button @click="openDrawer(selectedLedgerEmp)"
+                                    class="w-full mt-4 text-[12px] py-2 rounded-lg border border-line hover:border-brass font-medium">Open
+                                    Employee Workspace</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= 4. CORRECTIONS WORKSPACE =================
+           Laravel: corrections table; system_explanation is generated by
+           whichever engine flagged the conflict (Attendance vs Leave engine
+           disagreement, etc). resolveCorrection() must write an audit_log row
+           per BRS §18 — actor, timestamp, old status, new status, reason.
+      ================================================================= -->
+                <section x-show="activeTab === 'corrections'" x-cloak class="fade-in space-y-4">
+                    <div>
+                        <h2 class="font-display text-[20px]">Corrections Workspace</h2>
+                        <p class="text-[13px] text-ink-soft mt-0.5"
+                            x-text="correctionEmployees.length + ' employees flagged for review this cycle · everything needed to decide lives here'">
+                        </p>
+                    </div>
+                    <template x-for="emp in correctionEmployees" :key="emp.id">
+                        <div class="rounded-2xl bg-cream border border-line shadow-soft overflow-hidden">
+                            <div class="flex items-center justify-between px-6 py-4 cursor-pointer"
+                                @click="emp._open = !emp._open">
+                                <div class="flex items-center gap-3">
+                                    <span
+                                        class="w-9 h-9 rounded-full bg-brass-dark text-cream text-[12px] font-display flex items-center justify-center"
+                                        x-text="emp.initials"></span>
+                                    <div>
+                                        <p class="font-medium text-[14px]" x-text="emp.name"></p>
+                                        <p class="text-[11.5px] text-ink-faint" x-text="emp.dept"></p>
+                                    </div>
+                                    <span
+                                        class="ml-3 text-[11px] px-2.5 py-1 rounded-full bg-oxblood-light text-oxblood font-medium"
+                                        x-text="emp.correctionReason"></span>
+                                </div>
+                                <svg class="w-4 h-4 text-ink-faint transition-transform"
+                                    :class="emp._open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                            <div x-show="emp._open" x-collapse class="px-6 pb-5 border-t border-line/70 pt-4 space-y-4">
+
+                                <div class="grid sm:grid-cols-3 gap-3 text-[13px]">
+                                    <div class="rounded-xl bg-ivory border border-line p-3.5">
+                                        <p class="text-[11px] uppercase text-ink-faint">Reported Gross</p>
+                                        <p class="num font-medium mt-0.5">₹<span
+                                                x-text="emp.gross.toLocaleString('en-IN')"></span></p>
+                                    </div>
+                                    <div class="rounded-xl bg-ivory border border-line p-3.5">
+                                        <p class="text-[11px] uppercase text-ink-faint">System Suggested</p>
+                                        <p class="num font-medium mt-0.5 text-forest">₹<span
+                                                x-text="(emp.gross - 1200).toLocaleString('en-IN')"></span></p>
+                                    </div>
+                                    <div class="rounded-xl bg-ivory border border-line p-3.5">
+                                        <input type="text" placeholder="Admin note…" x-model="emp._note"
+                                            class="w-full bg-transparent text-[12.5px] outline-none placeholder:text-ink-faint">
+                                    </div>
+                                </div>
+
+                                <!-- Attendance snapshot -->
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-wide text-ink-faint mb-2">Attendance
+                                        Snapshot · last 10 working days</p>
+                                    <div class="flex gap-1.5">
+                                        <template x-for="(d,i) in emp.attendanceSnapshot" :key="i">
+                                            <div class="tooltip-trigger relative flex-1">
+                                                <div class="h-9 rounded-lg flex items-center justify-center text-[10px] font-medium"
+                                                    :class="{'bg-forest-light text-forest':d.status==='present','bg-oxblood-light text-oxblood':d.status==='absent','bg-brass-light text-brass-dark':d.status==='half','bg-line/70 text-ink-soft':d.status==='leave','bg-ink/10 text-ink':d.status==='wfh'}"
+                                                    x-text="d.day"></div>
+                                                <div class="tooltip-bubble absolute left-1/2 top-full mt-1.5 w-max z-20 bg-walnut text-cream text-[10.5px] rounded-lg px-2.5 py-1.5 shadow-lift capitalize"
+                                                    x-text="d.status"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Leave history + explanation -->
+                                <div class="grid sm:grid-cols-2 gap-4">
+                                    <div class="rounded-xl bg-ivory border border-line p-4">
+                                        <p class="text-[11px] uppercase text-ink-faint mb-2">Recent Leave History</p>
+                                        <ul class="space-y-1.5">
+                                            <template x-for="(l,i) in emp.leaveHistory" :key="i">
+                                                <li class="text-[12.5px] flex justify-between text-ink-soft"><span
+                                                        x-text="l.date + ' · ' + l.type"></span><span class="num"
+                                                        x-text="l.days + 'd'"></span></li>
+                                            </template>
+                                        </ul>
+                                        <p x-show="!emp.leaveHistory.length" class="text-[12px] text-ink-faint">No
+                                            recent leave records.</p>
+                                    </div>
+                                    <div class="rounded-xl bg-ivory border border-line p-4">
+                                        <p class="text-[11px] uppercase text-ink-faint mb-2">System-Generated
+                                            Explanation</p>
+                                        <p class="text-[12.5px] text-ink-soft" x-text="emp.systemExplanation"></p>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-xl bg-brass-light/40 border border-brass/25 p-4">
+                                    <p class="text-[11px] uppercase text-brass-dark mb-1">Employee Remark</p>
+                                    <p class="text-[12.5px] text-ink-soft italic" x-text="emp.remarks"></p>
+                                </div>
+
+                                <!-- Correction history -->
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-wide text-ink-faint mb-2">Correction
+                                        History</p>
+                                    <div class="space-y-2">
+                                        <template x-for="a in auditTrail.filter(x=>x.emp===emp.name)" :key="a.id">
+                                            <div class="flex items-start gap-2 text-[12px]">
+                                                <span
+                                                    class="w-1.5 h-1.5 rounded-full bg-oxblood mt-1.5 shrink-0"></span>
+                                                <div><span class="text-ink-soft" x-text="a.action"></span> <span
+                                                        class="text-ink-faint" x-text="'· '+a.timestamp"></span></div>
+                                            </div>
+                                        </template>
+                                        <p x-show="!auditTrail.filter(x=>x.emp===emp.name).length"
+                                            class="text-[12px] text-ink-faint">No prior corrections on record.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button @click="resolveCorrection(emp,'approved')"
+                                        class="text-[12.5px] px-4 py-2 rounded-lg bg-forest text-cream font-medium hover:bg-forest-dark">Approve</button>
+                                    <button @click="resolveCorrection(emp,'rejected')"
+                                        class="text-[12.5px] px-4 py-2 rounded-lg bg-oxblood text-cream font-medium hover:bg-oxblood-dark">Reject</button>
+                                    <button @click="emp._override = true"
+                                        class="text-[12.5px] px-4 py-2 rounded-lg border border-line hover:border-brass">Override
+                                        Manually</button>
+                                    <button @click="openDrawer(emp)"
+                                        class="text-[12.5px] px-4 py-2 rounded-lg border border-line hover:border-brass ml-auto">View
+                                        Full History</button>
+                                </div>
+                                <div x-show="emp._override" x-collapse class="flex gap-2 pt-1">
+                                    <input type="number" placeholder="Manual net amount"
+                                        class="flex-1 text-[13px] bg-ivory border border-line rounded-lg px-3 py-2 outline-none focus:border-brass">
+                                    <button @click="resolveCorrection(emp,'approved'); emp._override=false"
+                                        class="text-[12.5px] px-4 py-2 rounded-lg bg-brass-dark text-cream font-medium">Save
+                                        Override</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="correctionEmployees.length === 0"
+                        class="rounded-2xl bg-cream border border-line p-12 text-center">
+                        <p class="font-display text-[18px] text-ink-soft">All clear</p>
+                        <p class="text-[12.5px] text-ink-faint mt-1">No corrections pending for this cycle.</p>
+                    </div>
+                </section>
+
+                <!-- ================= 5. EXCEPTIONS =================
+           Laravel: exceptions are engine-raised, not admin-raised — e.g.
+           Negative Salary is PayrollEngine detecting net < 0 before it ever
+           reaches payroll_lines. Bulk-resolve must still write one audit row
+           per employee, not one row for the batch.
+      ================================================================= -->
+                <section x-show="activeTab === 'exceptions'" x-cloak class="fade-in space-y-5">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h2 class="font-display text-[20px]">Payroll Exceptions</h2>
+                            <p class="text-[13px] text-ink-soft mt-0.5"
+                                x-text="filteredExceptions.length + ' of ' + exceptionsFlat.length + ' exception records · these must clear before lock'">
+                            </p>
+                        </div>
+                        <button x-show="selectedExceptions.length" @click="bulkResolveExceptions()"
+                            class="text-[12.5px] px-4 py-2 rounded-lg bg-forest text-cream font-medium hover:bg-forest-dark">
+                            Resolve <span x-text="selectedExceptions.length"></span> Selected
+                        </button>
+                    </div>
+
+                    <!-- Category summary cards -->
+                    <div class="grid sm:grid-cols-3 xl:grid-cols-6 gap-3">
+                        <template x-for="cat in exceptions" :key="cat.title">
+                            <button @click="excFilters.type = excFilters.type===cat.title ? '' : cat.title"
+                                class="text-left rounded-2xl bg-cream border p-4 transition-all"
+                                :class="[cat.count > 0 ? 'border-oxblood/25' : 'border-line', excFilters.type===cat.title ? 'ring-2 ring-brass' : '']">
+                                <p class="text-[12px] font-medium" x-text="cat.title"></p>
+                                <p class="font-display text-[20px] mt-1"
+                                    :class="cat.count > 0 ? 'text-oxblood' : 'text-forest'" x-text="cat.count"></p>
+                            </button>
+                        </template>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex flex-wrap gap-2.5">
+                        <div class="relative flex-1 min-w-[200px]">
+                            <input type="text" x-model="excFilters.search" placeholder="Search exceptions…"
+                                class="w-full text-[13px] bg-cream border border-line rounded-xl px-3.5 py-2.5 outline-none focus:border-brass">
+                        </div>
+                        <select x-model="excFilters.dept"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Departments</option>
+                            <template x-for="d in departments" :key="d">
+                                <option :value="d" x-text="d"></option>
+                            </template>
+                        </select>
+                        <select x-model="excFilters.priority"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Priorities</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                        <select x-model="excFilters.admin"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Admins</option>
+                            <template x-for="a in admins" :key="a">
+                                <option :value="a" x-text="a"></option>
+                            </template>
+                        </select>
+                        <select x-model="excFilters.severity"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Severities</option>
+                            <option value="Critical">Critical</option>
+                            <option value="Warning">Warning</option>
+                        </select>
+                        <select x-model="excFilters.resolved"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">Resolved & Pending</option>
+                            <option value="false">Pending Only</option>
+                            <option value="true">Resolved Only</option>
+                        </select>
+                        <button
+                            @click="excFilters = {search:'',dept:'',type:'',priority:'',admin:'',severity:'',resolved:''}"
+                            class="text-[12.5px] text-brass-dark font-medium px-3 py-2.5 hover:underline">Reset</button>
+                    </div>
+
+                    <div class="rounded-2xl bg-cream border border-line shadow-soft overflow-hidden">
+                        <table class="w-full text-[13px]">
+                            <thead
+                                class="bg-brass-light/70 border-b border-line text-[11px] uppercase tracking-wide text-brass-dark">
+                                <tr>
+                                    <th class="px-4 py-3 w-8"><input type="checkbox"
+                                            @change="toggleAllExceptions($event)"></th>
+                                    <th class="text-left font-semibold px-3 py-3">Employee</th>
+                                    <th class="text-left font-semibold px-3 py-3">Type</th>
+                                    <th class="text-left font-semibold px-3 py-3">Department</th>
+                                    <th class="text-left font-semibold px-3 py-3">Priority</th>
+                                    <th class="text-left font-semibold px-3 py-3">Severity</th>
+                                    <th class="text-left font-semibold px-3 py-3">Assigned</th>
+                                    <th class="text-left font-semibold px-3 py-3">Date</th>
+                                    <th class="text-left font-semibold px-3 py-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="ex in filteredExceptions" :key="ex.id">
+                                    <tr class="border-b border-line/70 hover:bg-brass-light/30">
+                                        <td class="px-4 py-3"><input type="checkbox" :value="ex.id"
+                                                @change="toggleException(ex.id)"
+                                                :checked="selectedExceptions.includes(ex.id)"></td>
+                                        <td class="px-3 py-3 font-medium" x-text="ex.emp"></td>
+                                        <td class="px-3 py-3 text-ink-soft" x-text="ex.type"></td>
+                                        <td class="px-3 py-3 text-ink-soft" x-text="ex.dept"></td>
+                                        <td class="px-3 py-3"><span
+                                                class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                                                :class="ex.priority==='High' ? 'bg-oxblood-light text-oxblood' : ex.priority==='Medium' ? 'bg-brass-light text-brass-dark' : 'bg-line/60 text-ink-soft'"
+                                                x-text="ex.priority"></span></td>
+                                        <td class="px-3 py-3"><span
+                                                class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                                                :class="ex.severity==='Critical' ? 'bg-oxblood-light text-oxblood' : 'bg-brass-light text-brass-dark'"
+                                                x-text="ex.severity"></span></td>
+                                        <td class="px-3 py-3 text-ink-soft" x-text="ex.admin"></td>
+                                        <td class="px-3 py-3 text-ink-faint text-[12px]" x-text="ex.date"></td>
+                                        <td class="px-3 py-3"><span
+                                                class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                                                :class="ex.resolved ? 'bg-forest-light text-forest' : 'bg-oxblood-light text-oxblood'"
+                                                x-text="ex.resolved ? 'Resolved' : 'Pending'"></span></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="!filteredExceptions.length">
+                                    <td colspan="9" class="px-4 py-12 text-center text-ink-faint text-[13px]">No
+                                        exceptions match these filters.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ================= 6. PAYROLL LOCK =================
+           Laravel: locking flips payroll_cycles.status → 'locked' and freezes
+           payroll_lines (no further writes without an explicit unlock). Reads
+           policies.lock.excludeUnresolvedFromLock and
+           policies.lock.requireDualSignoffToUnlock — never hardcode the
+           dual-signoff requirement in a controller.
+      ================================================================= -->
+                <section x-show="activeTab === 'lock'" x-cloak class="fade-in">
+                    <div class="max-w-2xl mx-auto">
+                        <template x-if="!cycleLocked">
+                            <div class="rounded-3xl bg-cream border border-line shadow-card p-8">
+                                <h2 class="font-display text-[22px]">Lock June 2026 Payroll</h2>
+                                <p class="text-[13.5px] text-ink-soft mt-1.5">Locking finalizes all salary computations
+                                    for this cycle. Locked records cannot be edited without an administrator unlock.</p>
+
+                                <div class="mt-6 rounded-2xl bg-ivory border border-line p-5 space-y-2.5">
+                                    <div class="flex justify-between text-[13.5px]"><span
+                                            class="text-ink-soft">Employees ready</span><span class="num font-medium">28
+                                            / 32</span></div>
+                                    <div class="flex justify-between text-[13.5px]"><span
+                                            class="text-ink-soft">Employees locked already</span><span
+                                            class="num font-medium">1</span></div>
+                                    <div class="flex justify-between text-[13.5px]"><span class="text-ink-soft">Total
+                                            net payroll</span><span class="num font-medium">₹18,42,600</span></div>
+                                    <div class="flex justify-between text-[13.5px]"><span class="text-ink-soft">Pending
+                                            corrections</span><span class="num font-medium text-oxblood">4</span></div>
+                                    <div class="flex justify-between text-[13.5px]"><span class="text-ink-soft">Cycle
+                                            dates</span><span class="num font-medium">01 – 30 Jun 2026</span></div>
+                                    <div class="flex justify-between text-[13.5px]"><span
+                                            class="text-ink-soft">Disbursement date</span><span
+                                            class="num font-medium">05 Jul 2026</span></div>
+                                </div>
+
+                                <div
+                                    class="mt-4 rounded-xl bg-oxblood-light/70 border border-oxblood/20 px-4 py-3 flex gap-2.5 items-start">
+                                    <svg class="w-4 h-4 text-oxblood mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.75 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                    </svg>
+                                    <p class="text-[12.5px] text-oxblood">4 employees still have unresolved corrections.
+                                        Locking now will exclude them from this disbursement run.</p>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2.5 mt-5">
+                                    <button @click="generatePayslipsAction()"
+                                        class="py-2.5 rounded-xl border border-line hover:border-brass text-[13px] font-medium">Generate
+                                        Payslips</button>
+                                    <button @click="generateAuditSnapshot()"
+                                        class="py-2.5 rounded-xl border border-line hover:border-brass text-[13px] font-medium">Generate
+                                        Audit Snapshot</button>
+                                </div>
+
+                                <button @click="showLockModal = true"
+                                    class="w-full mt-3 py-3.5 rounded-xl bg-forest text-cream font-medium text-[14px] hover:bg-forest-dark transition-colors">Preview
+                                    &amp; Lock Payroll</button>
+                            </div>
+                        </template>
+
+                        <template x-if="cycleLocked">
+                            <div
+                                class="rounded-3xl bg-forest-light border border-forest/25 shadow-card p-8 text-center">
+                                <div
+                                    class="w-14 h-14 mx-auto rounded-full bg-forest text-cream flex items-center justify-center mb-4">
+                                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h2 class="font-display text-[22px] text-forest-dark">Payroll Locked</h2>
+                                <p class="text-[13.5px] text-ink-soft mt-1.5">June 2026 payroll was locked on 30 Jun
+                                    2026, 6:12 PM by Rhea Sarin. Disbursement is scheduled for 05 Jul 2026.</p>
+                                <button @click="cycleLocked=false"
+                                    class="mt-5 text-[12.5px] text-forest-dark underline">Request Unlock</button>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <!-- ================= 7. PAYSLIPS =================
+           Laravel: generated only after lock (or per policy). PDF content is
+           PayrollEngine::explain() output rendered through the same ledgerRows
+           shape used in the Salary Ledger — one source of truth for both.
+      ================================================================= -->
+                <section x-show="activeTab === 'payslips'" x-cloak class="fade-in space-y-5">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h2 class="font-display text-[20px]">Payslips</h2>
+                            <p class="text-[13px] text-ink-soft mt-0.5">Preview, download, or email payslips for this
+                                cycle</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="toast='Bulk download started'"
+                                class="text-[12.5px] px-4 py-2.5 rounded-lg border border-line hover:border-brass font-medium">Bulk
+                                Download</button>
+                            <button @click="toast='Bulk email queued'"
+                                class="text-[12.5px] px-4 py-2.5 rounded-lg border border-line hover:border-brass font-medium">Bulk
+                                Email</button>
+                            <button @click="toast='Generating payslips for all employees…'"
+                                class="text-[12.5px] px-4 py-2.5 rounded-lg bg-brass-dark text-cream font-medium">Bulk
+                                Generate All</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2.5">
+                        <input type="text" x-model="payslipFilters.search" placeholder="Search employee…"
+                            class="flex-1 min-w-[200px] text-[13px] bg-cream border border-line rounded-xl px-3.5 py-2.5 outline-none focus:border-brass">
+                        <select x-model="payslipFilters.dept"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Departments</option>
+                            <template x-for="d in departments" :key="d">
+                                <option :value="d" x-text="d"></option>
+                            </template>
+                        </select>
+                        <select x-model="payslipFilters.status"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Statuses</option>
+                            <option value="downloaded">Downloaded</option>
+                            <option value="pending">Not Downloaded</option>
+                        </select>
+                    </div>
+
+                    <div class="grid lg:grid-cols-[320px_1fr] gap-5">
+                        <div
+                            class="rounded-2xl bg-cream border border-line shadow-soft p-3 h-fit max-h-[560px] overflow-y-auto">
+                            <template x-for="e in filteredPayslipEmployees" :key="e.id">
+                                <button @click="openPayslip(e)"
+                                    class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-brass-light/40"
+                                    :class="payslipEmp && payslipEmp.id === e.id ? 'bg-brass-light/60' : ''">
+                                    <span
+                                        class="w-7 h-7 rounded-full bg-brass-dark text-cream text-[10.5px] font-display flex items-center justify-center shrink-0"
+                                        x-text="e.initials"></span>
+                                    <span class="text-[13px] truncate flex-1" x-text="e.name"></span>
+                                    <span class="text-[9.5px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                                        :class="e.downloadStatus==='downloaded' ? 'bg-forest-light text-forest' : 'bg-line/60 text-ink-faint'"
+                                        x-text="e.downloadStatus==='downloaded' ? 'DL' : 'Pending'"></span>
+                                    <span class="text-[9.5px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                                        :class="e.emailStatus==='sent' ? 'bg-forest-light text-forest' : 'bg-line/60 text-ink-faint'"
+                                        x-text="e.emailStatus==='sent' ? 'Sent' : 'Not sent'"></span>
+                                </button>
+                            </template>
+                        </div>
+
+                        <div class="rounded-2xl bg-cream border border-line shadow-lift p-8" x-show="payslipEmp">
+                            <div class="flex justify-between items-start border-b border-line pb-5">
+                                <div>
+                                    <p class="font-display text-[20px]">Iconic Social</p>
+                                    <p class="text-[11.5px] text-ink-faint">Dehradun, Uttarakhand, India</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-display text-[16px] text-brass-dark">Payslip</p>
+                                    <p class="text-[11.5px] text-ink-faint">June 2026 · Generated <span
+                                            x-text="payslipEmp?.generatedDate"></span></p>
+                                </div>
+                            </div>
+                            <div class="grid sm:grid-cols-2 gap-3 py-5 text-[13px]">
+                                <p><span class="text-ink-faint">Employee: </span><span class="font-medium"
+                                        x-text="payslipEmp?.name"></span></p>
+                                <p><span class="text-ink-faint">Employee ID: </span><span
+                                        x-text="payslipEmp?.id"></span></p>
+                                <p><span class="text-ink-faint">Department: </span><span
+                                        x-text="payslipEmp?.dept"></span></p>
+                                <p><span class="text-ink-faint">Designation: </span><span
+                                        x-text="payslipEmp?.designation"></span></p>
+                            </div>
+                            <table class="w-full text-[13px] border-t border-line">
+                                <tbody>
+                                    <tr class="border-b border-line/70">
+                                        <td class="py-2 text-ink-soft">Base Salary</td>
+                                        <td class="py-2 text-right num"
+                                            x-text="'₹' + (payslipEmp?.baseSalary||0).toLocaleString('en-IN')"></td>
+                                    </tr>
+                                    <tr class="border-b border-line/70">
+                                        <td class="py-2 text-ink-soft">Allowances</td>
+                                        <td class="py-2 text-right num"
+                                            x-text="'₹' + (payslipEmp?.allowances||0).toLocaleString('en-IN')"></td>
+                                    </tr>
+                                    <tr class="border-b border-line/70">
+                                        <td class="py-2 text-ink-soft">Overtime + Bonuses</td>
+                                        <td class="py-2 text-right num text-forest"
+                                            x-text="'₹' + (payslipEmp?.bonuses||0).toLocaleString('en-IN')"></td>
+                                    </tr>
+                                    <tr class="border-b border-line/70">
+                                        <td class="py-2 text-ink-soft">Deductions</td>
+                                        <td class="py-2 text-right num text-oxblood"
+                                            x-text="'– ₹' + (payslipEmp?.deductions||0).toLocaleString('en-IN')"></td>
+                                    </tr>
+                                    <tr class="border-b border-line/70">
+                                        <td class="py-2 text-ink-soft">Tax + PF + ESI</td>
+                                        <td class="py-2 text-right num text-oxblood"
+                                            x-text="'– ₹' + ((payslipEmp?.taxAmt||0)+(payslipEmp?.pf||0)+(payslipEmp?.esi||0)).toLocaleString('en-IN')">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 font-display text-[16px]">Net Salary</td>
+                                        <td class="py-3 text-right font-display text-[19px]"
+                                            x-text="'₹' + (payslipEmp?.net||0).toLocaleString('en-IN')"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="flex items-center justify-between mt-6 pt-5 border-t border-line">
+                                <div
+                                    class="w-16 h-16 rounded-lg bg-ink/90 grid grid-cols-4 grid-rows-4 gap-[2px] p-1.5">
+                                    <template x-for="n in 16" :key="n"><span class="rounded-[1px]"
+                                            :class="n % 3 === 0 ? 'bg-cream' : 'bg-transparent'"></span></template>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click="toast='Opening print preview…'"
+                                        class="text-[12px] px-3.5 py-2 rounded-lg border border-line hover:border-brass">Print</button>
+                                    <button
+                                        @click="payslipEmp.emailStatus='sent'; toast='Payslip emailed to '+payslipEmp.name"
+                                        class="text-[12px] px-3.5 py-2 rounded-lg border border-line hover:border-brass">Email</button>
+                                    <button @click="payslipEmp.downloadStatus='downloaded'; toast='Payslip downloaded'"
+                                        class="text-[12px] px-3.5 py-2 rounded-lg bg-forest text-cream font-medium hover:bg-forest-dark">Download
+                                        PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="!payslipEmp"
+                            class="rounded-2xl bg-cream border border-dashed border-line p-16 text-center lg:col-span-1">
+                            <p class="text-[13px] text-ink-faint">Select an employee to preview their payslip</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= 8. AUDIT TRAIL =================
+           Laravel: append-only audit_log table, 7-year retention per
+           policies.audit.retentionYears. Every row must carry the fields in
+           policies.audit.requiredFields — enforce this at the model level
+           (e.g. an AuditLogObserver), not by convention.
+      ================================================================= -->
+                <section x-show="activeTab === 'audit'" x-cloak class="fade-in space-y-5">
+                    <h2 class="font-display text-[20px]">Audit Trail</h2>
+                    <div class="flex flex-wrap gap-2.5">
+                        <input type="text" x-model="auditFilters.search" placeholder="Search audit trail…"
+                            class="flex-1 min-w-[200px] text-[13px] bg-cream border border-line rounded-xl px-3.5 py-2.5 outline-none focus:border-brass">
+                        <select x-model="auditFilters.category"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Categories</option>
+                            <template x-for="c in auditCategories" :key="c">
+                                <option :value="c" x-text="c"></option>
+                            </template>
+                        </select>
+                        <select x-model="auditFilters.emp"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                            <option value="">All Employees</option>
+                            <template x-for="e in employees" :key="e.id">
+                                <option :value="e.name" x-text="e.name"></option>
+                            </template>
+                        </select>
+                        <input type="date" x-model="auditFilters.from"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                        <input type="date" x-model="auditFilters.to"
+                            class="text-[13px] bg-cream border border-line rounded-xl px-3 py-2.5 outline-none focus:border-brass">
+                        <button @click="auditFilters={search:'',category:'',emp:'',from:'',to:''}"
+                            class="text-[12.5px] text-brass-dark font-medium px-3 py-2.5 hover:underline">Reset</button>
+                    </div>
+                    <div class="rounded-2xl bg-cream border border-line shadow-soft p-7">
+                        <div
+                            class="space-y-6 relative pl-6 before:absolute before:left-[9px] before:top-1 before:bottom-1 before:w-px before:bg-line">
+                            <template x-for="a in filteredAudit" :key="a.id">
+                                <div class="relative">
+                                    <span
+                                        class="absolute -left-6 top-0.5 w-4 h-4 rounded-full flex items-center justify-center"
+                                        :class="auditDot(a.type)">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-cream"></span>
+                                    </span>
+                                    <div class="flex flex-wrap items-center gap-2 text-[13px]">
+                                        <span class="font-medium" x-text="a.actor"></span>
+                                        <span class="text-ink-soft" x-text="a.action"></span>
+                                        <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                                            :class="auditBadge(a.type)" x-text="a.category"></span>
+                                    </div>
+                                    <p class="text-[12px] text-ink-faint mt-0.5" x-text="a.timestamp"></p>
+                                    <p class="text-[12.5px] mt-1" x-show="a.oldValue"><span
+                                            class="text-oxblood num">₹<span x-text="a.oldValue"></span></span> <span
+                                            class="text-ink-faint">→</span> <span class="text-forest num">₹<span
+                                                x-text="a.newValue"></span></span></p>
+                                </div>
+                            </template>
+                            <p x-show="!filteredAudit.length" class="text-[13px] text-ink-faint">No audit entries match
+                                these filters.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= 9. REPORTS ================= -->
+                <section x-show="activeTab === 'reports'" x-cloak class="fade-in space-y-5">
+                    <h2 class="font-display text-[20px]">Reports</h2>
+                    <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <template x-for="r in reports" :key="r.title">
+                            <div
+                                class="rounded-2xl bg-cream border border-line shadow-soft p-5 hover:shadow-lift hover:-translate-y-0.5 transition-all">
+                                <p class="font-medium text-[14px]" x-text="r.title"></p>
+                                <p class="text-[12px] text-ink-faint mt-1 mb-4" x-text="r.desc"></p>
+
+                                <!-- bar -->
+                                <div x-show="r.type==='bar'" class="flex items-end gap-1.5 h-16">
+                                    <template x-for="(v, i) in r.data" :key="v.label">
+                                        <div class="flex-1 flex flex-col items-center gap-1">
+                                            <div class="w-full rounded-t"
+                                                :class="i % 2 === 0 ? 'bg-brass/70' : 'bg-cognac/60'"
+                                                :style="'height:' + (v.value/r.max*100) + '%'"></div>
+                                            <span class="text-[9px] text-ink-faint truncate w-full text-center"
+                                                x-text="v.label"></span>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- line -->
+                                <svg x-show="r.type==='line'" viewBox="0 0 240 70" class="w-full h-16">
+                                    <polyline :points="linePoints(r.data, r.max)" fill="none" stroke="#1E3D30"
+                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                                    <template x-for="(v,i) in r.data" :key="i">
+                                        <circle :cx="i*(240/(r.data.length-1))" :cy="70 - (v.value/r.max*64) - 3" r="3"
+                                            fill="#C6941C" />
+                                    </template>
+                                </svg>
+
+                                <!-- donut -->
+                                <div x-show="r.type==='donut'" class="flex items-center gap-4">
+                                    <div class="w-20 h-20 rounded-full shrink-0" :style="donutStyle(r.data)"></div>
+                                    <ul class="space-y-1 flex-1">
+                                        <template x-for="(v,i) in r.data" :key="v.label">
+                                            <li class="flex items-center gap-1.5 text-[11px] text-ink-soft"><span
+                                                    class="w-2 h-2 rounded-full shrink-0"
+                                                    :style="'background:'+donutColors[i%donutColors.length]"></span><span
+                                                    x-text="v.label"></span><span class="ml-auto num"
+                                                    x-text="v.value"></span></li>
+                                        </template>
+                                    </ul>
+                                </div>
+
+                                <!-- list (highest earners) -->
+                                <div x-show="r.type==='list'" class="space-y-2">
+                                    <template x-for="v in r.data" :key="v.label">
+                                        <div class="flex items-center gap-2 text-[12px]">
+                                            <span class="w-20 truncate text-ink-soft" x-text="v.label"></span>
+                                            <div class="flex-1 h-2 rounded-full bg-brass-light/60 overflow-hidden">
+                                                <div class="h-full bg-forest rounded-full"
+                                                    :style="'width:'+(v.value/r.max*100)+'%'"></div>
+                                            </div>
+                                            <span class="num text-ink-faint w-16 text-right"
+                                                x-text="'₹'+v.value.toLocaleString('en-IN')"></span>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <button @click="toast='Exported '+r.title+' as CSV'"
+                                    class="w-full mt-4 text-[12px] py-2 rounded-lg border border-line hover:border-brass font-medium">Export
+                                    CSV</button>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <!-- ================= 10. CONFIGURATION CENTER =================
+           Laravel integration notes:
+           - Backing table: `policy_groups` (id, tenant_id, key, title, description)
+             + `policy_fields` (group_id, key, label, hint, type, value, sort_order)
+             OR a single versioned JSON column per group if EAV is overkill for v1.
+           - Every group below corresponds 1:1 to a section of the Business Rules
+             Specification (BRS). This screen IS the "Default Policy Pack ↓
+             Venture Request already installed" concept: on first boot the seeder
+             inserts these exact values as the tenant's active policy version.
+           - The engines (AttendanceResolutionEngine, LeaveEngine, PayrollEngine,
+             EmployeeLifecycleEngine) must resolve every rule through a
+             PolicyRepository — never through a literal in a Blade template or a
+             PHP class. "Can HR change this from the UI without a developer?"
+             is the acceptance test for every field on this screen.
+           - Saving a group should version the previous policy set (append-only)
+             so payroll runs remain reproducible/auditable even after a policy
+             changes mid-cycle — never overwrite in place.
+      ================================================================= -->
+                <section x-show="activeTab === 'settings'" x-cloak class="fade-in">
+                    <div class="mb-5">
+                        <h2 class="font-display text-[20px]">Configuration Center</h2>
+                        <p class="text-[13px] text-ink-soft mt-1 max-w-2xl">Every company rule in the Business Rules
+                            Specification lives here as an editable policy — never hardcoded in the engine. What you see
+                            below is the <span class="font-medium text-brass-dark">Venture Request Default Policy
+                                Pack</span>, pre-installed. Change any value and the Attendance, Leave, and Payroll
+                            engines pick it up on the next run.</p>
+                    </div>
+                    <div class="grid lg:grid-cols-[240px_1fr] gap-5">
+                        <div class="rounded-2xl bg-cream border border-line shadow-soft p-2 h-fit lg:sticky lg:top-24">
+                            <template x-for="g in settingsGroups" :key="g.id">
+                                <button @click="settingsTab = g.id"
+                                    class="w-full text-left text-[13px] px-3.5 py-2.5 rounded-xl transition-colors"
+                                    :class="settingsTab===g.id ? 'bg-brass-light text-brass-dark font-medium' : 'text-ink-soft hover:bg-ivory'"
+                                    x-text="g.title"></button>
+                            </template>
+                        </div>
+                        <template x-for="g in settingsGroups" :key="g.id">
+                            <div x-show="settingsTab===g.id"
+                                class="rounded-2xl bg-cream border border-line shadow-soft p-6 max-w-2xl">
+                                <p class="font-display text-[16px] mb-1" x-text="g.title"></p>
+                                <p class="text-[12px] text-ink-faint mb-4" x-text="g.desc"></p>
+
+                                <!-- Attendance Resolution Order — ranked reference list, BRS §4 -->
+                                <template x-if="g.isOrderList">
+                                    <div class="space-y-2">
+                                        <template x-for="(step, idx) in g.orderItems" :key="step">
+                                            <div
+                                                class="flex items-center gap-3 rounded-xl border border-line bg-ivory px-3.5 py-2.5">
+                                                <span
+                                                    class="w-6 h-6 rounded-full bg-brass-dark text-cream text-[11px] font-display flex items-center justify-center shrink-0"
+                                                    x-text="idx+1"></span>
+                                                <span class="text-[13.5px] font-medium" x-text="step"></span>
+                                                <span class="ml-auto text-[10.5px] text-ink-faint"
+                                                    x-text="idx===0 ? 'evaluated first' : idx===g.orderItems.length-1 ? 'fallback' : ''"></span>
+                                            </div>
+                                        </template>
+                                        <p class="text-[11px] text-brass-dark pt-1">Engine must stop at the first match
+                                            walking top → bottom, every time — deterministic, no shortcuts.</p>
+                                    </div>
+                                </template>
+
+                                <!-- Payroll Mapping — canonical Attendance State → Payroll Effect, BRS §15 -->
+                                <template x-if="g.isMappingTable">
+                                    <div class="rounded-xl border border-line overflow-hidden">
+                                        <table class="w-full text-[13px]">
+                                            <thead
+                                                class="bg-brass-light/60 text-[11px] uppercase tracking-wide text-brass-dark">
+                                                <tr>
+                                                    <th class="text-left font-semibold px-4 py-2.5">Attendance State
+                                                    </th>
+                                                    <th class="text-left font-semibold px-4 py-2.5">Payroll Effect</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template x-for="row in policies.payrollMapping" :key="row.state">
+                                                    <tr class="border-t border-line/70">
+                                                        <td class="px-4 py-2.5 font-medium" x-text="row.state"></td>
+                                                        <td class="px-4 py-2.5"
+                                                            :class="row.effect.includes('Deduction') ? 'text-oxblood' : row.effect.includes('Paid') || row.effect.includes('Pay') ? 'text-forest' : 'text-ink-soft'"
+                                                            x-text="row.effect"></td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                        <p
+                                            class="text-[11px] text-ink-faint px-4 py-2.5 bg-ivory/60 border-t border-line">
+                                            Read directly by the Payroll Engine as a lookup table — editable here, never
+                                            edited in code.</p>
+                                    </div>
+                                </template>
+
+                                <!-- Default: generic field editor (text / toggle) -->
+                                <template x-if="!g.isOrderList && !g.isMappingTable">
+                                    <div class="space-y-3.5">
+                                        <template x-for="f in g.fields" :key="f.label">
+                                            <div class="flex items-center justify-between gap-4">
+                                                <div>
+                                                    <p class="text-[13.5px]" x-text="f.label"></p>
+                                                    <p class="text-[11.5px] text-ink-faint" x-text="f.hint"></p>
+                                                </div>
+                                                <template x-if="f.type === 'toggle'">
+                                                    <button @click="f.value = !f.value"
+                                                        class="w-11 h-6 rounded-full transition-colors relative shrink-0"
+                                                        :class="f.value ? 'bg-forest' : 'bg-line'">
+                                                        <span
+                                                            class="absolute top-0.5 w-5 h-5 rounded-full bg-cream shadow transition-all"
+                                                            :class="f.value ? 'left-5' : 'left-0.5'"></span>
+                                                    </button>
+                                                </template>
+                                                <template x-if="f.type === 'text'">
+                                                    <input type="text" x-model="f.value"
+                                                        class="w-44 text-[13px] bg-ivory border border-line rounded-lg px-3 py-1.5 outline-none focus:border-brass text-right num shrink-0">
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <button @click="toast=g.title+' policy saved · new version created'"
+                                    class="mt-5 text-[12.5px] px-4 py-2 rounded-lg bg-brass-dark text-cream font-medium">Save
+                                    Changes</button>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ============ EMPLOYEE DRAWER ============ -->
+    <div x-show="drawerOpen" x-cloak class="fixed inset-0 z-40">
+        <div class="absolute inset-0 bg-ink/30 backdrop-blur-[2px]" @click="drawerOpen=false" x-show="drawerOpen"
+            x-transition.opacity></div>
+        <div class="absolute right-0 top-0 h-full w-full sm:w-[540px] bg-ivory shadow-lift drawer-enter"
+            :style="drawerOpen ? 'transform:translateX(0)' : 'transform:translateX(100%)'">
+            <template x-if="selectedEmployee">
+                <div class="h-full flex flex-col">
+                    <div class="px-6 py-5 border-b border-line bg-cream flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="w-11 h-11 rounded-full bg-brass-dark text-cream font-display flex items-center justify-center"
+                                x-text="selectedEmployee.initials"></span>
+                            <div>
+                                <p class="font-display text-[18px]" x-text="selectedEmployee.name"></p>
+                                <p class="text-[12px] text-ink-faint"
+                                    x-text="selectedEmployee.id + ' · ' + selectedEmployee.designation"></p>
+                            </div>
+                        </div>
+                        <button @click="drawerOpen=false" class="text-ink-faint hover:text-ink">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="flex border-b border-line bg-cream px-4 overflow-x-auto">
+                        <template
+                            x-for="t in ['overview','attendance','salary','corrections','adjustments','audit','payslips','notes']"
+                            :key="t">
+                            <button @click="drawerTab=t"
+                                class="capitalize text-[12.5px] px-3 py-3 border-b-2 -mb-px shrink-0"
+                                :class="drawerTab===t ? 'border-brass text-brass-dark font-medium' : 'border-transparent text-ink-faint'"
+                                x-text="t"></button>
+                        </template>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto px-6 py-5">
+                        <!-- overview -->
+                        <div x-show="drawerTab==='overview'" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-3 text-[13px]">
+                                <div class="rounded-xl bg-cream border border-line p-3.5">
+                                    <p class="text-[11px] text-ink-faint uppercase">Department</p>
+                                    <p class="mt-0.5" x-text="selectedEmployee.dept"></p>
+                                </div>
+                                <div class="rounded-xl bg-cream border border-line p-3.5">
+                                    <p class="text-[11px] text-ink-faint uppercase">Status</p>
+                                    <p class="mt-0.5"><span
+                                            class="inline-flex items-center gap-1.5 text-[12px] font-medium"><span
+                                                class="w-1.5 h-1.5 rounded-full"
+                                                :class="statusDot(selectedEmployee.status)"></span><span
+                                                x-text="statusLabel(selectedEmployee.status)"></span></span></p>
+                                </div>
+                                <div class="rounded-xl bg-cream border border-line p-3.5">
+                                    <p class="text-[11px] text-ink-faint uppercase">Last Modified</p>
+                                    <p class="mt-0.5 text-[12.5px]" x-text="selectedEmployee.lastModified"></p>
+                                </div>
+                                <div class="rounded-xl bg-cream border border-line p-3.5">
+                                    <p class="text-[11px] text-ink-faint uppercase">Import Source</p>
+                                    <p class="mt-0.5 text-[12.5px]" x-text="selectedEmployee.importSource"></p>
+                                </div>
+                            </div>
+                            <div class="rounded-xl bg-cream border border-line p-4">
+                                <p class="text-[12px] uppercase tracking-wide text-ink-faint mb-2">Quick Stats</p>
+                                <div class="grid grid-cols-3 gap-3 text-center">
+                                    <div>
+                                        <p class="font-display text-[18px]"
+                                            x-text="selectedEmployee.gross.toLocaleString('en-IN')"></p>
+                                        <p class="text-[10.5px] text-ink-faint">Gross ₹</p>
+                                    </div>
+                                    <div>
+                                        <p class="font-display text-[18px] text-oxblood"
+                                            x-text="selectedEmployee.deductions.toLocaleString('en-IN')"></p>
+                                        <p class="text-[10.5px] text-ink-faint">Deductions ₹</p>
+                                    </div>
+                                    <div>
+                                        <p class="font-display text-[18px] text-forest"
+                                            x-text="selectedEmployee.net.toLocaleString('en-IN')"></p>
+                                        <p class="text-[10.5px] text-ink-faint">Net ₹</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- attendance -->
+                        <div x-show="drawerTab==='attendance'" class="grid grid-cols-2 gap-3 text-[13px]">
+                            <template
+                                x-for="row in [['Present',selectedEmployee.present,'ink'],['Late',selectedEmployee.late,'brass-dark'],['Half Day',selectedEmployee.halfDay,'ink'],['Paid Leave',selectedEmployee.paidLeave,'forest'],['Unpaid Leave',selectedEmployee.unpaidLeave,'oxblood'],['WFH',selectedEmployee.wfh,'ink'],['Overtime (hrs)',selectedEmployee.overtimeHours,'forest'],['Attendance %',attPct(selectedEmployee)+'%','ink']]"
+                                :key="row[0]">
+                                <div class="rounded-xl bg-cream border border-line p-3.5">
+                                    <p class="text-[11px] text-ink-faint uppercase" x-text="row[0]"></p>
+                                    <p class="num text-[16px] mt-1" :class="'text-'+row[2]" x-text="row[1]"></p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- salary -->
+                        <div x-show="drawerTab==='salary'" class="space-y-1">
+                            <template
+                                x-for="row in [['Base Salary',selectedEmployee.baseSalary],['Allowances',selectedEmployee.allowances],['Bonuses',selectedEmployee.bonuses],['Overtime Pay',selectedEmployee.overtimeHours*250],['Deductions',-selectedEmployee.deductions],['Tax (TDS)',-selectedEmployee.taxAmt],['Provident Fund',-selectedEmployee.pf],['ESI',-selectedEmployee.esi],['Professional Tax',-selectedEmployee.profTax]]"
+                                :key="row[0]">
+                                <div class="flex justify-between text-[13px] py-2 border-b border-line/70">
+                                    <span class="text-ink-soft" x-text="row[0]"></span>
+                                    <span class="num" :class="row[1] < 0 ? 'text-oxblood' : 'text-forest'"
+                                        x-text="(row[1]<0?'– ':'')+'₹'+Math.abs(row[1]).toLocaleString('en-IN')"></span>
+                                </div>
+                            </template>
+                            <div class="flex justify-between pt-3 mt-2">
+                                <span class="font-display text-[16px]">Net Salary</span>
+                                <span class="font-display text-[19px]"
+                                    x-text="'₹'+selectedEmployee.net.toLocaleString('en-IN')"></span>
+                            </div>
+                        </div>
+
+                        <!-- corrections -->
+                        <div x-show="drawerTab==='corrections'" class="space-y-3">
+                            <template x-if="selectedEmployee.status==='correction'">
+                                <div class="space-y-3">
+                                    <div class="rounded-xl bg-oxblood-light/70 border border-oxblood/20 p-3.5">
+                                        <p class="text-[11px] uppercase text-oxblood mb-1">Reason</p>
+                                        <p class="text-[13px] text-ink" x-text="selectedEmployee.correctionReason"></p>
+                                    </div>
+                                    <div class="rounded-xl bg-cream border border-line p-3.5">
+                                        <p class="text-[11px] uppercase text-ink-faint mb-1">System Explanation</p>
+                                        <p class="text-[12.5px] text-ink-soft"
+                                            x-text="selectedEmployee.systemExplanation"></p>
+                                    </div>
+                                    <div class="rounded-xl bg-cream border border-line p-3.5">
+                                        <p class="text-[11px] uppercase text-ink-faint mb-1">Employee Remark</p>
+                                        <p class="text-[12.5px] text-ink-soft italic" x-text="selectedEmployee.remarks">
+                                        </p>
+                                    </div>
+                                    <button @click="activeTab='corrections'; drawerOpen=false"
+                                        class="w-full text-[12.5px] py-2 rounded-lg border border-line hover:border-brass font-medium">Open
+                                        in Corrections Workspace</button>
+                                </div>
+                            </template>
+                            <p x-show="selectedEmployee.status!=='correction'" class="text-[12.5px] text-ink-faint">No
+                                open corrections for this employee.</p>
+                        </div>
+
+                        <!-- adjustments -->
+                        <div x-show="drawerTab==='adjustments'" class="space-y-3">
+                            <div class="rounded-xl bg-cream border border-line p-3.5">
+                                <p class="text-[11px] uppercase text-ink-faint mb-2">Manual Adjustment</p>
+                                <div class="flex gap-2">
+                                    <input type="text" placeholder="Reason"
+                                        class="flex-1 text-[12.5px] bg-ivory border border-line rounded-lg px-2.5 py-2 outline-none focus:border-brass">
+                                    <input type="number" placeholder="Amount ₹"
+                                        class="w-28 text-[12.5px] bg-ivory border border-line rounded-lg px-2.5 py-2 outline-none focus:border-brass">
+                                </div>
+                                <button @click="toast='Adjustment added — pending approval'"
+                                    class="mt-2.5 text-[12px] px-3.5 py-2 rounded-lg bg-brass-dark text-cream font-medium">Add
+                                    Adjustment</button>
+                            </div>
+                            <p class="text-[11.5px] text-ink-faint">Manual adjustments require a second reviewer before
+                                affecting net pay, per your approval workflow settings.</p>
+                        </div>
+
+                        <!-- audit -->
+                        <div x-show="drawerTab==='audit'"
+                            class="space-y-4 relative pl-5 before:absolute before:left-[7px] before:top-1 before:bottom-1 before:w-px before:bg-line">
+                            <template x-for="a in auditTrail.filter(x=>x.emp===selectedEmployee.name)" :key="a.id">
+                                <div class="relative">
+                                    <span class="absolute -left-5 top-0.5 w-3 h-3 rounded-full bg-brass"></span>
+                                    <p class="text-[12.5px] font-medium" x-text="a.action"></p>
+                                    <p class="text-[11px] text-ink-faint" x-text="a.timestamp"></p>
+                                </div>
+                            </template>
+                            <p class="text-[12.5px] text-ink-faint"
+                                x-show="auditTrail.filter(x=>x.emp===selectedEmployee.name).length===0">No audit history
+                                for this employee.</p>
+                        </div>
+
+                        <!-- payslips -->
+                        <div x-show="drawerTab==='payslips'" class="space-y-3">
+                            <div class="rounded-xl bg-cream border border-line p-3.5 flex items-center justify-between">
+                                <div>
+                                    <p class="text-[13px] font-medium">June 2026</p>
+                                    <p class="text-[11px] text-ink-faint"
+                                        x-text="'Generated ' + selectedEmployee.generatedDate"></p>
+                                </div>
+                                <button @click="openPayslip(selectedEmployee); drawerOpen=false"
+                                    class="text-[12px] px-3 py-1.5 rounded-lg border border-line hover:border-brass">Preview</button>
+                            </div>
+                        </div>
+
+                        <!-- notes -->
+                        <div x-show="drawerTab==='notes'" class="space-y-3">
+                            <textarea x-model="selectedEmployee._note"
+                                placeholder="Add a note for this employee's payroll…"
+                                class="w-full text-[13px] bg-cream border border-line rounded-xl p-3.5 outline-none focus:border-brass resize-none"
+                                rows="5"></textarea>
+                            <button @click="toast='Note saved'"
+                                class="text-[12.5px] px-4 py-2 rounded-lg bg-brass-dark text-cream font-medium">Save
+                                Note</button>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-line bg-cream flex gap-2">
+                        <button @click="openPayslip(selectedEmployee)"
+                            class="flex-1 text-[12.5px] py-2.5 rounded-lg border border-line hover:border-brass font-medium">Generate
+                            Payslip</button>
+                        <button @click="resolveCorrection(selectedEmployee,'approved'); toast='Approved'"
+                            class="flex-1 text-[12.5px] py-2.5 rounded-lg bg-forest text-cream font-medium hover:bg-forest-dark">Approve</button>
+                        <button @click="drawerTab='adjustments'"
+                            class="flex-1 text-[12.5px] py-2.5 rounded-lg bg-brass-dark text-cream font-medium hover:bg-brass">Override</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ============ LOCK CONFIRMATION MODAL ============ -->
+    <div x-show="showLockModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" @click="!lockProcessing && (showLockModal=false)">
+        </div>
+        <div class="relative bg-cream rounded-2xl shadow-lift max-w-md w-full p-7">
+            <template x-if="!lockProcessing && !lockDone">
+                <div>
+                    <h3 class="font-display text-[19px]">Confirm Payroll Lock</h3>
+                    <p class="text-[13px] text-ink-soft mt-2">This will finalize salary computations for 28 employees. 4
+                        employees with pending corrections will be excluded. This action requires an unlock request to
+                        reverse.</p>
+                    <div class="flex gap-2.5 mt-6">
+                        <button @click="showLockModal=false"
+                            class="flex-1 text-[13px] py-2.5 rounded-lg border border-line hover:border-brass font-medium">Cancel</button>
+                        <button @click="processLock()"
+                            class="flex-1 text-[13px] py-2.5 rounded-lg bg-forest text-cream font-medium hover:bg-forest-dark">Lock
+                            Payroll</button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="lockProcessing">
+                <div class="text-center py-6">
+                    <div class="w-10 h-10 mx-auto rounded-full border-2 border-brass/30 border-t-brass animate-spin">
+                    </div>
+                    <p class="text-[13.5px] mt-4 text-ink-soft">Locking payroll cycle…</p>
+                </div>
+            </template>
+            <template x-if="lockDone">
+                <div class="text-center py-4">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-full bg-forest text-cream flex items-center justify-center mb-3">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                    </div>
+                    <p class="font-display text-[17px]">Payroll Locked</p>
+                    <button @click="showLockModal=false"
+                        class="mt-4 text-[12.5px] text-brass-dark underline">Close</button>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ============ TOAST ============ -->
+    <div x-show="toast" x-cloak x-transition class="fixed bottom-6 right-6 z-50 toast-enter">
+        <div
+            class="bg-walnut text-cream text-[13px] px-4 py-3 rounded-xl shadow-lift flex items-center gap-2.5 max-w-sm">
+            <span class="w-1.5 h-1.5 rounded-full bg-brass shrink-0"></span>
+            <span x-text="toast"></span>
+            <button @click="toast=null" class="ml-2 text-cream/60 hover:text-cream">✕</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * =============================================================================
+         * AMS PAYROLL PLATFORM — "Workforce Ledger" · Functional Specification
+         * -----------------------------------------------------------------------------
+         * This file is a prototype, not a redesign target. Every screen below is a
+         * literal spec for a production Laravel build. Read this block before touching
+         * anything else.
+         *
+         * ENGINE SEPARATION (BRS §19 — Separation of Business Logic and Presentation)
+         *   This Alpine object plays the role of four Laravel services. Nothing here
+         *   should be reimplemented as inline Blade logic — each maps to a class:
+         *     - EmployeeLifecycleEngine   → employeeCategory(), employmentDays()
+         *                                    reads policies.lifecycle
+         *     - AttendanceResolutionEngine → walks policies.attendance.resolutionOrder
+         *                                    top→bottom, deterministic, stops at first match
+         *     - LeaveEngine                → reads policies.leave (planned/unplanned/
+         *                                    birthday/half-day/monthly credit/over-balance)
+         *     - PayrollEngine               → reads policies.payroll + policies.payrollMapping,
+         *                                    produces the exact rows shown in ledgerRows()
+         *
+         * SINGLE SOURCE OF TRUTH (BRS §19.1)
+         *   `policies` below is the one and only place any business number lives.
+         *   Grace minutes, probation days, salary payment date, leave credits — all of
+         *   it. Server-side this is a versioned `policies` table read through a
+         *   PolicyRepository; every engine call is `Policy::get('group.key')`, never a
+         *   literal. The Configuration Center screen (tab 10) is the UI for this table.
+         *
+         * CONFIGURATION OVER HARDCODING (BRS §19.2)
+         *   Acceptance test for every rule: "If HR asks to change this next month, can
+         *   they do it from the UI without a developer?" If no, it doesn't belong in
+         *   code — it belongs in `policies` and a Configuration Center field.
+         *
+         * EXCEL IMPORT (BRS §10, §19.4)
+         *   The Zimyo Excel export is canonical. Import maps policies.excelImport.columns
+         *   1:1 — no combining fields, no reinterpretation. Two-pass hierarchy
+         *   resolution resolves manager mapping in a second pass over the same file.
+         *
+         * AUDITABILITY (BRS §18, §19.5)
+         *   Every admin-initiated change (attendance override, leave adjustment, payroll
+         *   correction, salary change, employee edit, shift change, leave balance edit)
+         *   must write an immutable audit row: actor, timestamp, old value, new value,
+         *   reason. See auditTrail below for the shape; policies.audit.appliesTo is the
+         *   canonical list of what must be captured.
+         *
+         * DATA THIS SCREEN SET ASSUMES EXISTS SERVER-SIDE (rough model sketch):
+         *   employees(id, name, dept, designation, join_date, shift_id, salary_structure_id, ...)
+         *   shifts(id, label, type, start_time, end_time, grace_minutes)
+         *   attendance_records(employee_id, date, check_in, check_out, resolved_state, source)
+         *   leave_requests(employee_id, type, date_from, date_to, status, balance_bucket)
+         *   leave_balances(employee_id, planned, unplanned, birthday, carry_forward, ...)
+         *   payroll_cycles(id, period_start, period_end, status, locked_at)
+         *   payroll_lines(cycle_id, employee_id, gross, net, tax, pf, esi, prof_tax, ...)
+         *   corrections(employee_id, cycle_id, reason, status, resolved_by, resolved_at)
+         *   audit_log(actor_id, action, category, old_value, new_value, reason, created_at)
+         *   policies(tenant_id, group_key, field_key, value, version, effective_from)
+         * =============================================================================
+         */
+        function payrollApp() {
+            return {
+                activeTab: 'dashboard',
+                settingsTab: 'cycle',
+                globalSearch: '',
+                loadingTable: true,
+                drawerOpen: false,
+                drawerTab: 'overview',
+                selectedEmployee: null,
+                payslipEmp: null,
+                ledgerEmpId: null,
+                selectedLedgerEmp: null,
+                ledgerOpen: {},
+                showLockModal: false,
+                lockProcessing: false,
+                lockDone: false,
+                cycleLocked: false,
+                toast: null,
+                selectedExceptions: [],
+                filters: { search: '', dept: '', status: '', sort: 'name' },
+                payslipFilters: { search: '', dept: '', status: '' },
+                excFilters: { search: '', dept: '', type: '', priority: '', admin: '', severity: '', resolved: '' },
+                auditFilters: { search: '', category: '', emp: '', from: '', to: '' },
+
+                donutColors: ['#C6941C', '#6B2039', '#1E3D30', '#A85D1E', '#8A7B5C'],
+
+                navItems: [
+                    { id: 'dashboard', label: 'Dashboard' },
+                    { id: 'employees', label: 'Employee Payroll' },
+                    { id: 'ledger', label: 'Salary Ledger' },
+                    { id: 'corrections', label: 'Corrections', badgeFn: function () { return null } },
+                    { id: 'exceptions', label: 'Exceptions', badgeFn: function () { return null } },
+                    { id: 'lock', label: 'Payroll Lock' },
+                    { id: 'payslips', label: 'Payslips' },
+                    { id: 'audit', label: 'Audit Trail' },
+                    { id: 'reports', label: 'Reports' },
+                    { id: 'settings', label: 'Configuration Center' },
+                ],
+
+                cycle: { period: 'June 2026', status: 'processing', statusLabel: 'Processing · 78%' },
+
+                pipeline: [
+                    { id: 'imported', label: 'Attendance Imported', status: 'done', date: '28 Jun 2026', tip: '32 attendance records imported from Zimyo export' },
+                    { id: 'verified', label: 'Attendance Verified', status: 'done', date: '28 Jun 2026', tip: 'All records cross-checked against leave ledger and shift rules' },
+                    { id: 'generated', label: 'Payroll Generated', status: 'done', date: '29 Jun 2026', tip: 'Salary computed for 32 employees using current cycle rules' },
+                    { id: 'corrections', label: 'Corrections Pending', status: 'current', date: 'In progress', tip: '4 employees flagged and awaiting admin review' },
+                    { id: 'approved', label: 'Payroll Approved', status: 'upcoming', date: '—', tip: 'Requires all corrections cleared before sign-off' },
+                    { id: 'payslips', label: 'Payslips Generated', status: 'upcoming', date: '—', tip: 'Generated automatically once payroll is locked' },
+                    { id: 'locked', label: 'Payroll Locked', status: 'upcoming', date: '—', tip: 'Final state — disbursement-ready and immutable' },
+                ],
+
+                kpis: [
+                    { label: 'Total Employees', value: '32', sub: 'Active this cycle' },
+                    { label: 'Approved', value: '14', sub: 'Signed off', tone: 'forest' },
+                    { label: 'Pending Review', value: '4', sub: 'Awaiting approval', tone: 'oxblood' },
+                    { label: 'Locked', value: '1', sub: 'Finalized records' },
+                    { label: 'Exceptions', value: '3', sub: 'Flagged records', tone: 'oxblood' },
+                    { label: 'Payroll Completion', value: '78%', sub: 'Of cycle processed' },
+                    { label: 'Gross Payroll', value: '₹21.4L', sub: 'Before deductions' },
+                    { label: 'Net Payroll', value: '₹18.4L', sub: 'After all deductions', tone: 'forest' },
+                    { label: 'Deductions', value: '₹2.1L', sub: 'Tax, PF, ESI', tone: 'oxblood' },
+                    { label: 'Average Salary', value: '₹54,200', sub: 'Net, per employee' },
+                    { label: 'Average Attendance', value: '92%', sub: 'Across all departments' },
+                    { label: 'Average Overtime', value: '4.8h', sub: 'Per employee this cycle' },
+                ],
+
+                deptSummary: [
+                    { name: 'Engineering', amount: 620000, headcount: 12, avgSalary: 58200, avgAttendance: 91, overtime: 22400, deductions: 41000 },
+                    { name: 'Design', amount: 310000, headcount: 6, avgSalary: 51600, avgAttendance: 94, overtime: 9800, deductions: 18200 },
+                    { name: 'Marketing', amount: 275000, headcount: 5, avgSalary: 49000, avgAttendance: 86, overtime: 4200, deductions: 26400 },
+                    { name: 'Operations', amount: 240000, headcount: 5, avgSalary: 44800, avgAttendance: 95, overtime: 3100, deductions: 12800 },
+                    { name: 'Sales', amount: 198000, headcount: 4, avgSalary: 41200, avgAttendance: 83, overtime: 1900, deductions: 21600 },
+                ],
+                get maxDept() { return Math.max(...this.deptSummary.map(d => d.amount)); },
+
+                timeline: [
+                    { label: 'Attendance data frozen', date: '28 Jun 2026', state: 'completed' },
+                    { label: 'Corrections window closes', date: '29 Jun 2026', state: 'completed' },
+                    { label: 'Payroll lock', date: '30 Jun 2026', state: 'delayed' },
+                    { label: 'Payslips generated', date: '02 Jul 2026', state: 'upcoming' },
+                    { label: 'Disbursement', date: '05 Jul 2026', state: 'upcoming' },
+                ],
+
+                departments: ['Engineering', 'Design', 'Marketing', 'Operations', 'Sales'],
+                admins: ['Rhea Sarin', 'Aditya Verma'],
+
+                // ============================================================================
+                // POLICY PACK — "Venture Request" default configuration
+                // ----------------------------------------------------------------------------
+                // Laravel note: this whole object is the client-side mirror of a `policies`
+                // table (one JSON/EAV row per policy group, versioned, per-tenant). The
+                // Payroll Engine, Attendance Engine, Leave Engine and Lifecycle Engine must
+                // NEVER hardcode any of these numbers — they must read them from here (or,
+                // server-side, from `PolicyRepository::get('attendance.grace_minutes')` etc).
+                // Every field below is editable from the Configuration Center UI, so HR can
+                // change company policy without a developer touching code. This object IS
+                // the "Default Policy Pack ↓ Venture Request already installed" concept from
+                // the BRS — swap these values and the entire engine behaves like a different
+                // company, with zero code changes.
+                // ============================================================================
+                policies: {
+                    lifecycle: {
+                        probationDays: 90,                 // BRS §1 — Employment Duration < 90 Days = Probation
+                        autoPromote: true,                 // AMS must auto-promote on day 90, no manual step
+                        probationLeaveBalance: 0,          // Probation employees accrue no paid leave
+                        probationPayrollCycle: '20th-to-20th',
+                    },
+                    workWeek: {
+                        workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],   // BRS §3
+                        weeklyOff: ['Sun'],
+                        saturdayIsWorking: true,
+                    },
+                    shifts: [
+                        // BRS §2 — shift timings must always be read from here; engine must never
+                        // contain a hardcoded department→timing map.
+                        { id: 'standard', label: 'Standard Shift (Non-IT)', type: 'Fixed Daily Shift', start: '09:30', end: '17:30', graceMinutes: 5, lateAfter: '09:35' },
+                        { id: 'healthcare', label: 'Healthcare Shift', type: 'Flexible Daily Shift', start: '10:00', end: '18:30', graceMinutes: 5, lateAfter: '10:05' },
+                        { id: 'morning', label: 'Morning Shift', type: 'Fixed Daily Shift', start: '09:00', end: '17:30', graceMinutes: 5, lateAfter: '09:05' },
+                    ],
+                    attendance: {
+                        // BRS §4 — deterministic evaluation order. The Attendance Resolution
+                        // Engine must walk this array top→bottom and stop at the first match;
+                        // never re-order in code, always re-order here.
+                        resolutionOrder: ['Manual Override', 'Birthday Leave', 'Approved Leave', 'Attendance Record', 'Automatic Half Day', 'Weekly Off', 'Future', 'Rejected Leave', 'Absent'],
+                        minWorkingHoursForPresent: 8,
+                        halfDayTriggerHours: 4,             // below this ⇒ Automatic Half Day
+                        autoHalfDayOnLateArrival: true,      // BRS §5 — Late auto-becomes Half Day unless overridden
+                    },
+                    leave: {
+                        planned: { paid: true, consumesBalance: 'planned' },
+                        unplanned: { paid: true, consumesBalance: 'unplanned', allowFutureDates: false }, // only today/past
+                        birthday: { autoApproved: true, eligibleFromDaysBefore: 1, consumesStandardBalance: false },
+                        halfDayPlanned: { consumes: 0.5, bucket: 'planned' },
+                        halfDayUnplanned: { consumes: 0.5, bucket: 'unplanned' },
+                        monthlyCreditAmount: 2,              // BRS §8/§17 — +2 leaves/month, permanent only
+                        monthlyCreditDay: 1,
+                        rejectOverBalanceImmediately: true,  // BRS §9 — no pending request ever created if it exceeds balance
+                        carryForward: true,
+                    },
+                    payroll: {
+                        salaryPaymentDay: 7,                 // BRS §12 — every employee paid on the 7th, regardless of category
+                        permanentCycle: 'calendar-month',    // BRS §13 — 1st → last day
+                        probationCycle: '20th-to-20th',      // BRS §13 — bridges into calendar-month on day 90
+                        dailySalaryFormula: 'monthly / calendar_days_in_month', // BRS §14
+                        roundNetTo: 1,
+                    },
+                    payrollMapping: [
+                        // BRS §15 — canonical Attendance State → Payroll Effect table.
+                        // The Payroll Engine must look up this table, never inline an if/else chain.
+                        { state: 'Present', effect: '100% Daily Pay' },
+                        { state: 'Half Day (Automatic)', effect: '50% Daily Pay' },
+                        { state: 'Half Day Planned', effect: '50% Paid Leave' },
+                        { state: 'Half Day Unplanned Approved', effect: '50% Paid Leave' },
+                        { state: 'Half Day Unplanned Rejected', effect: '50% Deduction' },
+                        { state: 'Absent', effect: '100% Deduction' },
+                        { state: 'Planned Leave', effect: 'Fully Paid' },
+                        { state: 'Birthday Leave', effect: 'Fully Paid' },
+                        { state: 'Weekly Off', effect: 'Fully Paid' },
+                        { state: 'Manual Override', effect: 'Uses Override Result' },
+                    ],
+                    excelImport: {
+                        // BRS §10 — Excel is the canonical leave source; every column maps 1:1,
+                        // no interpretation, no combining fields. Import service must fail loudly
+                        // if a column is missing rather than silently defaulting it.
+                        source: 'Zimyo Excel Export',
+                        twoPassHierarchyResolution: true,
+                        columns: ['Planned Leave', 'Unplanned Leave', 'Birthday Leave', 'Paternity Leave', 'Maternity Leave', 'Compensatory Leave', 'Pending Leave', 'Carry Forward', 'Utilized Leave', 'Remaining Leave'],
+                    },
+                    audit: {
+                        retentionYears: 7,
+                        logFieldLevelChanges: true,
+                        requiredFields: ['Administrator', 'Timestamp', 'Old Value', 'New Value', 'Reason'],
+                        appliesTo: ['Attendance Override', 'Leave Adjustment', 'Payroll Correction', 'Salary Change', 'Employee Edit', 'Shift Change', 'Leave Balance Modification'],
+                    },
+                    lock: {
+                        excludeUnresolvedFromLock: true,
+                        requireDualSignoffToUnlock: true,
+                    },
+                },
+
+                employees: [
+                    { id: 'EMP-1042', name: 'Ananya Rawat', initials: 'AR', dept: 'Engineering', designation: 'Backend Engineer', workingDays: 26, present: 24, late: 2, halfDay: 0, paidLeave: 2, unpaidLeave: 0, wfh: 3, overtimeHours: 6, bonuses: 4000, deductions: 1800, gross: 68000, net: 60200, status: 'approved', baseSalary: 52000, allowances: 9000, taxAmt: 3200, pf: 2400, esi: 600, profTax: 200, correctionStatus: 'none', locked: false, lastModified: '29 Jun, 4:10 PM', modifiedBy: 'Rhea Sarin', importSource: 'Zimyo Import', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent' },
+                    { id: 'EMP-1043', name: 'Kabir Mehta', initials: 'KM', dept: 'Design', designation: 'Product Designer', workingDays: 26, present: 26, late: 0, halfDay: 0, paidLeave: 0, unpaidLeave: 0, wfh: 1, overtimeHours: 2, bonuses: 2000, deductions: 1200, gross: 59000, net: 53100, status: 'locked', baseSalary: 46000, allowances: 8000, taxAmt: 2600, pf: 2000, esi: 500, profTax: 200, correctionStatus: 'resolved', locked: true, lastModified: '29 Jun, 3:42 PM', modifiedBy: 'Rhea Sarin', importSource: 'Zimyo Import', generatedDate: '30 Jun 2026', downloadStatus: 'downloaded', emailStatus: 'sent' },
+                    {
+                        id: 'EMP-1044', name: 'Simran Kaur', initials: 'SK', dept: 'Marketing', designation: 'Content Strategist', workingDays: 26, present: 20, late: 1, halfDay: 2, paidLeave: 1, unpaidLeave: 3, wfh: 0, overtimeHours: 0, bonuses: 0, deductions: 5200, gross: 47000, net: 38300, status: 'correction', correctionReason: 'Missing Punch · 3 Days', baseSalary: 42000, allowances: 5000, taxAmt: 1800, pf: 1600, esi: 400, profTax: 200, _open: false, _note: '', _override: false, correctionStatus: 'pending', locked: false, lastModified: '30 Jun, 11:20 AM', modifiedBy: 'Rhea Sarin', importSource: 'Zimyo Import', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent',
+                        attendanceSnapshot: [{ day: 17, status: 'present' }, { day: 18, status: 'present' }, { day: 19, status: 'absent' }, { day: 20, status: 'absent' }, { day: 21, status: 'absent' }, { day: 22, status: 'half' }, { day: 23, status: 'half' }, { day: 24, status: 'present' }, { day: 25, status: 'leave' }, { day: 26, status: 'present' }],
+                        leaveHistory: [{ date: '19 Jun', type: 'Unpaid Leave', days: 1 }, { date: '20 Jun', type: 'Unpaid Leave', days: 1 }, { date: '21 Jun', type: 'Unpaid Leave', days: 1 }, { date: '25 Jun', type: 'Sick Leave', days: 1 }],
+                        systemExplanation: '3 unpaid leave days detected but punch logs show no explicit leave request filed for 19–21 Jun. Deduction applied pending confirmation.',
+                        remarks: 'I was on approved WFH those three days — my manager confirmed over Slack, but I never filed it in the leave system.'
+                    },
+                    { id: 'EMP-1045', name: 'Devansh Bhatt', initials: 'DB', dept: 'Engineering', designation: 'DevOps Lead', workingDays: 26, present: 25, late: 0, halfDay: 0, paidLeave: 1, unpaidLeave: 0, wfh: 2, overtimeHours: 9, bonuses: 6000, deductions: 2100, gross: 82000, net: 73400, status: 'pending', baseSalary: 64000, allowances: 12000, taxAmt: 4200, pf: 2900, esi: 700, profTax: 200, correctionStatus: 'none', locked: false, lastModified: '29 Jun, 2:15 PM', modifiedBy: 'System', importSource: 'Zimyo Import', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent' },
+                    { id: 'EMP-1046', name: 'Priya Nautiyal', initials: 'PN', dept: 'Operations', designation: 'Ops Coordinator', workingDays: 26, present: 26, late: 0, halfDay: 0, paidLeave: 0, unpaidLeave: 0, wfh: 0, overtimeHours: 0, bonuses: 0, deductions: 900, gross: 41000, net: 37600, status: 'approved', baseSalary: 38000, allowances: 3000, taxAmt: 1200, pf: 1400, esi: 350, profTax: 200, correctionStatus: 'none', locked: false, lastModified: '28 Jun, 9:05 AM', modifiedBy: 'System', importSource: 'Zimyo Import', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent' },
+                    {
+                        id: 'EMP-1047', name: 'Yash Semwal', initials: 'YS', dept: 'Sales', designation: 'Sales Executive', workingDays: 26, present: 22, late: 3, halfDay: 1, paidLeave: 1, unpaidLeave: 2, wfh: 0, overtimeHours: 0, bonuses: 1500, deductions: 3400, gross: 44000, net: 37900, status: 'correction', correctionReason: 'Conflicting Attendance', baseSalary: 36000, allowances: 8000, taxAmt: 1400, pf: 1300, esi: 350, profTax: 200, _open: false, _note: '', _override: false, correctionStatus: 'pending', locked: false, lastModified: '29 Jun, 2:05 PM', modifiedBy: 'Rhea Sarin', importSource: 'Zimyo Import', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent',
+                        attendanceSnapshot: [{ day: 17, status: 'present' }, { day: 18, status: 'wfh' }, { day: 19, status: 'leave' }, { day: 20, status: 'present' }, { day: 21, status: 'half' }, { day: 22, status: 'present' }, { day: 23, status: 'present' }, { day: 24, status: 'wfh' }, { day: 25, status: 'leave' }, { day: 26, status: 'present' }],
+                        leaveHistory: [{ date: '19 Jun', type: 'Paid Leave', days: 1 }, { date: '25 Jun', type: 'Unpaid Leave', days: 1 }],
+                        systemExplanation: 'WFH marked in the attendance import for 18 and 24 Jun overlaps with approved leave entries on the same dates — the two sources disagree.',
+                        remarks: 'I cancelled my leave on the 18th to work from home instead, but it looks like the leave request was never withdrawn from the system.'
+                    },
+                    { id: 'EMP-1048', name: 'Ira Thapliyal', initials: 'IT', dept: 'Design', designation: 'UI Designer', workingDays: 26, present: 24, late: 1, halfDay: 0, paidLeave: 2, unpaidLeave: 0, wfh: 1, overtimeHours: 4, bonuses: 2500, deductions: 1600, gross: 56000, net: 50100, status: 'pending', baseSalary: 44000, allowances: 7000, taxAmt: 2200, pf: 1900, esi: 450, profTax: 200, correctionStatus: 'none', locked: false, lastModified: '28 Jun, 5:40 PM', modifiedBy: 'System', importSource: 'Zimyo Import', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent' },
+                    {
+                        id: 'EMP-1049', name: 'Arjun Bisht', initials: 'AB', dept: 'Engineering', designation: 'Frontend Engineer', workingDays: 26, present: 19, late: 0, halfDay: 0, paidLeave: 0, unpaidLeave: 5, wfh: 2, overtimeHours: 0, bonuses: 0, deductions: -800, gross: 58000, net: 52000, status: 'correction', correctionReason: 'Negative Salary Flag', baseSalary: 50000, allowances: 8000, taxAmt: 2400, pf: 2000, esi: 500, profTax: 200, _open: false, _note: '', _override: false, correctionStatus: 'pending', locked: false, lastModified: '29 Jun, 2:05 PM', modifiedBy: 'Rhea Sarin', importSource: 'Manual Entry', generatedDate: '—', downloadStatus: 'pending', emailStatus: 'not sent',
+                        attendanceSnapshot: [{ day: 17, status: 'absent' }, { day: 18, status: 'absent' }, { day: 19, status: 'absent' }, { day: 20, status: 'absent' }, { day: 21, status: 'absent' }, { day: 22, status: 'present' }, { day: 23, status: 'present' }, { day: 24, status: 'present' }, { day: 25, status: 'present' }, { day: 26, status: 'present' }],
+                        leaveHistory: [{ date: '17–21 Jun', type: 'Unpaid Leave', days: 5 }],
+                        systemExplanation: '5 consecutive unpaid leave days against a base of 26 working days pushed the deduction calculation into negative territory — flagged automatically for manual review.',
+                        remarks: 'I was unwell for that whole week and didn\u2019t get around to filing the leave request until after I was back — sorry about the delay.'
+                    },
+                ],
+
+                auditTrail: [
+                    { id: 1, emp: 'Simran Kaur', actor: 'Rhea Sarin', action: 'Adjusted unpaid leave count from 4 to 3 for Simran Kaur', type: 'correction', category: 'Corrections', timestamp: '30 Jun 2026, 11:20 AM', oldValue: '38,300', newValue: '40,800' },
+                    { id: 2, emp: null, actor: 'System', action: 'Imported attendance data for June cycle (32 records)', type: 'import', category: 'Imports', timestamp: '28 Jun 2026, 6:00 AM' },
+                    { id: 3, emp: 'Kabir Mehta', actor: 'Rhea Sarin', action: 'Approved payroll for Kabir Mehta', type: 'approval', category: 'Approvals', timestamp: '29 Jun 2026, 3:42 PM' },
+                    { id: 4, emp: 'Arjun Bisht', actor: 'Rhea Sarin', action: 'Flagged negative salary exception for Arjun Bisht', type: 'correction', category: 'Corrections', timestamp: '29 Jun 2026, 2:05 PM' },
+                    { id: 5, emp: null, actor: 'System', action: 'Payroll cycle May 2026 locked', type: 'lock', category: 'Locks', timestamp: '31 May 2026, 5:58 PM' },
+                    { id: 6, emp: null, actor: 'Aditya Verma', action: 'Unlocked May 2026 payroll for a correction', type: 'unlock', category: 'Overrides', timestamp: '01 Jun 2026, 9:10 AM' },
+                    { id: 7, emp: 'Kabir Mehta', actor: 'System', action: 'Generated and emailed payslip for Kabir Mehta', type: 'approval', category: 'Payslips', timestamp: '30 Jun 2026, 9:00 AM' },
+                    { id: 8, emp: null, actor: 'Rhea Sarin', action: 'Updated overtime rate multiplier from 1.25x to 1.5x', type: 'unlock', category: 'Settings', timestamp: '27 Jun 2026, 4:30 PM' },
+                    { id: 9, emp: 'Yash Semwal', actor: 'System', action: 'Recomputed attendance percentage after Zimyo re-sync', type: 'import', category: 'Attendance', timestamp: '28 Jun 2026, 6:04 AM' },
+                    { id: 10, emp: 'Ananya Rawat', actor: 'System', action: 'Computed gross and net salary for Ananya Rawat', type: 'approval', category: 'Salary', timestamp: '29 Jun 2026, 6:00 AM' },
+                ],
+                get auditCategories() { return [...new Set(this.auditTrail.map(a => a.category))] },
+
+                exceptions: [
+                    { title: 'Missing Attendance', count: 1, items: ['Arjun Bisht — 3 days unmarked'] },
+                    { title: 'Negative Salary', count: 1, items: ['Arjun Bisht — computed net below zero'] },
+                    { title: 'Conflicting Attendance', count: 1, items: ['Yash Semwal — overlapping WFH & leave'] },
+                    { title: 'Missing Salary Structure', count: 0, items: [] },
+                    { title: 'Missing Leave Balance', count: 0, items: [] },
+                    { title: 'Manual Overrides Pending', count: 0, items: [] },
+                ],
+                exceptionsFlat: [
+                    { id: 1, emp: 'Arjun Bisht', dept: 'Engineering', type: 'Missing Attendance', priority: 'High', severity: 'Critical', admin: 'Rhea Sarin', date: '29 Jun 2026', resolved: false },
+                    { id: 2, emp: 'Arjun Bisht', dept: 'Engineering', type: 'Negative Salary', priority: 'High', severity: 'Critical', admin: 'Rhea Sarin', date: '29 Jun 2026', resolved: false },
+                    { id: 3, emp: 'Yash Semwal', dept: 'Sales', type: 'Conflicting Attendance', priority: 'Medium', severity: 'Warning', admin: 'Rhea Sarin', date: '28 Jun 2026', resolved: false },
+                    { id: 4, emp: 'Simran Kaur', dept: 'Marketing', type: 'Missing Attendance', priority: 'Medium', severity: 'Warning', admin: 'Rhea Sarin', date: '30 Jun 2026', resolved: false },
+                    { id: 5, emp: 'Ira Thapliyal', dept: 'Design', type: 'Manual Override Pending', priority: 'Low', severity: 'Warning', admin: 'Aditya Verma', date: '27 Jun 2026', resolved: true },
+                ],
+
+                reports: [
+                    { title: 'Department Payroll', desc: 'Net disbursement by department', type: 'bar', max: 650000, data: [{ label: 'Eng', value: 620000 }, { label: 'Design', value: 310000 }, { label: 'Mktg', value: 275000 }, { label: 'Ops', value: 240000 }, { label: 'Sales', value: 198000 }] },
+                    { title: 'Salary Distribution', desc: 'Employees by salary band', type: 'donut', data: [{ label: '₹30–40k', value: 6 }, { label: '₹40–55k', value: 12 }, { label: '₹55–70k', value: 9 }, { label: '₹70k+', value: 5 }] },
+                    { title: 'Payroll Trend', desc: 'Net payroll, last 6 cycles', type: 'line', max: 20, data: [{ label: 'Jan', value: 15.2 }, { label: 'Feb', value: 16.1 }, { label: 'Mar', value: 15.8 }, { label: 'Apr', value: 17.4 }, { label: 'May', value: 17.9 }, { label: 'Jun', value: 18.4 }] },
+                    { title: 'Leave Deduction Trend', desc: 'Unpaid leave impact by month', type: 'bar', max: 45000, data: [{ label: 'Jan', value: 22000 }, { label: 'Feb', value: 18000 }, { label: 'Mar', value: 31000 }, { label: 'Apr', value: 25000 }, { label: 'May', value: 29000 }, { label: 'Jun', value: 38500 }] },
+                    { title: 'Attendance Impact', desc: 'Average attendance % by department', type: 'bar', max: 100, data: [{ label: 'Eng', value: 91 }, { label: 'Design', value: 94 }, { label: 'Mktg', value: 86 }, { label: 'Ops', value: 95 }, { label: 'Sales', value: 83 }] },
+                    { title: 'Overtime Trend', desc: 'OT hours by department', type: 'bar', max: 60, data: [{ label: 'Eng', value: 38 }, { label: 'Design', value: 14 }, { label: 'Mktg', value: 6 }, { label: 'Ops', value: 4 }, { label: 'Sales', value: 2 }] },
+                    { title: 'Highest Earners', desc: 'Highest net salary this cycle', type: 'list', max: 73400, data: [{ label: 'D. Bhatt', value: 73400 }, { label: 'K. Mehta', value: 53100 }, { label: 'A. Rawat', value: 60200 }, { label: 'I. Thapliyal', value: 50100 }, { label: 'A. Bisht', value: 52000 }] },
+                    { title: 'Department Cost Comparison', desc: 'Total cost incl. employer contributions', type: 'bar', max: 700000, data: [{ label: 'Eng', value: 668000 }, { label: 'Design', value: 334000 }, { label: 'Mktg', value: 296000 }, { label: 'Ops', value: 258000 }, { label: 'Sales', value: 213000 }] },
+                ],
+
+                settingsGroups: [
+                    {
+                        id: 'general', title: 'General', desc: 'Company profile and branding used across payroll documents.', fields: [
+                            { label: 'Company name', hint: 'Shown on payslips and reports', type: 'text', value: 'Venture Request' },
+                            { label: 'Default currency', hint: 'Used across all payroll calculations', type: 'text', value: 'INR (₹)' },
+                            { label: 'Fiscal year start', hint: 'Month the financial year begins', type: 'text', value: 'April' },
+                        ]
+                    },
+                    {
+                        id: 'lifecycle', title: 'Employee Lifecycle Policy', desc: 'BRS §1 — governs when Probation employees auto-promote to Permanent. The Lifecycle Engine reads only these values; it never hardcodes "90 days" anywhere in code.', fields: [
+                            { label: 'Probation duration', hint: 'Employment Duration below this = Probation', type: 'text', value: '90 days' },
+                            { label: 'Auto-promote on expiry', hint: 'AMS changes category automatically — no manual step', type: 'toggle', value: true },
+                            { label: 'Probation paid-leave balance', hint: 'Leave balance granted during probation', type: 'text', value: '0' },
+                            { label: 'Probation payroll cycle', hint: 'Cycle used before day 90', type: 'text', value: '20th → 20th' },
+                        ]
+                    },
+                    {
+                        id: 'shifts', title: 'Shift Templates', desc: 'BRS §2 — shift timings must always come from here. Attendance calculations must never contain hardcoded department timings.', fields: [
+                            { label: 'Standard Shift (Non-IT)', hint: 'Fixed Daily · 09:30–17:30 · 5 min grace · late after 09:35', type: 'text', value: '09:30–17:30' },
+                            { label: 'Healthcare Shift', hint: 'Flexible Daily · 10:00–18:30 · 5 min grace · late after 10:05', type: 'text', value: '10:00–18:30' },
+                            { label: 'Morning Shift', hint: 'Fixed Daily · 09:00–17:30 · 5 min grace · late after 09:05', type: 'text', value: '09:00–17:30' },
+                        ]
+                    },
+                    {
+                        id: 'cycle', title: 'Payroll Cycle', desc: 'BRS §12–13 — cycle length and disbursement date, independent of employee category.', fields: [
+                            { label: 'Permanent employee cycle', hint: 'Calendar month, 1st to last day', type: 'text', value: '1st → Last Day' },
+                            { label: 'Probation employee cycle', hint: 'Bridges into calendar-month cycle at day 90', type: 'text', value: '20th → 20th' },
+                            { label: 'Salary payment date', hint: 'Day of month every employee is paid, regardless of category', type: 'text', value: '7th' },
+                            { label: 'Auto-lock on cycle end', hint: 'Locks payroll automatically after payment date', type: 'toggle', value: false },
+                        ]
+                    },
+                    {
+                        id: 'attendance', title: 'Attendance Policy', desc: 'BRS §3–5 — governs working days, resolution order, and thresholds. The Attendance Resolution Engine must walk the evaluation order top → bottom and stop at the first match.', fields: [
+                            { label: 'Working days', hint: 'Standard working days per week', type: 'text', value: 'Mon–Sat' },
+                            { label: 'Weekly off', hint: 'Only day treated as Weekly Off', type: 'text', value: 'Sunday' },
+                            { label: 'Grace period', hint: 'Minutes after shift start before Late applies', type: 'text', value: '5 minutes' },
+                            { label: 'Minimum hours for Present', hint: 'Below this, day auto-resolves to Half Day', type: 'text', value: '8h' },
+                            { label: 'Late auto-converts to Half Day', hint: 'Unless manually overridden by an administrator', type: 'toggle', value: true },
+                        ]
+                    },
+                    { id: 'attendance-order', title: 'Attendance Resolution Order', desc: 'BRS §4 — deterministic evaluation order. Reorder here only; the engine must never hardcode this sequence.', isOrderList: true, orderItems: ['Manual Override', 'Birthday Leave', 'Approved Leave', 'Attendance Record', 'Automatic Half Day', 'Weekly Off', 'Future', 'Rejected Leave', 'Absent'], fields: [] },
+                    {
+                        id: 'leave', title: 'Leave Policy', desc: 'BRS §7–9 — Planned, Unplanned, and Birthday Leave rules, plus balance enforcement.', fields: [
+                            { label: 'Monthly leave credit (Permanent)', hint: 'Credited on the 1st of every month', type: 'text', value: '+2 leaves' },
+                            { label: 'Unplanned leave — future dates', hint: 'Only Today and Past dates are allowed', type: 'toggle', value: false },
+                            { label: 'Birthday Leave eligibility', hint: 'Days before birthday the credit appears', type: 'text', value: '1 day before' },
+                            { label: 'Birthday Leave auto-approved', hint: 'Never consumes Planned/Unplanned balance', type: 'toggle', value: true },
+                            { label: 'Half Day Planned consumption', hint: 'Fraction of Planned Leave balance consumed', type: 'text', value: '0.5' },
+                            { label: 'Half Day Unplanned consumption', hint: 'Fraction of Unplanned Leave balance consumed', type: 'text', value: '0.5' },
+                            { label: 'Reject over-balance requests immediately', hint: 'No pending request is ever created if it exceeds balance', type: 'toggle', value: true },
+                            { label: 'Paid leave carry-forward', hint: 'Unused paid leave rolls to next cycle', type: 'toggle', value: true },
+                        ]
+                    },
+                    {
+                        id: 'salary', title: 'Salary Rules', desc: 'Base structure used to compute gross salary.', fields: [
+                            { label: 'Default salary structure', hint: 'Applied to new employees without a custom structure', type: 'text', value: 'Standard CTC' },
+                            { label: 'Prorate salary for mid-cycle joiners', hint: 'New joiners paid for actual days worked', type: 'toggle', value: true },
+                            { label: 'Round net salary to nearest', hint: 'Rounding applied at final computation', type: 'text', value: '₹1' },
+                        ]
+                    },
+                    {
+                        id: 'overtime', title: 'Overtime Rules', desc: 'How extra hours convert into overtime pay.', fields: [
+                            { label: 'Overtime rate multiplier', hint: 'Applied to hourly rate beyond standard hours', type: 'text', value: '1.5x' },
+                            { label: 'Overtime eligibility', hint: 'Minimum hours before overtime accrues', type: 'text', value: '8h/day' },
+                            { label: 'Cap overtime hours per cycle', hint: 'Maximum OT hours counted per employee', type: 'text', value: '30h' },
+                        ]
+                    },
+                    {
+                        id: 'tax', title: 'Tax Rules', desc: 'TDS computation applied during salary processing.', fields: [
+                            { label: 'Tax regime', hint: 'Default regime applied unless employee opts out', type: 'text', value: 'New Regime' },
+                            { label: 'Unpaid leave deduction basis', hint: 'Daily rate used to compute deductions', type: 'text', value: 'Gross / 30' },
+                            { label: 'Auto-recalculate TDS on bonus', hint: 'Bonuses trigger a fresh tax computation', type: 'toggle', value: true },
+                        ]
+                    },
+                    {
+                        id: 'pf', title: 'Provident Fund (PF)', desc: 'Employer and employee PF contribution settings.', fields: [
+                            { label: 'Employee PF rate', hint: 'Percentage of basic salary', type: 'text', value: '12%' },
+                            { label: 'Employer PF match', hint: 'Employer contribution rate', type: 'text', value: '12%' },
+                            { label: 'PF applicable above wage ceiling', hint: 'Apply PF even above statutory ceiling', type: 'toggle', value: false },
+                        ]
+                    },
+                    {
+                        id: 'esi', title: 'ESI', desc: 'Employee State Insurance contribution settings.', fields: [
+                            { label: 'ESI eligibility ceiling', hint: 'Gross salary below which ESI applies', type: 'text', value: '₹21,000' },
+                            { label: 'Employee ESI rate', hint: 'Percentage of gross salary', type: 'text', value: '0.75%' },
+                            { label: 'Employer ESI rate', hint: 'Percentage of gross salary', type: 'text', value: '3.25%' },
+                        ]
+                    },
+                    {
+                        id: 'ptax', title: 'Professional Tax', desc: 'State-mandated professional tax slabs.', fields: [
+                            { label: 'State', hint: 'Determines applicable slab', type: 'text', value: 'Uttarakhand' },
+                            { label: 'Monthly professional tax', hint: 'Flat deduction per applicable employee', type: 'text', value: '₹200' },
+                        ]
+                    },
+                    {
+                        id: 'approval', title: 'Approval Workflow', desc: 'Who needs to sign off before payroll locks.', fields: [
+                            { label: 'Require approval for manual adjustments', hint: 'Adjustments need a second reviewer', type: 'toggle', value: true },
+                            { label: 'Require approval before lock', hint: 'At least one admin must approve each employee record', type: 'toggle', value: true },
+                            { label: 'Escalate unresolved corrections after', hint: 'Days before an exception escalates', type: 'text', value: '2 days' },
+                        ]
+                    },
+                    {
+                        id: 'branding', title: 'Payslip Branding', desc: 'Visual identity applied to generated payslips.', fields: [
+                            { label: 'Show company logo', hint: 'Displayed on the payslip header', type: 'toggle', value: true },
+                            { label: 'Footer note', hint: 'Shown at the bottom of every payslip', type: 'text', value: 'Confidential' },
+                        ]
+                    },
+                    {
+                        id: 'notifications', title: 'Notifications', desc: 'Who gets notified and when during the payroll cycle.', fields: [
+                            { label: 'Notify employees on payslip generation', hint: 'Sends an automatic email', type: 'toggle', value: true },
+                            { label: 'Notify admins on new exception', hint: 'Alerts assigned admin immediately', type: 'toggle', value: true },
+                            { label: 'Reminder before lock', hint: 'Days before cycle end to send a reminder', type: 'text', value: '2 days' },
+                        ]
+                    },
+                    { id: 'payrollmapping', title: 'Payroll Mapping', desc: 'BRS §15 — canonical Attendance State → Payroll Effect table. The Payroll Engine must look this table up; it must never inline an if/else chain to decide payroll effect.', isMappingTable: true, fields: [] },
+                    {
+                        id: 'imports', title: 'Excel Import Mapping', desc: 'BRS §10 — the Excel export is the canonical leave source. Every column maps 1:1 into the system; no interpretation, no combining fields, every column independently editable.', fields: [
+                            { label: 'Default import source', hint: 'Used when no source is specified', type: 'text', value: 'Zimyo Excel Export' },
+                            { label: 'Two-pass hierarchy resolution', hint: 'Resolves manager mapping in a second pass', type: 'toggle', value: true },
+                            { label: 'Mapped columns', hint: 'Planned · Unplanned · Birthday · Paternity · Maternity · Compensatory · Pending · Carry Forward · Utilized · Remaining', type: 'text', value: '10 columns mapped 1:1' },
+                        ]
+                    },
+                    {
+                        id: 'audit', title: 'Audit Rules', desc: 'BRS §18 — every manual administrative change creates an immutable audit entry with Administrator, Timestamp, Old Value, New Value, and Reason.', fields: [
+                            { label: 'Audit log retention', hint: 'How long records are kept', type: 'text', value: '7 years' },
+                            { label: 'Log field-level changes', hint: 'Captures old and new value for every edit', type: 'toggle', value: true },
+                            { label: 'Applies to', hint: 'Attendance Override · Leave Adjustment · Payroll Correction · Salary Change · Employee Edit · Shift Change · Leave Balance Modification', type: 'text', value: '7 change categories' },
+                        ]
+                    },
+                    {
+                        id: 'lockrules', title: 'Lock Rules', desc: 'Constraints applied when finalizing a cycle.', fields: [
+                            { label: 'Exclude unresolved corrections from lock', hint: 'Flagged employees are skipped rather than blocking lock', type: 'toggle', value: true },
+                            { label: 'Require dual sign-off to unlock', hint: 'Two admins must approve any post-lock unlock', type: 'toggle', value: true },
+                        ]
+                    },
+                ],
+
+                init() {
+                    setTimeout(() => { this.loadingTable = false }, 700)
+                    this.ledgerEmpId = this.employees[0].id
+                    this.setLedgerEmp()
+                    // Employee Lifecycle Engine — demo seed only.
+                    // Laravel: `employees.join_date` is the real authoritative column; the
+                    // Lifecycle Engine (a scheduled job, run daily) compares it against
+                    // policies.lifecycle.probationDays and flips `employees.category`
+                    // automatically on day 90 — no manual promotion step, per BRS §1.
+                    const demoJoinOffsetsDays = [420, 260, 610, 45, 900, 310, 500, 62]
+                    this.employees.forEach((e, i) => {
+                        if (!e.joinDate) {
+                            const d = new Date(this.cycleReferenceDate)
+                            d.setDate(d.getDate() - demoJoinOffsetsDays[i % demoJoinOffsetsDays.length])
+                            e.joinDate = d.toISOString().slice(0, 10)
+                        }
+                    })
+                },
+
+                // Reference "today" for this prototype — pinned to the active cycle's last
+                // day so lifecycle/probation math is stable while demoing. Laravel: use
+                // Carbon::now() server-side, never a pinned date.
+                cycleReferenceDate: '2026-06-30',
+
+                // BRS §1 — Employee Lifecycle Engine. Reads policies.lifecycle.probationDays;
+                // never hardcode "90" anywhere else in the app.
+                employmentDays(emp) {
+                    const joined = new Date(emp.joinDate)
+                    const ref = new Date(this.cycleReferenceDate)
+                    return Math.floor((ref - joined) / 86400000)
+                },
+                employeeCategory(emp) {
+                    return this.employmentDays(emp) < this.policies.lifecycle.probationDays ? 'Probation' : 'Permanent'
+                },
+                employeeCategoryChip(emp) {
+                    return this.employeeCategory(emp) === 'Probation' ? 'bg-brass-light text-brass-dark' : 'bg-forest-light text-forest'
+                },
+                payrollCycleLabel(emp) {
+                    return this.employeeCategory(emp) === 'Probation' ? this.policies.payroll.probationCycle : this.policies.payroll.permanentCycle
+                },
+
+                get currentNavLabel() {
+                    const item = this.navItems.find(n => n.id === this.activeTab)
+                    return item ? item.label : ''
+                },
+
+                attPct(e) { return e ? Math.round((e.present / e.workingDays) * 100) : 0 },
+
+                get filteredEmployees() {
+                    let list = this.employees.filter(e => {
+                        const s = this.filters.search.toLowerCase()
+                        const matchesSearch = !s || e.name.toLowerCase().includes(s) || e.id.toLowerCase().includes(s)
+                        const matchesDept = !this.filters.dept || e.dept === this.filters.dept
+                        const matchesStatus = !this.filters.status || e.status === this.filters.status
+                        return matchesSearch && matchesDept && matchesStatus
+                    })
+                    if (this.filters.sort === 'net') list = list.slice().sort((a, b) => b.net - a.net)
+                    if (this.filters.sort === 'gross') list = list.slice().sort((a, b) => b.gross - a.gross)
+                    if (this.filters.sort === 'name') list = list.slice().sort((a, b) => a.name.localeCompare(b.name))
+                    if (this.filters.sort === 'attendance') list = list.slice().sort((a, b) => this.attPct(b) - this.attPct(a))
+                    return list
+                },
+
+                get filteredPayslipEmployees() {
+                    return this.employees.filter(e => {
+                        const s = this.payslipFilters.search.toLowerCase()
+                        const matchesSearch = !s || e.name.toLowerCase().includes(s)
+                        const matchesDept = !this.payslipFilters.dept || e.dept === this.payslipFilters.dept
+                        const matchesStatus = !this.payslipFilters.status || e.downloadStatus === (this.payslipFilters.status === 'downloaded' ? 'downloaded' : 'pending')
+                        return matchesSearch && matchesDept && matchesStatus
+                    })
+                },
+
+                get filteredExceptions() {
+                    return this.exceptionsFlat.filter(ex => {
+                        const s = this.excFilters.search.toLowerCase()
+                        const matchesSearch = !s || ex.emp.toLowerCase().includes(s) || ex.type.toLowerCase().includes(s)
+                        const matchesDept = !this.excFilters.dept || ex.dept === this.excFilters.dept
+                        const matchesType = !this.excFilters.type || ex.type === this.excFilters.type
+                        const matchesPriority = !this.excFilters.priority || ex.priority === this.excFilters.priority
+                        const matchesAdmin = !this.excFilters.admin || ex.admin === this.excFilters.admin
+                        const matchesSeverity = !this.excFilters.severity || ex.severity === this.excFilters.severity
+                        const matchesResolved = this.excFilters.resolved === '' || String(ex.resolved) === this.excFilters.resolved
+                        return matchesSearch && matchesDept && matchesType && matchesPriority && matchesAdmin && matchesSeverity && matchesResolved
+                    })
+                },
+
+                toggleException(id) {
+                    const i = this.selectedExceptions.indexOf(id)
+                    if (i > -1) this.selectedExceptions.splice(i, 1); else this.selectedExceptions.push(id)
+                },
+                toggleAllExceptions(evt) {
+                    this.selectedExceptions = evt.target.checked ? this.filteredExceptions.map(e => e.id) : []
+                },
+                bulkResolveExceptions() {
+                    this.exceptionsFlat.forEach(ex => { if (this.selectedExceptions.includes(ex.id)) ex.resolved = true })
+                    this.toast = this.selectedExceptions.length + ' exceptions marked resolved'
+                    this.selectedExceptions = []
+                },
+
+                get filteredAudit() {
+                    return this.auditTrail.filter(a => {
+                        const s = this.auditFilters.search.toLowerCase()
+                        const matchesSearch = !s || a.action.toLowerCase().includes(s) || a.actor.toLowerCase().includes(s)
+                        const matchesCategory = !this.auditFilters.category || a.category === this.auditFilters.category
+                        const matchesEmp = !this.auditFilters.emp || a.emp === this.auditFilters.emp
+                        return matchesSearch && matchesCategory && matchesEmp
+                    })
+                },
+
+                get correctionEmployees() { return this.employees.filter(e => e.status === 'correction') },
+
+                get ledgerRows() {
+                    const e = this.selectedLedgerEmp
+                    if (!e) return []
+                    const p = this.policies
+                    const dailyRate = Math.round(e.baseSalary / 30)
+                    const hourlyRate = Math.round(e.baseSalary / 30 / 8)
+                    const category = this.employeeCategory(e)
+                    return [
+                        { label: 'Employee Category', value: 0, skipValue: true, explain: 'Determined by the Employee Lifecycle Engine — never set manually. Below ' + p.lifecycle.probationDays + ' days of employment an employee is Probation; the AMS auto-promotes to Permanent on day ' + p.lifecycle.probationDays + ', per policy.', calc: 'Employment Days = ' + this.employmentDays(e) + ' → ' + category + ' (Payroll Cycle: ' + this.payrollCycleLabel(e) + ')', auditRef: 'Policy: Employee Lifecycle Policy → Probation Duration' },
+                        { label: 'Base Salary', value: e.baseSalary, explain: 'The fixed monthly base as defined in this employee\u2019s salary structure.', calc: 'Base Salary = ₹' + e.baseSalary.toLocaleString('en-IN'), auditRef: 'STRUCT-' + e.id },
+                        { label: 'Daily Rate', value: dailyRate, explain: 'Base salary divided across calendar days in the month, per the Salary Calculation policy — never a hardcoded ÷30.', calc: 'Daily Rate = Monthly Salary ÷ Calendar Days = ₹' + dailyRate.toLocaleString('en-IN'), auditRef: 'Policy: Payroll Policy → Daily Salary Formula (' + p.payroll.dailySalaryFormula + ')' },
+                        { label: 'Hourly Rate', value: hourlyRate, explain: 'Daily rate divided across the standard working day length defined on this employee\u2019s shift template.', calc: 'Hourly Rate = Daily ÷ 8 = ₹' + hourlyRate.toLocaleString('en-IN'), auditRef: 'Policy: Shift Templates → Working Hours' },
+                        { label: 'Attendance Earnings', value: Math.round(e.baseSalary * 0.94), explain: 'Earnings scaled to actual days resolved as Present against total working days this cycle, per the Attendance Resolution order and the Payroll Mapping table.', calc: 'Attendance Earnings = Base × (Present ÷ Working Days)', auditRef: 'Policy: Payroll Mapping → Present = 100% Daily Pay' },
+                        { label: 'Leave Deductions', value: -(e.unpaidLeave * dailyRate), tone: 'oxblood', explain: e.unpaidLeave + ' unpaid leave day(s) deducted at the daily rate, per Unplanned Leave policy (consumes Unplanned Leave balance; cannot be requested for future dates).', calc: e.unpaidLeave + ' × ₹' + dailyRate.toLocaleString('en-IN') + ' = – ₹' + (e.unpaidLeave * dailyRate).toLocaleString('en-IN'), auditRef: 'DED-' + e.id + '-01 · Policy: Leave Policy → Unplanned Leave' },
+                        { label: 'Half Day Deductions', value: -(e.halfDay * Math.round(e.baseSalary / 60)), tone: 'oxblood', explain: e.halfDay + ' half day(s) deducted at half the daily rate, per Payroll Mapping (Half Day Automatic = 50% Daily Pay).', calc: e.halfDay + ' × ₹' + Math.round(e.baseSalary / 60).toLocaleString('en-IN') + ' = – ₹' + (e.halfDay * Math.round(e.baseSalary / 60)).toLocaleString('en-IN'), auditRef: 'DED-' + e.id + '-02 · Policy: Payroll Mapping → Half Day (Automatic)' },
+                        { label: 'Overtime Pay', value: e.overtimeHours * 250, tone: 'forest', explain: e.overtimeHours + ' overtime hour(s) at the configured overtime rate (Configuration Center → Overtime Rules).', calc: e.overtimeHours + ' × ₹250 = ₹' + (e.overtimeHours * 250).toLocaleString('en-IN'), auditRef: 'OT-' + e.id + ' · Policy: Overtime Rules → Overtime Rate Multiplier' },
+                        { label: 'Bonuses', value: e.bonuses, tone: 'forest', explain: 'Discretionary bonus or incentive applied this cycle.', calc: 'Manually entered by admin', auditRef: 'BON-' + e.id },
+                        { label: 'Manual Adjustments', value: 0, explain: 'Any one-off manual correction applied to this employee\u2019s payout.', calc: 'No adjustments recorded this cycle', auditRef: 'ADJ-' + e.id },
+                        { label: 'Gross Salary', value: e.gross, emphasis: true },
+                        { label: 'Tax (TDS)', value: -e.taxAmt, tone: 'oxblood', explain: 'Tax deducted at source, computed against the configured tax regime.', calc: 'TDS slab applied to gross salary = – ₹' + e.taxAmt.toLocaleString('en-IN'), auditRef: 'TAX-' + e.id + ' · Policy: Tax Rules → Tax Regime' },
+                        { label: 'Provident Fund', value: -e.pf, tone: 'oxblood', explain: 'Employee PF contribution at the configured rate on basic salary.', calc: '12% of Basic = – ₹' + e.pf.toLocaleString('en-IN'), auditRef: 'PF-' + e.id + ' · Policy: Provident Fund → Employee PF Rate' },
+                        { label: 'ESI', value: -e.esi, tone: 'oxblood', explain: 'Employee State Insurance contribution, applicable below the wage ceiling.', calc: '0.75% of Gross = – ₹' + e.esi.toLocaleString('en-IN'), auditRef: 'ESI-' + e.id + ' · Policy: ESI → Employee ESI Rate' },
+                        { label: 'Professional Tax', value: -e.profTax, tone: 'oxblood', explain: 'Flat state-mandated professional tax for Uttarakhand.', calc: 'Flat rate = – ₹' + e.profTax.toLocaleString('en-IN'), auditRef: 'PTAX-' + e.id + ' · Policy: Professional Tax → State Slab' },
+                        { label: 'Employer Contributions', value: Math.round(e.pf * 1.0), explain: 'Employer-side PF match, not deducted from employee net pay.', calc: 'Employer PF match = ₹' + Math.round(e.pf * 1.0).toLocaleString('en-IN'), auditRef: 'ERPF-' + e.id + ' · Policy: Provident Fund → Employer PF Match' },
+                        { label: 'Net Salary', value: e.net, emphasis: true },
+                    ]
+                },
+                toggleLedgerRow(label) { this.ledgerOpen[label] = !this.ledgerOpen[label] },
+
+                setLedgerEmp() { this.selectedLedgerEmp = this.employees.find(e => e.id === this.ledgerEmpId) || null },
+
+                openDrawer(emp) { this.selectedEmployee = emp; this.drawerTab = 'overview'; this.drawerOpen = true },
+                openPayslip(emp) { this.payslipEmp = emp; this.activeTab = 'payslips' },
+
+                resolveCorrection(emp, outcome) {
+                    emp.status = outcome === 'approved' ? 'approved' : 'pending'
+                    emp.correctionStatus = outcome === 'approved' ? 'resolved' : 'pending'
+                    emp._open = false
+                },
+
+                statusChip(status) {
+                    return {
+                        approved: 'bg-forest-light text-forest',
+                        pending: 'bg-brass-light text-brass-dark',
+                        correction: 'bg-oxblood-light text-oxblood',
+                        locked: 'bg-ink/10 text-ink',
+                    }[status] || 'bg-line text-ink-soft'
+                },
+                statusDot(status) {
+                    return { approved: 'bg-forest', pending: 'bg-brass', correction: 'bg-oxblood', locked: 'bg-ink' }[status] || 'bg-ink-faint'
+                },
+                statusLabel(status) {
+                    return { approved: 'Approved', pending: 'Pending Review', correction: 'Needs Correction', locked: 'Locked' }[status] || status
+                },
+                auditDot(type) {
+                    return { correction: 'bg-oxblood', import: 'bg-brass', approval: 'bg-forest', lock: 'bg-ink', unlock: 'bg-brass-dark' }[type] || 'bg-ink-faint'
+                },
+                auditBadge(type) {
+                    return { correction: 'bg-oxblood-light text-oxblood', import: 'bg-brass-light text-brass-dark', approval: 'bg-forest-light text-forest', lock: 'bg-ink/10 text-ink', unlock: 'bg-brass-light text-brass-dark' }[type] || 'bg-line'
+                },
+
+                linePoints(data, max) {
+                    return data.map((v, i) => (i * (240 / (data.length - 1))) + ',' + (70 - (v.value / max * 64) - 3)).join(' ')
+                },
+                donutStyle(data) {
+                    const total = data.reduce((s, v) => s + v.value, 0)
+                    let acc = 0
+                    const stops = data.map((v, i) => {
+                        const start = acc / total * 360
+                        acc += v.value
+                        const end = acc / total * 360
+                        return this.donutColors[i % this.donutColors.length] + ' ' + start + 'deg ' + end + 'deg'
+                    })
+                    return 'background: conic-gradient(' + stops.join(',') + ');'
+                },
+
+                generatePayslipsAction() { this.toast = 'Generating payslips for 28 ready employees…' },
+                generateAuditSnapshot() { this.toast = 'Audit snapshot generated for June 2026 cycle' },
+
+                processLock() {
+                    this.lockProcessing = true
+                    setTimeout(() => {
+                        this.lockProcessing = false
+                        this.lockDone = true
+                        this.cycleLocked = true
+                        setTimeout(() => { this.showLockModal = false; this.lockDone = false }, 1400)
+                    }, 1600)
+                },
+            }
+        }
+    </script>
+</body>
+
+</html>

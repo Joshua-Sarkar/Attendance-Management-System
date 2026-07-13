@@ -100,6 +100,26 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/attendance/overrides/employees', [\App\Http\Controllers\AttendanceOverrideController::class, 'employees'])->name('admin.attendance.override.employees');
         Route::post('/admin/attendance/overrides/preview', [\App\Http\Controllers\AttendanceOverrideController::class, 'preview'])->name('admin.attendance.override.preview');
         Route::post('/admin/attendance/overrides', [\App\Http\Controllers\AttendanceOverrideController::class, 'store'])->name('admin.attendance.override.store');
+
+        // Payroll Control Center Routes
+        Route::get('/admin/payroll', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.index');
+        Route::get('/admin/payroll/dashboard', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.dashboard');
+        Route::get('/admin/payroll/employees', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.employees');
+        Route::get('/admin/payroll/ledger', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.ledger');
+        Route::get('/admin/payroll/corrections', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.corrections');
+        Route::get('/admin/payroll/exceptions', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.exceptions');
+        Route::get('/admin/payroll/lock', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.lock');
+        Route::get('/admin/payroll/payslips', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.payslips');
+        Route::get('/admin/payroll/audit', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.audit');
+        Route::get('/admin/payroll/reports', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.reports');
+        Route::get('/admin/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.settings');
+        Route::post('/admin/payroll/process', [\App\Http\Controllers\PayrollController::class, 'process'])->name('admin.payroll.process');
+        Route::post('/admin/payroll/lock', [\App\Http\Controllers\PayrollController::class, 'lock'])->name('admin.payroll.lock');
+        Route::post('/admin/payroll/unlock', [\App\Http\Controllers\PayrollController::class, 'unlock'])->name('admin.payroll.unlock');
+        Route::post('/admin/payroll/corrections', [\App\Http\Controllers\PayrollController::class, 'correctionStore'])->name('admin.payroll.corrections.store');
+        Route::post('/admin/payroll/corrections/{id}/approve', [\App\Http\Controllers\PayrollController::class, 'correctionApprove'])->name('admin.payroll.corrections.approve');
+        Route::post('/admin/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'settingsUpdate'])->name('admin.payroll.settings.update');
+        Route::get('/admin/payroll/ledger/export', [\App\Http\Controllers\PayrollController::class, 'exportLedger'])->name('admin.payroll.ledger.export');
     });
 
     // Profile Correction Requests Routes
