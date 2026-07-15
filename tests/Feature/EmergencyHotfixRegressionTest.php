@@ -176,6 +176,7 @@ class EmergencyHotfixRegressionTest extends TestCase
      */
     public function test_approved_planned_leave_rejection_restores_balance_and_updates_all_modules(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-07-15'));
         $dept = Department::create([
             'name' => 'Engineering',
             'shift_start' => '09:30:00',

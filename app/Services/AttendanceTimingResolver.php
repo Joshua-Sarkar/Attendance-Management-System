@@ -16,48 +16,60 @@ class AttendanceTimingResolver
      */
     public static function resolveTimings(User $user, Carbon $date): array
     {
-        $department = $user->department;
+        $attendance = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereDate('date', $date)
+            ->first();
 
-        if ($department) {
-            $code = strtolower(trim($department->code ?? ''));
-            $name = strtolower(trim($department->name ?? ''));
-            $isHealthcare = (
-                $code === 'healthcare' || 
-                $name === 'healthcare' || 
-                $code === 'hlt' || 
-                str_contains($name, 'healthcare') || 
-                str_contains($name, 'health care') || 
-                str_contains($code, 'healthcare') || 
-                str_contains($code, 'health care') || 
-                str_contains($code, 'hlt') || 
-                str_contains($code, 'hc')
-            );
+        $metadata = $attendance ? $attendance->metadata : null;
 
-            if ($isHealthcare) {
-                $startTime = '10:00:00';
-                $endTime = '18:00:00';
-                $graceMinutes = 5;
-            } else {
-                $startTime = $department->shift_start_time ?? config('attendance.start_time', '09:30:00');
-                $graceMinutes = $department->grace_minutes !== null ? (int) $department->grace_minutes : (int) config('attendance.grace_minutes', 15);
-                $endTime = $department->shift_end_time ?? config('attendance.end_time', '18:30:00');
-            }
+        if ($metadata && isset($metadata['shift_start_time'], $metadata['shift_end_time'], $metadata['grace_minutes'])) {
+            $startTime = $metadata['shift_start_time'];
+            $endTime = $metadata['shift_end_time'];
+            $graceMinutes = (int) $metadata['grace_minutes'];
         } else {
-            $transitionDate = config('attendance.new_rules_start_date');
-            $useNewRules = false;
+            $department = $user->department;
 
-            if ($transitionDate) {
-                $useNewRules = $date->format('Y-m-d') >= $transitionDate;
-            }
+            if ($department) {
+                $code = strtolower(trim($department->code ?? ''));
+                $name = strtolower(trim($department->name ?? ''));
+                $isHealthcare = (
+                    $code === 'healthcare' || 
+                    $name === 'healthcare' || 
+                    $code === 'hlt' || 
+                    str_contains($name, 'healthcare') || 
+                    str_contains($name, 'health care') || 
+                    str_contains($code, 'healthcare') || 
+                    str_contains($code, 'health care') || 
+                    str_contains($code, 'hlt') || 
+                    str_contains($code, 'hc')
+                );
 
-            if ($useNewRules) {
-                $startTime = config('attendance.start_time', '09:30:00');
-                $graceMinutes = (int) config('attendance.grace_minutes', 15);
-                $endTime = config('attendance.end_time', '18:30:00');
+                if ($isHealthcare) {
+                    $startTime = '10:00:00';
+                    $endTime = '18:00:00';
+                    $graceMinutes = 5;
+                } else {
+                    $startTime = $department->shift_start_time ?? config('attendance.start_time', '09:30:00');
+                    $graceMinutes = $department->grace_minutes !== null ? (int) $department->grace_minutes : (int) config('attendance.grace_minutes', 15);
+                    $endTime = $department->shift_end_time ?? config('attendance.end_time', '18:30:00');
+                }
             } else {
-                $startTime = '09:00:00';
-                $graceMinutes = 15;
-                $endTime = '18:30:00';
+                $transitionDate = config('attendance.new_rules_start_date');
+                $useNewRules = false;
+
+                if ($transitionDate) {
+                    $useNewRules = $date->format('Y-m-d') >= $transitionDate;
+                }
+
+                if ($useNewRules) {
+                    $startTime = config('attendance.start_time', '09:30:00');
+                    $graceMinutes = (int) config('attendance.grace_minutes', 15);
+                    $endTime = config('attendance.end_time', '18:30:00');
+                } else {
+                    $startTime = '09:00:00';
+                    $graceMinutes = 15;
+                    $endTime = '18:30:00';
+                }
             }
         }
 

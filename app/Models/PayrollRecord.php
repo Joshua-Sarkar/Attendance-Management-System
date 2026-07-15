@@ -37,6 +37,18 @@ class PayrollRecord extends Model
         'last_modified_at',
         'last_modified_by_id',
         'calculation_metadata',
+        'calculation_version',
+        'fingerprint',
+        'employee_review_status',
+        'employee_approved_at',
+        'admin_approved_at',
+        'admin_approved_by_id',
+        'locked_at',
+        'locked_by_id',
+        'locked_snapshot',
+        'payslip_status',
+        'payslip_generated_at',
+        'payslip_published_at',
     ];
 
     protected $casts = [
@@ -59,6 +71,13 @@ class PayrollRecord extends Model
         'locked' => 'boolean',
         'last_modified_at' => 'datetime',
         'calculation_metadata' => 'json',
+        'calculation_version' => 'integer',
+        'employee_approved_at' => 'datetime',
+        'admin_approved_at' => 'datetime',
+        'locked_at' => 'datetime',
+        'locked_snapshot' => 'array',
+        'payslip_generated_at' => 'datetime',
+        'payslip_published_at' => 'datetime',
     ];
 
     public function payrollCycle(): BelongsTo
@@ -84,5 +103,20 @@ class PayrollRecord extends Model
     public function lastModifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'last_modified_by_id');
+    }
+
+    public function adminApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_approved_by_id');
+    }
+
+    public function lockedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by_id');
+    }
+
+    public function disputes(): HasMany
+    {
+        return $this->hasMany(PayrollDispute::class);
     }
 }

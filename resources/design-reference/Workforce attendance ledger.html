@@ -1,0 +1,2953 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workforce Attendance Ledger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #FAF7EF;
+            --panel: #FDFBF6;
+            --panel-alt: #FFFFFF;
+            --border: #E8E0D0;
+            --border-soft: #EFE9DC;
+            --ink: #2A241C;
+            --ink-soft: #6E6455;
+            --ink-faint: #A69C89;
+            --gold: #AD8A3E;
+            --gold-soft: #F4EBD6;
+
+            --present: #4C7A5D;
+            --present-bg: #EAF1EA;
+            --late: #B98A2E;
+            --late-bg: #F7EFDD;
+            --halfday: #BE6A34;
+            --halfday-bg: #F8EAE0;
+            --absent: #9C3B3B;
+            --absent-bg: #F5E5E3;
+            --unplanned: #7A2E2E;
+            --unplanned-bg: #F0E0DE;
+            --paidleave: #AD8A3E;
+            --paidleave-bg: #F4EBD6;
+            --wfh: #4A6FA0;
+            --wfh-bg: #E7ECF3;
+            --weekoff: #9A9080;
+            --weekoff-bg: #F0ECE3;
+            --holiday: #8F887A;
+            --holiday-bg: #EFEBE2;
+            --birthday: #7D6296;
+            --birthday-bg: #EEE7F1;
+
+            --shadow-sm: 0 1px 2px rgba(42, 36, 28, 0.04);
+            --shadow-md: 0 4px 16px rgba(42, 36, 28, 0.07);
+            --shadow-lg: 0 16px 46px rgba(42, 36, 28, 0.13);
+            --emboss: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(42, 36, 28, 0.035);
+            --radius: 10px;
+            --radius-lg: 18px;
+            --radius-xl: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background:
+                radial-gradient(1200px 500px at 15% -10%, rgba(173, 138, 62, 0.06), transparent 60%),
+                var(--bg);
+            color: var(--ink);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            padding: 40px 48px 80px;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .eyebrow {
+            font-size: 11px;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            font-weight: 600;
+        }
+
+        /* ---------- Header ---------- */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 34px;
+            padding-bottom: 28px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .page-header h1 {
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 40px;
+            letter-spacing: -0.01em;
+            line-height: 1.05;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: var(--ink-soft);
+            font-size: 14.5px;
+            max-width: 520px;
+            line-height: 1.5;
+        }
+
+        .header-meta {
+            text-align: right;
+        }
+
+        .header-meta .eyebrow {
+            margin-bottom: 6px;
+        }
+
+        .header-meta .val {
+            font-family: 'Fraunces', serif;
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        /* ---------- Section heading ---------- */
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-heading h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 23px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+
+        .section-heading .sub {
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            margin-top: 3px;
+        }
+
+        /* ---------- Date range control ---------- */
+        .range-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .range-seg {
+            display: flex;
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 3px;
+            box-shadow: var(--shadow-sm), var(--emboss);
+        }
+
+        .range-seg button {
+            border: none;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 7px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            color: var(--ink-soft);
+            transition: .15s ease;
+            white-space: nowrap;
+        }
+
+        .range-seg button.active {
+            background: var(--ink);
+            color: #fff;
+        }
+
+        .custom-dates {
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .custom-dates.show {
+            display: flex;
+        }
+
+        .custom-dates input[type="date"] {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 12px;
+            background: var(--panel-alt);
+            color: var(--ink-soft);
+            box-shadow: var(--emboss);
+        }
+
+        .custom-dates span {
+            color: var(--ink-faint);
+            font-size: 11px;
+        }
+
+        /* ================================================================
+   COMPANY METRICS — GLASS ANALYTICS ENGINE
+   ----------------------------------------------------------------
+   Everything below is built as a REGISTRY (see JS: METRIC_TILES).
+   To slot in a new metric card later: add one entry to the
+   METRIC_TILES array with a render(host, data) function — it will
+   automatically get a glass tile, grid placement, tilt + filter
+   wiring for free. No changes needed here unless a genuinely new
+   visual language is required.
+================================================================= */
+        .tilt-card {
+            transform-style: preserve-3d;
+            transition: transform .12s ease-out, box-shadow .25s ease;
+            will-change: transform;
+        }
+
+        .metrics-mega {
+            margin-bottom: 40px;
+        }
+
+        /* ---- glass surface primitive ---- */
+        .glass {
+            position: relative;
+            background:
+                linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.28) 55%, rgba(255, 255, 255, 0.4)),
+                rgba(253, 251, 246, 0.55);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            border-radius: var(--radius-xl);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.8) inset,
+                0 -14px 30px -22px rgba(42, 36, 28, 0.25) inset,
+                var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .glass::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(420px 200px at var(--mx, 20%) var(--my, -10%), rgba(255, 255, 255, 0.55), transparent 60%);
+            opacity: 0;
+            transition: opacity .25s ease;
+            pointer-events: none;
+        }
+
+        .glass:hover::before {
+            opacity: 1;
+        }
+
+        .glass:hover {
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.85) inset,
+                0 -14px 30px -22px rgba(42, 36, 28, 0.28) inset,
+                var(--shadow-lg), 0 0 46px -16px var(--glow, rgba(173, 138, 62, 0.4));
+        }
+
+        .glass-edge {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+        }
+
+        /* ---- filter bar ---- */
+        .metrics-filterbar {
+            padding: 16px 20px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .metrics-filterbar .search-box {
+            min-width: 190px;
+            background: rgba(255, 255, 255, 0.55);
+        }
+
+        .metrics-filterbar select.fselect {
+            background-color: rgba(255, 255, 255, 0.55);
+        }
+
+        .mf-chipset {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .mf-label {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--ink-faint);
+            font-weight: 600;
+            margin-right: 2px;
+        }
+
+        .mf-divider {
+            width: 1px;
+            align-self: stretch;
+            background: var(--border);
+            opacity: .8;
+            margin: 0 2px;
+        }
+
+        .mf-reset {
+            margin-left: auto;
+        }
+
+        /* ---- section heading recolor for glass zone ---- */
+        .metrics-mega .section-heading h2 {
+            font-family: 'Fraunces', serif;
+        }
+
+        /* ---- KPI strip ---- */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .kpi-tile {
+            padding: 16px 18px 14px;
+            --glow: rgba(173, 138, 62, 0.35);
+        }
+
+        .kpi-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .kpi-delta {
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .kpi-delta.up {
+            color: var(--present);
+            background: var(--present-bg);
+        }
+
+        .kpi-delta.down {
+            color: var(--absent);
+            background: var(--absent-bg);
+        }
+
+        .kpi-delta.flat {
+            color: var(--ink-faint);
+            background: var(--panel);
+        }
+
+        .kpi-val {
+            font-family: 'Fraunces', serif;
+            font-size: 26px;
+            font-weight: 500;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+
+        .kpi-lbl {
+            font-size: 11px;
+            color: var(--ink-soft);
+        }
+
+        .kpi-spark {
+            margin-top: 10px;
+            height: 28px;
+            width: 100%;
+            display: block;
+        }
+
+        /* ---- bento grid ---- */
+        .metrics-bento {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+
+        .mtile {
+            padding: 20px 22px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mtile.span-3 {
+            grid-column: span 3;
+        }
+
+        .mtile.span-4 {
+            grid-column: span 4;
+        }
+
+        .mtile.span-5 {
+            grid-column: span 5;
+        }
+
+        .mtile.span-6 {
+            grid-column: span 6;
+        }
+
+        .mtile.span-7 {
+            grid-column: span 7;
+        }
+
+        .mtile.span-8 {
+            grid-column: span 8;
+        }
+
+        .mtile.span-12 {
+            grid-column: span 12;
+        }
+
+        .mtile-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            gap: 10px;
+        }
+
+        .mtile-head h4 {
+            font-family: 'Fraunces', serif;
+            font-size: 15.5px;
+            font-weight: 500;
+            letter-spacing: -.005em;
+        }
+
+        .mtile-head .sub {
+            font-size: 11px;
+            color: var(--ink-soft);
+            margin-top: 2px;
+        }
+
+        .mtile-badge {
+            font-size: 10px;
+            background: var(--gold-soft);
+            color: var(--gold);
+            padding: 4px 9px;
+            border-radius: 999px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .mtile-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .mtile-foot {
+            margin-top: 10px;
+            font-size: 10.5px;
+            color: var(--ink-faint);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ---- generic legend ---- */
+        .mlegend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .mlegend .li {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--ink-soft);
+        }
+
+        .mlegend .sw {
+            width: 8px;
+            height: 8px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        /* ---- donut mini ---- */
+        .donut-wrap {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .donut-wrap svg {
+            flex-shrink: 0;
+            filter: drop-shadow(0 3px 6px rgba(42, 36, 28, 0.08));
+        }
+
+        .donut-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .donut-legend .li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11.5px;
+            color: var(--ink-soft);
+            cursor: default;
+            padding: 2px 4px;
+            border-radius: 6px;
+            transition: .15s ease;
+        }
+
+        .donut-legend .li:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .donut-legend .sw {
+            width: 9px;
+            height: 9px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        }
+
+        .donut-legend b {
+            color: var(--ink);
+            font-family: 'JetBrains Mono', monospace;
+            margin-left: auto;
+            padding-left: 14px;
+        }
+
+        /* ---- heatmap ---- */
+        .heat-grid {
+            display: grid;
+            gap: 3px;
+        }
+
+        .heat-row {
+            display: grid;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .heat-rowlabel {
+            font-size: 10.5px;
+            color: var(--ink-soft);
+            padding-right: 6px;
+            white-space: nowrap;
+        }
+
+        .heat-cell {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            cursor: default;
+            transition: transform .1s ease, filter .1s ease;
+        }
+
+        .heat-cell:hover {
+            transform: scale(1.18);
+            filter: brightness(1.06);
+            z-index: 2;
+            box-shadow: 0 2px 8px rgba(42, 36, 28, 0.25);
+        }
+
+        .heat-daylabels {
+            display: grid;
+            gap: 3px;
+            margin-bottom: 5px;
+        }
+
+        .heat-daylabels span {
+            font-size: 8.5px;
+            text-align: center;
+            color: var(--ink-faint);
+        }
+
+        /* ---- ranked bars ---- */
+        .rank-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .rank-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rank-row .rank-n {
+            width: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            color: var(--ink-faint);
+            flex-shrink: 0;
+        }
+
+        .rank-row .rank-name {
+            width: 88px;
+            font-size: 11.5px;
+            color: var(--ink);
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rank-row .rank-track {
+            flex: 1;
+            height: 9px;
+            background: var(--border-soft);
+            border-radius: 999px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(42, 36, 28, 0.06);
+        }
+
+        .rank-row .rank-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: filter .15s ease;
+        }
+
+        .rank-row:hover .rank-fill {
+            filter: brightness(1.1);
+        }
+
+        .rank-row .rank-val {
+            width: 40px;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            color: var(--ink-soft);
+            flex-shrink: 0;
+        }
+
+        /* ---- manager table ---- */
+        .mtable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .mtable th {
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--ink-faint);
+            font-weight: 600;
+            padding: 0 8px 8px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .mtable td {
+            padding: 9px 8px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .mtable tr:last-child td {
+            border-bottom: none;
+        }
+
+        .mtable tr:hover td {
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .mtable .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        .pct-pill {
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        /* ---- gauge / bullet (reused for KPI-adjacent metrics) ---- */
+        .gauge-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .radial-wrap {
+            position: relative;
+            width: 88px;
+            height: 88px;
+            margin: 0 auto;
+        }
+
+        .radial-wrap svg {
+            transform: rotate(-90deg);
+        }
+
+        .radial-val {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radial-val .n {
+            font-family: 'Fraunces', serif;
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        .radial-val .u {
+            font-size: 8.5px;
+            color: var(--ink-faint);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        /* ---- generic stacked bar (reused by leave composition) ---- */
+        .stack-bar {
+            display: flex;
+            width: 100%;
+            height: 24px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(42, 36, 28, 0.08);
+        }
+
+        .stack-seg {
+            height: 100%;
+            transition: filter .15s ease, transform .15s ease;
+            cursor: default;
+        }
+
+        .stack-seg:hover {
+            filter: brightness(1.08);
+            transform: scaleY(1.05);
+        }
+
+        /* ---- scatter ---- */
+        .scatter-dot {
+            cursor: default;
+            transition: r .12s ease, filter .12s ease;
+        }
+
+        .scatter-dot:hover {
+            filter: brightness(1.15);
+        }
+
+        /* ---- empty-slot card, shown when a registry tile has no data ---- */
+        .mtile-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--ink-faint);
+            font-size: 12px;
+            padding: 20px 10px;
+            flex: 1;
+        }
+
+        @media (max-width: 1150px) {
+            .kpi-strip {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .mtile.span-3,
+            .mtile.span-4,
+            .mtile.span-5,
+            .mtile.span-6,
+            .mtile.span-7,
+            .mtile.span-8 {
+                grid-column: span 12;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .kpi-strip {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ---------- Chart tooltip (generic) ---------- */
+        #chartTip {
+            position: fixed;
+            z-index: 80;
+            display: none;
+            background: var(--ink);
+            color: #fff;
+            border-radius: 10px;
+            padding: 10px 13px;
+            font-size: 11.5px;
+            box-shadow: var(--shadow-lg);
+            pointer-events: none;
+            max-width: 220px;
+        }
+
+        #chartTip .tt-title {
+            font-family: 'Fraunces', serif;
+            font-size: 12.5px;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        #chartTip .tt-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 2px 0;
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        #chartTip .tt-row b {
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        #chartTip .tt-sw {
+            width: 7px;
+            height: 7px;
+            border-radius: 2px;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        /* ---------- Toolbar ---------- */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 5px 6px;
+            box-shadow: var(--shadow-sm), var(--emboss);
+        }
+
+        .month-nav button {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--ink-soft);
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s ease, color .15s ease;
+        }
+
+        .month-nav button:hover {
+            background: var(--gold-soft);
+            color: var(--gold);
+        }
+
+        .month-nav .label {
+            font-family: 'Fraunces', serif;
+            font-size: 15.5px;
+            font-weight: 500;
+            padding: 0 10px;
+            min-width: 132px;
+            text-align: center;
+        }
+
+        .pill-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 9px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--panel-alt);
+            color: var(--ink);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            transition: all .15s ease;
+            box-shadow: var(--shadow-sm), var(--emboss);
+        }
+
+        .btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md), 0 0 18px -8px rgba(173, 138, 62, 0.5);
+        }
+
+        .btn.today {
+            background: var(--ink);
+            color: #fff;
+            border-color: var(--ink);
+        }
+
+        .btn.today:hover {
+            opacity: .88;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn.ghost {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .btn.primary {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            color: #fff;
+            opacity: .9;
+        }
+
+        .btn.locked {
+            background: var(--unplanned-bg);
+            border-color: var(--unplanned);
+            color: var(--unplanned);
+        }
+
+        .btn .dot-ic {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .seg {
+            display: flex;
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 3px;
+            box-shadow: var(--shadow-sm), var(--emboss);
+        }
+
+        .seg button {
+            border: none;
+            background: transparent;
+            font-size: 12.5px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            color: var(--ink-soft);
+            transition: .15s ease;
+        }
+
+        .seg button.active {
+            background: var(--ink);
+            color: #fff;
+        }
+
+        /* ---------- Filters ---------- */
+        .filters {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            margin-bottom: 22px;
+            box-shadow: var(--shadow-sm), var(--emboss);
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 8px 14px;
+            min-width: 220px;
+            flex: 1 1 220px;
+            box-shadow: var(--emboss);
+        }
+
+        .search-box svg {
+            flex-shrink: 0;
+            color: var(--ink-faint);
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 13px;
+            width: 100%;
+            font-family: 'Inter', sans-serif;
+            color: var(--ink);
+        }
+
+        .search-box input::placeholder {
+            color: var(--ink-faint);
+        }
+
+        select.fselect {
+            appearance: none;
+            background: var(--panel-alt) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M1 1l4 4 4-4" stroke="%238B8172" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 8px 30px 8px 14px;
+            font-size: 12.5px;
+            font-family: 'Inter', sans-serif;
+            color: var(--ink-soft);
+            cursor: pointer;
+            min-width: 118px;
+            box-shadow: var(--emboss);
+        }
+
+        select.fselect:hover {
+            border-color: var(--gold);
+            color: var(--ink);
+        }
+
+        .chips-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-soft);
+            align-items: center;
+        }
+
+        .chip {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 6px 13px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--panel-alt);
+            color: var(--ink-soft);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: .15s ease;
+            box-shadow: var(--emboss);
+        }
+
+        .chip::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--ink-faint);
+        }
+
+        .chip:hover {
+            border-color: var(--gold);
+        }
+
+        .chip.active {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: #fff;
+            box-shadow: 0 0 14px -4px rgba(42, 36, 28, 0.6);
+        }
+
+        .chip.active::before {
+            background: #fff;
+        }
+
+        .chip.reset {
+            color: var(--unplanned);
+            border-style: dashed;
+            margin-left: auto;
+        }
+
+        .chip.reset::before {
+            display: none;
+        }
+
+        /* ---------- Matrix ---------- */
+        .matrix-panel {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md), var(--emboss);
+            overflow: hidden;
+            margin-bottom: 26px;
+        }
+
+        .matrix-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .matrix-topbar h3 {
+            font-family: 'Fraunces', serif;
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        .matrix-topbar .legend {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: var(--ink-soft);
+        }
+
+        .legend .li {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend .sw {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .matrix-scroll {
+            overflow: auto;
+            max-height: 640px;
+            position: relative;
+        }
+
+        table.matrix {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: max-content;
+        }
+
+        table.matrix thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 6px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        table.matrix thead th.daynum {
+            font-family: 'Fraunces', serif;
+            font-size: 15px;
+        }
+
+        table.matrix thead th .wk {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--ink-faint);
+            margin-top: 2px;
+        }
+
+        table.matrix thead th.weekend {
+            background: #F5F1E6;
+        }
+
+        table.matrix thead th.today-col {
+            background: var(--gold-soft);
+        }
+
+        table.matrix thead th.today-col .daynum {
+            color: var(--gold);
+        }
+
+        table.matrix thead th.holiday-col {
+            background: var(--holiday-bg);
+        }
+
+        .stick {
+            position: sticky;
+            z-index: 4;
+            background: var(--panel-alt);
+        }
+
+        .stick-head {
+            position: sticky;
+            z-index: 5;
+            background: var(--panel);
+        }
+
+        th.col-check,
+        td.col-check {
+            left: 0;
+            min-width: 38px;
+            width: 38px;
+            text-align: center;
+        }
+
+        th.col-emp,
+        td.col-emp {
+            left: 38px;
+            min-width: 198px;
+            width: 198px;
+            text-align: left;
+        }
+
+        th.col-dept,
+        td.col-dept {
+            left: 236px;
+            min-width: 150px;
+            width: 150px;
+            text-align: left;
+            border-right: 1px solid var(--border);
+            box-shadow: 5px 0 10px -7px rgba(42, 36, 28, 0.18);
+        }
+
+        table.matrix tbody td {
+            border-bottom: 1px solid var(--border-soft);
+            padding: 8px 10px;
+            font-size: 12.5px;
+            vertical-align: middle;
+        }
+
+        table.matrix tbody tr:hover td {
+            background: #FBF7EC;
+        }
+
+        table.matrix tbody tr:hover td.stick {
+            background: #FBF7EC;
+        }
+
+        .emp-cell {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #E8DCC4, #D9C79E);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fraunces', serif;
+            font-weight: 500;
+            font-size: 12px;
+            color: #6B5A2E;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(42, 36, 28, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+        }
+
+        .emp-name {
+            font-weight: 600;
+            font-size: 12.6px;
+            line-height: 1.25;
+        }
+
+        .emp-sub {
+            font-size: 10.5px;
+            color: var(--ink-faint);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .dept-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            color: var(--ink-soft);
+            background: var(--panel);
+            border: 1px solid var(--border-soft);
+            padding: 4px 10px;
+            border-radius: 999px;
+        }
+
+        .dept-pill .dsw {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--gold);
+            flex-shrink: 0;
+        }
+
+        input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            accent-color: var(--ink);
+            cursor: pointer;
+        }
+
+        .dcell {
+            min-width: 80px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            border-radius: 7px;
+            padding: 6px 4px !important;
+            transition: background .12s ease, box-shadow .12s ease;
+        }
+
+        .dcell:hover {
+            outline: 1.5px solid var(--gold);
+            outline-offset: -1px;
+            box-shadow: 0 0 12px -2px rgba(173, 138, 62, 0.45);
+        }
+
+        .dcell .status-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .01em;
+        }
+
+        .dcell .hrs {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            margin-top: 2px;
+            opacity: .85;
+        }
+
+        .dcell.present {
+            background: var(--present-bg);
+            color: var(--present);
+        }
+
+        .dcell.late {
+            background: var(--late-bg);
+            color: var(--late);
+        }
+
+        .dcell.halfday {
+            background: var(--halfday-bg);
+            color: var(--halfday);
+        }
+
+        .dcell.absent {
+            background: var(--absent-bg);
+            color: var(--absent);
+        }
+
+        .dcell.unplanned {
+            background: var(--unplanned-bg);
+            color: var(--unplanned);
+        }
+
+        .dcell.paidleave {
+            background: var(--paidleave-bg);
+            color: var(--paidleave);
+        }
+
+        .dcell.wfh {
+            background: var(--wfh-bg);
+            color: var(--wfh);
+        }
+
+        .dcell.weekoff {
+            background: var(--weekoff-bg);
+            color: var(--weekoff);
+        }
+
+        .dcell.holiday {
+            background: var(--holiday-bg);
+            color: var(--holiday);
+        }
+
+        .dcell.birthday {
+            background: var(--birthday-bg);
+            color: var(--birthday);
+        }
+
+        .dcell.override::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            border-width: 0 9px 9px 0;
+            border-style: solid;
+            border-color: transparent #A67C3D transparent transparent;
+            opacity: .9;
+            border-radius: 0 7px 0 0;
+        }
+
+        .dcell.today-marker {
+            box-shadow: inset 0 0 0 1.5px var(--gold);
+        }
+
+        #popover {
+            position: fixed;
+            z-index: 60;
+            display: none;
+            width: 260px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 14px 16px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        #popover .ph-title {
+            font-family: 'Fraunces', serif;
+            font-size: 14.5px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        #popover .prow {
+            display: flex;
+            justify-content: space-between;
+            padding: 3.5px 0;
+            color: var(--ink-soft);
+            border-bottom: 1px dashed var(--border-soft);
+        }
+
+        #popover .prow:last-child {
+            border-bottom: none;
+        }
+
+        #popover .prow b {
+            color: var(--ink);
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+        }
+
+        .bulk-bar {
+            position: sticky;
+            bottom: 0;
+            z-index: 20;
+            display: none;
+            align-items: center;
+            gap: 14px;
+            background: var(--ink);
+            color: #fff;
+            border-radius: 999px;
+            padding: 10px 12px 10px 20px;
+            margin: 0 auto 26px;
+            width: fit-content;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .bulk-bar.show {
+            display: flex;
+        }
+
+        .bulk-bar .count {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .bulk-bar .bactions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .bulk-bar button {
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            padding: 7px 13px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+        .bulk-bar button:hover {
+            background: var(--gold);
+            border-color: var(--gold);
+        }
+
+        .bulk-bar .close {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.06);
+            border: none;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(42, 36, 28, 0.28);
+            z-index: 70;
+            display: none;
+            backdrop-filter: blur(1px);
+        }
+
+        #drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: 400px;
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            z-index: 71;
+            transform: translateX(100%);
+            transition: transform .28s cubic-bezier(.4, 0, .2, 1);
+            box-shadow: -12px 0 40px rgba(42, 36, 28, 0.14);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer-head {
+            padding: 22px 24px 16px;
+            border-bottom: 1px solid var(--border-soft);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .drawer-head h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .drawer-head .eyebrow {
+            margin-top: 4px;
+        }
+
+        .drawer-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--panel-alt);
+            cursor: pointer;
+            color: var(--ink-soft);
+        }
+
+        .drawer-body {
+            padding: 18px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .drawer-section {
+            margin-bottom: 22px;
+        }
+
+        .drawer-section h4 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--ink-faint);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .dgrid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .dfield {
+            background: var(--panel-alt);
+            border: 1px solid var(--border-soft);
+            border-radius: 8px;
+            padding: 9px 12px;
+        }
+
+        .dfield .l {
+            font-size: 10px;
+            color: var(--ink-faint);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 3px;
+        }
+
+        .dfield .v {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .audit-item {
+            display: flex;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px dashed var(--border-soft);
+            font-size: 12px;
+        }
+
+        .audit-item .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--gold);
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .audit-item .t {
+            color: var(--ink-faint);
+            font-size: 10.5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .drawer-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 24px 24px;
+            border-top: 1px solid var(--border-soft);
+        }
+
+        .drawer-actions button {
+            flex: 1 1 45%;
+        }
+
+        .notes-box {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12.5px;
+            color: var(--ink);
+            resize: vertical;
+            min-height: 60px;
+            background: var(--panel-alt);
+        }
+
+        @media (max-width: 1150px) {
+            .gauge-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-header">
+        <div>
+            <h1>Workforce Attendance Ledger</h1>
+            <p>Monitor attendance, shifts, leave and workforce activity across the organization.</p>
+        </div>
+        <div class="header-meta">
+            <div class="eyebrow">Organization</div>
+            <div class="val">Iconic Social Pvt Ltd</div>
+        </div>
+    </div>
+
+    <!-- ================= COMPANY METRICS ================= -->
+    <div class="metrics-mega">
+        <div class="section-heading">
+            <div>
+                <h2>Company Metrics</h2>
+                <div class="sub" id="analyticsRangeLabel">Showing This Month · July 2026</div>
+            </div>
+            <div class="range-control">
+                <div class="range-seg" id="rangeSeg">
+                    <button data-range="today">Today</button>
+                    <button data-range="week">This Week</button>
+                    <button class="active" data-range="month">This Month</button>
+                    <button data-range="custom">Custom Range</button>
+                </div>
+                <div class="custom-dates" id="customDates">
+                    <input type="date" id="customStart">
+                    <span>to</span>
+                    <input type="date" id="customEnd">
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters: everything here narrows the employee set every tile below reads from -->
+        <div class="metrics-filterbar glass tilt-card" id="metricsFilterBar" style="--glow: rgba(173,138,62,0.25)">
+            <div class="glass-edge"></div>
+            <div class="search-box" style="flex:0 1 210px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M21 21l-4.3-4.3" />
+                </svg>
+                <input type="text" id="mfSearch" placeholder="Search employee, ID or manager…">
+            </div>
+            <div class="mf-divider"></div>
+            <span class="mf-label">Dept</span>
+            <div class="mf-chipset" id="mfDeptChips"></div>
+            <div class="mf-divider"></div>
+            <select class="fselect" id="mfLoc">
+                <option value="all">All Locations</option>
+            </select>
+            <select class="fselect" id="mfShift">
+                <option value="all">All Shifts</option>
+            </select>
+            <select class="fselect" id="mfManager">
+                <option value="all">All Managers</option>
+            </select>
+            <button class="chip reset mf-reset" id="mfReset">Reset filters</button>
+        </div>
+
+        <!-- KPI strip — each tile is a registry entry (see KPI_TILES in JS) -->
+        <div class="kpi-strip" id="kpiStrip"></div>
+
+        <!-- Bento grid — each card is a registry entry (see METRIC_TILES in JS).
+       To add a new company metric: push one object into METRIC_TILES with
+       {id, span, title, sub, glow, render(host, data)} — it inherits the
+       glass surface, 3D tilt, filters and date range automatically. -->
+        <div class="metrics-bento" id="metricsBento"></div>
+    </div>
+
+    <!-- ================= TOOLBAR + FILTERS ================= -->
+    <div class="toolbar">
+        <div class="pill-group">
+            <div class="month-nav">
+                <button id="prevMonth">‹</button>
+                <div class="label" id="monthLabel">July 2026</div>
+                <button id="nextMonth">›</button>
+            </div>
+            <button class="btn today" id="todayBtn">Today</button>
+            <div class="seg">
+                <button class="active" data-range="month">Month</button>
+                <button data-range="custom">Custom Range</button>
+            </div>
+        </div>
+        <div class="pill-group">
+            <button class="btn ghost">Export</button>
+            <button class="btn ghost" id="bulkToggleBtn">Bulk Actions</button>
+            <button class="btn" id="lockBtn"><span class="dot-ic"></span> Attendance Lock</button>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="filters-row">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M21 21l-4.3-4.3" />
+                </svg>
+                <input type="text" placeholder="Search employee, ID or email…">
+            </div>
+            <select class="fselect">
+                <option>Department</option>
+                <option>Engineering</option>
+                <option>Design</option>
+                <option>Product</option>
+                <option>Marketing</option>
+                <option>Sales</option>
+                <option>Finance</option>
+                <option>HR</option>
+                <option>Operations</option>
+            </select>
+            <select class="fselect">
+                <option>Designation</option>
+                <option>Associate</option>
+                <option>Senior</option>
+                <option>Lead</option>
+                <option>Manager</option>
+                <option>Director</option>
+            </select>
+            <select class="fselect">
+                <option>Status</option>
+                <option>Present</option>
+                <option>Late</option>
+                <option>Absent</option>
+                <option>Leave</option>
+                <option>WFH</option>
+            </select>
+            <select class="fselect">
+                <option>Leave Type</option>
+                <option>Paid Leave</option>
+                <option>Unplanned Leave</option>
+                <option>Birthday Leave</option>
+            </select>
+            <select class="fselect">
+                <option>Manager</option>
+                <option>A. Kapoor</option>
+                <option>R. Sen</option>
+                <option>M. Iyer</option>
+                <option>P. Bhatt</option>
+            </select>
+            <select class="fselect">
+                <option>Location</option>
+                <option>Delhi</option>
+                <option>Bengaluru</option>
+                <option>Mumbai</option>
+                <option>Remote</option>
+            </select>
+            <select class="fselect">
+                <option>Employment Type</option>
+                <option>Full-time</option>
+                <option>Contract</option>
+                <option>Intern</option>
+            </select>
+            <select class="fselect">
+                <option>Shift</option>
+                <option>General</option>
+                <option>Morning</option>
+                <option>Night</option>
+                <option>Flexible</option>
+            </select>
+            <select class="fselect">
+                <option>Entity</option>
+                <option>IN-DEL-01</option>
+                <option>IN-BLR-02</option>
+                <option>US-REM-03</option>
+            </select>
+            <select class="fselect">
+                <option>Work Mode</option>
+                <option>Office</option>
+                <option>Hybrid</option>
+                <option>Remote</option>
+            </select>
+        </div>
+        <div class="chips-row">
+            <span class="chip" data-chip="late">Only Late</span>
+            <span class="chip" data-chip="absent">Only Absent</span>
+            <span class="chip" data-chip="leave">Only Leave</span>
+            <span class="chip" data-chip="wfh">Only WFH</span>
+            <span class="chip" data-chip="halfday">Only Half Day</span>
+            <span class="chip" data-chip="overtime">Only Overtime</span>
+            <span class="chip reset" id="resetFilters">Reset Filters</span>
+        </div>
+    </div>
+
+    <!-- ================= MATRIX ================= -->
+    <div class="matrix-panel">
+        <div class="matrix-topbar">
+            <h3>Attendance Matrix</h3>
+            <div class="legend">
+                <span class="li"><span class="sw" style="background:var(--present)"></span>Present</span>
+                <span class="li"><span class="sw" style="background:var(--late)"></span>Late</span>
+                <span class="li"><span class="sw" style="background:var(--halfday)"></span>Half Day</span>
+                <span class="li"><span class="sw" style="background:var(--absent)"></span>Absent</span>
+                <span class="li"><span class="sw" style="background:var(--weekoff)"></span>Weekly Off</span>
+                <span class="li"><span class="sw" style="background:var(--wfh)"></span>WFH</span>
+                <span class="li"><span class="sw" style="background:var(--paidleave)"></span>Paid Leave</span>
+                <span class="li"><span class="sw" style="background:var(--unplanned)"></span>Unplanned Leave</span>
+                <span class="li"><span class="sw" style="background:var(--birthday)"></span>Birthday Leave</span>
+            </div>
+        </div>
+        <div class="matrix-scroll" id="matrixScroll">
+            <table class="matrix" id="matrixTable"></table>
+        </div>
+    </div>
+
+    <div class="bulk-bar" id="bulkBar">
+        <span class="count" id="bulkCount">0 selected</span>
+        <div class="bactions">
+            <button data-b="Present">Present</button>
+            <button data-b="Absent">Absent</button>
+            <button data-b="Leave">Leave</button>
+            <button data-b="Holiday">Holiday</button>
+            <button data-b="Shift">Shift</button>
+            <button data-b="WFH">WFH</button>
+            <button data-b="Override">Override</button>
+            <button data-b="Approve">Approve</button>
+            <button data-b="Reject">Reject</button>
+            <button data-b="Lock">Lock</button>
+            <button data-b="Unlock">Unlock</button>
+        </div>
+        <button class="close" id="bulkClose">×</button>
+    </div>
+
+    <div id="popover"></div>
+    <div id="chartTip"></div>
+    <div id="overlay"></div>
+    <div id="drawer">
+        <div class="drawer-head">
+            <div>
+                <h2 id="drawerName">—</h2>
+                <div class="eyebrow" id="drawerSub">—</div>
+            </div>
+            <button class="drawer-close" id="drawerClose">×</button>
+        </div>
+        <div class="drawer-body">
+            <div class="drawer-section">
+                <h4>Status</h4>
+                <span class="status-badge" id="drawerBadge">—</span>
+            </div>
+            <div class="drawer-section">
+                <h4>Punch Record</h4>
+                <div class="dgrid">
+                    <div class="dfield">
+                        <div class="l">Punch In</div>
+                        <div class="v" id="dIn">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Punch Out</div>
+                        <div class="v" id="dOut">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Working Hours</div>
+                        <div class="v" id="dHrs">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Break</div>
+                        <div class="v" id="dBreak">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Late Minutes</div>
+                        <div class="v" id="dLate">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Overtime</div>
+                        <div class="v" id="dOt">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-section">
+                <h4>Context</h4>
+                <div class="dgrid">
+                    <div class="dfield">
+                        <div class="l">Shift</div>
+                        <div class="v" id="dShift">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Approval</div>
+                        <div class="v" id="dApproval">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Geo Location</div>
+                        <div class="v" id="dGeo">—</div>
+                    </div>
+                    <div class="dfield">
+                        <div class="l">Source</div>
+                        <div class="v" id="dSource">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-section">
+                <h4>Manager Notes</h4>
+                <textarea class="notes-box" id="dNotes" placeholder="Add a note for this attendance entry…"></textarea>
+            </div>
+            <div class="drawer-section">
+                <h4>Audit Trail</h4>
+                <div id="dAudit"></div>
+            </div>
+        </div>
+        <div class="drawer-actions">
+            <button class="btn ghost">Edit Attendance</button>
+            <button class="btn ghost">Change Shift</button>
+            <button class="btn ghost">Assign Leave</button>
+            <button class="btn ghost">Override Attendance</button>
+            <button class="btn primary">Approve</button>
+            <button class="btn" style="color:var(--unplanned);border-color:var(--unplanned);">Reject</button>
+        </div>
+    </div>
+
+    <script>
+        /* =====================================================================
+           DATA SETUP
+        ===================================================================== */
+        const DEPTS = ["Engineering", "Design", "Product", "Marketing", "Sales", "Finance", "HR", "Operations"];
+        const DESIG = { Engineering: ["SDE I", "SDE II", "Tech Lead"], Design: ["UI Designer", "Sr. Designer"], Product: ["Associate PM", "PM"], Marketing: ["Content Exec", "SEO Specialist"], Sales: ["Sales Exec", "Account Manager"], Finance: ["Analyst", "Sr. Analyst"], HR: ["HR Exec", "People Partner"], Operations: ["Ops Exec", "Ops Lead"] };
+        const MANAGERS = ["A. Kapoor", "R. Sen", "M. Iyer", "P. Bhatt", "S. Rao", "K. Verma"];
+        const SHIFTS = ["General", "Morning", "Night", "Flexible"];
+        const LOCS = ["Delhi", "Bengaluru", "Mumbai", "Remote"];
+        const FIRST = ["Aarav", "Vihaan", "Ishaan", "Kabir", "Rohan", "Aditya", "Ananya", "Diya", "Meera", "Sara", "Priya", "Riya", "Kavya", "Arjun", "Vivaan", "Nikhil", "Tara", "Nisha", "Karan", "Simran", "Yash", "Zoya", "Rahul", "Neha", "Varun", "Pooja", "Aman", "Divya", "Rishab", "Sana"];
+        const LAST = ["Sharma", "Mehta", "Kapoor", "Nair", "Gupta", "Reddy", "Chawla", "Bose", "Iyer", "Malhotra", "Sengupta", "Rathi", "Bhatt", "Verma", "Joshi", "Dutta"];
+
+        function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+        function initials(name) { return name.split(' ').map(p => p[0]).join(''); }
+
+        let employees = [];
+        for (let i = 0; i < 38; i++) {
+            const dept = pick(DEPTS);
+            const first = pick(FIRST), last = pick(LAST);
+            const name = first + " " + last;
+            employees.push({
+                id: "IS-" + (1000 + i),
+                name, initials: initials(name),
+                dept, desig: pick(DESIG[dept]),
+                manager: pick(MANAGERS), shift: pick(SHIFTS), loc: pick(LOCS)
+            });
+        }
+
+        let currentDate = new Date(2026, 6, 1); // matrix month anchor
+        const today = new Date(2026, 6, 4);      // "today" reference
+        const HOLIDAYS = { "2026-07-17": "Founders Day" };
+
+        function daysInMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); }
+        function fmtDate(y, m, day) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; }
+        function ymd(d) { return fmtDate(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+        function genCell(isWeekend, isHoliday) {
+            if (isHoliday) return { status: 'holiday', label: 'Holiday' };
+            if (isWeekend) return { status: 'weekoff', label: 'Weekly Off' };
+            const r = Math.random();
+            if (r < 0.68) {
+                const inM = Math.floor(Math.random() * 20);
+                const hrs = (8 + Math.random() * 1.2).toFixed(1);
+                const outMin = Math.floor(inM + hrs * 60) % 60;
+                const outH = 17 + Math.floor((inM + hrs * 60) / 60) - 8;
+                return { status: 'present', label: 'Present', hrs: hrs + 'h', inT: `09:${String(inM).padStart(2, '0')}`, outT: `${outH}:${String(outMin).padStart(2, '0')}`, ot: Math.random() < 0.15 ? (Math.random() * 1.5).toFixed(1) + 'h' : '0h' };
+            } else if (r < 0.75) {
+                const lateMin = 12 + Math.floor(Math.random() * 45);
+                return { status: 'late', label: 'Late', hrs: (7.5 + Math.random() * 0.8).toFixed(1) + 'h', inT: `09:${lateMin}`, outT: `17:${Math.floor(Math.random() * 40)}`, lateMin };
+            } else if (r < 0.80) {
+                return { status: 'halfday', label: 'Half Day', hrs: '4.5h', inT: '09:15', outT: '13:45' };
+            } else if (r < 0.85) {
+                return { status: 'absent', label: 'Absent' };
+            } else if (r < 0.90) {
+                return { status: 'paidleave', label: 'Paid Leave' };
+            } else if (r < 0.93) {
+                return { status: 'unplanned', label: 'Unplanned Leave' };
+            } else if (r < 0.97) {
+                return { status: 'wfh', label: 'Remote', hrs: (7.8 + Math.random()).toFixed(1) + 'h', inT: '09:20', outT: '18:05' };
+            } else {
+                return { status: 'birthday', label: 'Birthday Leave' };
+            }
+        }
+
+        let attendance = {}; // emp.id -> [cell,...] for currentDate's month
+        function generateAttendance() {
+            attendance = {};
+            const y = currentDate.getFullYear(), m = currentDate.getMonth();
+            const nd = daysInMonth(currentDate);
+            employees.forEach(emp => {
+                const rows = [];
+                for (let day = 1; day <= nd; day++) {
+                    const dow = new Date(y, m, day).getDay();
+                    const isWeekend = (dow === 0 || dow === 6);
+                    const key = fmtDate(y, m, day);
+                    const isHoliday = !!HOLIDAYS[key];
+                    const cell = genCell(isWeekend, isHoliday);
+                    cell.override = Math.random() < 0.03;
+                    cell.date = key;
+                    cell.day = day;
+                    rows.push(cell);
+                }
+                attendance[emp.id] = rows;
+            });
+        }
+        generateAttendance();
+
+        /* =====================================================================
+           COMPANY METRICS ENGINE
+           ---------------------------------------------------------------------
+           Everything on the "Company Metrics" section above the attendance
+           matrix is driven by two registries: KPI_TILES (the top strip of small
+           numbers) and METRIC_TILES (the bento grid of charts). Both read from
+           one aggregate object built by computeMetrics(days, emps).
+        
+           HOW TO ADD A NEW METRIC (for Antigravity / future passes):
+           1. If you need a new raw aggregate, add it inside computeMetrics()
+              and return it on the object — everything below already loops over
+              `days` × `emps` once, so tack on new counters in that same pass
+              rather than adding a second loop.
+           2. For a KPI strip number: push into KPI_TILES — {key, label, suffix,
+              glow, get(M), spark(M)}. spark can be null to omit the sparkline.
+           3. For a chart card: push into METRIC_TILES — {id, span (out of 12),
+              title, sub, glow, render(host, M, days, emps)}. The grid, glass
+              surface, 3D tilt and error boundary are all handled automatically
+              by renderMetricsBento(); render() just needs to set host.innerHTML.
+           Nothing else needs to change — no manual wiring, no CSS to touch.
+        ===================================================================== */
+
+        /* ---------------- shared tooltip (every chart tile hovers into this) ---------------- */
+        const chartTip = document.getElementById('chartTip');
+        function showTip(e, html) { chartTip.innerHTML = html; chartTip.style.display = 'block'; moveTip(e); }
+        function moveTip(e) {
+            const pad = 14; let x = e.clientX + pad, y = e.clientY + pad;
+            const vw = window.innerWidth, vh = window.innerHeight;
+            if (x + 220 > vw) x = e.clientX - 220 - pad;
+            if (y + 90 > vh) y = e.clientY - 90 - pad;
+            chartTip.style.left = x + 'px'; chartTip.style.top = y + 'px';
+        }
+        function hideTip() { chartTip.style.display = 'none'; }
+
+        /* ---------------- filter state + wiring ---------------- */
+        let mFilters = { dept: new Set(), loc: 'all', shift: 'all', manager: 'all', search: '' };
+
+        function populateFilterSelects() {
+            const locSel = document.getElementById('mfLoc');
+            const shiftSel = document.getElementById('mfShift');
+            const mgrSel = document.getElementById('mfManager');
+            LOCS.forEach(l => locSel.insertAdjacentHTML('beforeend', `<option value="${l}">${l}</option>`));
+            SHIFTS.forEach(s => shiftSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s} Shift</option>`));
+            MANAGERS.forEach(mg => mgrSel.insertAdjacentHTML('beforeend', `<option value="${mg}">${mg}</option>`));
+            document.getElementById('mfDeptChips').innerHTML = DEPTS.map(d => `<button type="button" class="chip" data-dept="${d}">${d}</button>`).join('');
+        }
+        populateFilterSelects();
+
+        function getFilteredEmployees() {
+            const q = mFilters.search.trim().toLowerCase();
+            return employees.filter(emp => {
+                if (mFilters.dept.size && !mFilters.dept.has(emp.dept)) return false;
+                if (mFilters.loc !== 'all' && emp.loc !== mFilters.loc) return false;
+                if (mFilters.shift !== 'all' && emp.shift !== mFilters.shift) return false;
+                if (mFilters.manager !== 'all' && emp.manager !== mFilters.manager) return false;
+                if (q && !(emp.name.toLowerCase().includes(q) || emp.id.toLowerCase().includes(q) || emp.manager.toLowerCase().includes(q))) return false;
+                return true;
+            });
+        }
+
+        document.getElementById('mfDeptChips').addEventListener('click', e => {
+            const btn = e.target.closest('.chip'); if (!btn) return;
+            btn.classList.toggle('active');
+            const d = btn.dataset.dept;
+            if (mFilters.dept.has(d)) mFilters.dept.delete(d); else mFilters.dept.add(d);
+            refreshAnalytics();
+        });
+        ['mfLoc', 'mfShift', 'mfManager'].forEach(id => {
+            document.getElementById(id).addEventListener('change', e => {
+                const key = id === 'mfLoc' ? 'loc' : id === 'mfShift' ? 'shift' : 'manager';
+                mFilters[key] = e.target.value;
+                refreshAnalytics();
+            });
+        });
+        document.getElementById('mfSearch').addEventListener('input', e => { mFilters.search = e.target.value; refreshAnalytics(); });
+        document.getElementById('mfReset').addEventListener('click', () => {
+            mFilters = { dept: new Set(), loc: 'all', shift: 'all', manager: 'all', search: '' };
+            document.querySelectorAll('#mfDeptChips .chip').forEach(c => c.classList.remove('active'));
+            document.getElementById('mfLoc').value = 'all';
+            document.getElementById('mfShift').value = 'all';
+            document.getElementById('mfManager').value = 'all';
+            document.getElementById('mfSearch').value = '';
+            refreshAnalytics();
+        });
+
+        /* ---------------- date range (Today / Week / Month / Custom) ---------------- */
+        let activeRange = 'month';
+        function getSelectedDays() {
+            const nd = daysInMonth(currentDate);
+            const inThisMonth = (today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth());
+            if (activeRange === 'today') {
+                return [inThisMonth ? today.getDate() : 1];
+            }
+            if (activeRange === 'week') {
+                const end = inThisMonth ? today.getDate() : nd;
+                const start = Math.max(1, end - 6);
+                const arr = []; for (let d = start; d <= end; d++) arr.push(d);
+                return arr;
+            }
+            if (activeRange === 'custom') {
+                const sVal = document.getElementById('customStart').value;
+                const eVal = document.getElementById('customEnd').value;
+                if (sVal && eVal) {
+                    const s = new Date(sVal), e = new Date(eVal);
+                    const arr = [];
+                    for (let d = 1; d <= nd; d++) {
+                        const dd = new Date(currentDate.getFullYear(), currentDate.getMonth(), d);
+                        if (dd >= new Date(s.getFullYear(), s.getMonth(), s.getDate()) && dd <= new Date(e.getFullYear(), e.getMonth(), e.getDate())) arr.push(d);
+                    }
+                    return arr.length ? arr : Array.from({ length: nd }, (_, i) => i + 1);
+                }
+                return Array.from({ length: nd }, (_, i) => i + 1);
+            }
+            return Array.from({ length: nd }, (_, i) => i + 1);
+        }
+        function getPreviousDays(days) {
+            const len = days.length;
+            const start = Math.min(...days), end = Math.max(...days);
+            let prevEnd = start - 1, prevStart = prevEnd - len + 1;
+            if (prevStart < 1) { prevStart = 1; prevEnd = start - 1; }
+            if (prevEnd < prevStart) return null;
+            const arr = []; for (let d = prevStart; d <= prevEnd; d++) arr.push(d);
+            return arr;
+        }
+
+        /* ---------------- core aggregation (one pass, everything reads from this) ---------------- */
+        function computeMetrics(days, emps) {
+            const y = currentDate.getFullYear(), m = currentDate.getMonth();
+
+            const trend = days.map(day => {
+                const s = { day, present: 0, late: 0, wfh: 0, absent: 0, leave: 0, weekoff: 0, hrsSum: 0, hrsCount: 0, otSum: 0 };
+                emps.forEach(emp => {
+                    const c = attendance[emp.id][day - 1]; if (!c) return;
+                    if (c.status === 'present') { s.present++; s.hrsSum += parseFloat(c.hrs); s.hrsCount++; if (c.ot) s.otSum += parseFloat(c.ot); }
+                    else if (c.status === 'late') { s.late++; s.hrsSum += parseFloat(c.hrs); s.hrsCount++; }
+                    else if (c.status === 'wfh') { s.wfh++; s.hrsSum += parseFloat(c.hrs); s.hrsCount++; }
+                    else if (c.status === 'absent') { s.absent++; }
+                    else if (c.status === 'weekoff' || c.status === 'holiday') { s.weekoff++; }
+                    else { s.leave++; }
+                });
+                s.ot = s.otSum;
+                s.hrsAvg = s.hrsCount ? (s.hrsSum / s.hrsCount) : 0;
+                return s;
+            });
+
+            const totals = trend.reduce((a, s) => {
+                a.present += s.present; a.late += s.late; a.wfh += s.wfh; a.absent += s.absent; a.leave += s.leave; a.weekoff += s.weekoff;
+                a.hrsSum += s.hrsSum; a.hrsCount += s.hrsCount; a.otSum += s.otSum;
+                return a;
+            }, { present: 0, late: 0, wfh: 0, absent: 0, leave: 0, weekoff: 0, hrsSum: 0, hrsCount: 0, otSum: 0 });
+
+            const healthTotal = totals.present + totals.late + totals.wfh + totals.leave + totals.absent;
+            const pct = healthTotal ? ((totals.present + totals.late + totals.wfh) / healthTotal * 100) : 0;
+            const absentRate = healthTotal ? (totals.absent / healthTotal * 100) : 0;
+
+            const leaveTypes = { paidleave: 0, unplanned: 0, birthday: 0, halfday: 0 };
+            const punct = { onTime: 0, lateSoft: 0, lateHard: 0 };
+            const perEmp = {}, byDept = {}, byManager = {}, byLoc = {}, byShift = {};
+            const dowAgg = [0, 1, 2, 3, 4, 5, 6].map(() => ({ present: 0, total: 0 }));
+
+            emps.forEach(emp => {
+                perEmp[emp.id] = { emp, present: 0, late: 0, wfh: 0, absent: 0, leave: 0, hrsSum: 0, hrsCount: 0, otSum: 0 };
+                if (!byDept[emp.dept]) byDept[emp.dept] = { present: 0, late: 0, wfh: 0, absent: 0, leave: 0, total: 0, hrsSum: 0, hrsCount: 0, otSum: 0, headcount: 0 };
+                byDept[emp.dept].headcount++;
+                if (!byManager[emp.manager]) byManager[emp.manager] = { present: 0, late: 0, wfh: 0, absent: 0, leave: 0, total: 0, headcount: 0, pending: 0 };
+                byManager[emp.manager].headcount++;
+                byLoc[emp.loc] = (byLoc[emp.loc] || 0) + 1;
+                byShift[emp.shift] = (byShift[emp.shift] || 0) + 1;
+            });
+
+            days.forEach(day => {
+                const dow = new Date(y, m, day).getDay();
+                emps.forEach(emp => {
+                    const c = attendance[emp.id][day - 1]; if (!c) return;
+                    const pe = perEmp[emp.id], sd = byDept[emp.dept], sm = byManager[emp.manager];
+                    const isWorkable = !(c.status === 'weekoff' || c.status === 'holiday');
+                    if (isWorkable) { sd.total++; sm.total++; dowAgg[dow].total++; }
+                    if (c.status === 'present') {
+                        pe.present++; sd.present++; sm.present++; dowAgg[dow].present++;
+                        const h = parseFloat(c.hrs); pe.hrsSum += h; pe.hrsCount++; sd.hrsSum += h; sd.hrsCount++;
+                        if (c.ot) { const ot = parseFloat(c.ot); pe.otSum += ot; sd.otSum += ot; }
+                        punct.onTime++;
+                    } else if (c.status === 'late') {
+                        pe.late++; sd.late++; sm.late++; dowAgg[dow].present++;
+                        const h = parseFloat(c.hrs); pe.hrsSum += h; pe.hrsCount++; sd.hrsSum += h; sd.hrsCount++;
+                        const lm = c.lateMin || 0;
+                        if (lm < 20) punct.lateSoft++; else punct.lateHard++;
+                        if (lm >= 20) sm.pending++;
+                    } else if (c.status === 'wfh') {
+                        pe.wfh++; sd.wfh++; sm.wfh++; dowAgg[dow].present++;
+                        const h = parseFloat(c.hrs); pe.hrsSum += h; pe.hrsCount++; sd.hrsSum += h; sd.hrsCount++;
+                        sm.pending++;
+                    } else if (c.status === 'absent') {
+                        pe.absent++; sd.absent++; sm.absent++;
+                    } else if (['paidleave', 'unplanned', 'birthday', 'halfday'].includes(c.status)) {
+                        pe.leave++; sd.leave++; sm.leave++;
+                        leaveTypes[c.status] = (leaveTypes[c.status] || 0) + 1;
+                    }
+                });
+            });
+
+            const payrollRate = 380; // ₹/hr blended mock rate — swap for a real payroll engine call
+            const payrollCost = totals.hrsSum * payrollRate;
+
+            return {
+                employees: emps.length,
+                present: totals.present, late: totals.late, wfh: totals.wfh, absent: totals.absent, leave: totals.leave, weekoff: totals.weekoff,
+                pct: pct.toFixed(1), absentRate: absentRate.toFixed(1),
+                avgHrs: totals.hrsCount ? (totals.hrsSum / totals.hrsCount).toFixed(1) : '0.0',
+                otSum: totals.otSum,
+                pending: Object.values(byManager).reduce((a, mm) => a + mm.pending, 0),
+                payrollDays: days.filter(d => { const dow = new Date(y, m, d).getDay(); const key = fmtDate(y, m, d); return dow !== 0 && dow !== 6 && !HOLIDAYS[key]; }).length,
+                payrollCost,
+                trend, leaveTypes, punct, perEmp, byDept, byManager, byLoc, byShift, dowAgg
+            };
+        }
+
+        /* ---------------- shared small helpers ---------------- */
+        function sparklinePath(vals) {
+            if (!vals || !vals.length) return '';
+            const w = 120, h = 28, pad = 2;
+            const max = Math.max(...vals, 1), min = Math.min(...vals, 0);
+            const stepX = (w - pad * 2) / ((vals.length - 1) || 1);
+            const pts = vals.map((v, i) => [pad + i * stepX, h - pad - ((v - min) / ((max - min) || 1)) * (h - pad * 2)]);
+            const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+            const area = line + ` L${pts[pts.length - 1][0].toFixed(1)},${h} L${pts[0][0].toFixed(1)},${h} Z`;
+            return `<path d="${area}" fill="rgba(173,138,62,0.18)"/><path d="${line}" fill="none" stroke="#AD8A3E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
+        function labelForRange(days) { return days.length + (days.length === 1 ? ' day' : ' days') + ' in range'; }
+        function heatColor(v) {
+            if (v === null) return 'var(--border-soft)';
+            const t = Math.max(0, Math.min(1, v / 100));
+            const from = [244, 235, 214], to = [133, 96, 32];
+            const rgb = from.map((c, i) => Math.round(c + (to[i] - c) * t));
+            return `rgb(${rgb.join(',')})`;
+        }
+        function attachGlassGlow(selector) {
+            document.querySelectorAll(selector).forEach(el => {
+                if (el._glowAttached) return; el._glowAttached = true;
+                el.addEventListener('mousemove', e => {
+                    const r = el.getBoundingClientRect();
+                    el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+                    el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+                });
+            });
+        }
+
+        /* =====================================================================
+           KPI STRIP
+        ===================================================================== */
+        const KPI_TILES = [
+            { key: 'headcount', label: 'Active Headcount', suffix: '', glow: 'rgba(173,138,62,0.35)', get: M => M.employees, spark: M => M.trend.map(s => s.present + s.late + s.wfh) },
+            { key: 'attendance', label: 'Attendance Rate', suffix: '%', glow: 'rgba(76,122,93,0.35)', get: M => M.pct, spark: M => M.trend.map(s => s.present + s.late + s.wfh) },
+            { key: 'avgHrs', label: 'Avg Hours / Day', suffix: 'h', glow: 'rgba(125,98,150,0.3)', get: M => M.avgHrs, spark: M => M.trend.map(s => s.hrsAvg) },
+            { key: 'ot', label: 'Overtime Hours', suffix: 'h', glow: 'rgba(190,106,52,0.3)', get: M => M.otSum.toFixed(1), spark: M => M.trend.map(s => s.ot) },
+            { key: 'absent', label: 'Absenteeism Rate', suffix: '%', glow: 'rgba(156,59,59,0.3)', get: M => M.absentRate, spark: M => M.trend.map(s => s.absent) },
+            { key: 'pending', label: 'Pending Approvals', suffix: '', glow: 'rgba(173,138,62,0.3)', get: M => M.pending, spark: null },
+        ];
+        function renderKpiStrip(M, PM, days) {
+            const strip = document.getElementById('kpiStrip');
+            strip.innerHTML = KPI_TILES.map(k => {
+                const val = k.get(M);
+                let deltaHtml = '';
+                if (PM) {
+                    const prevVal = parseFloat(k.get(PM)), curVal = parseFloat(val);
+                    if (!isNaN(prevVal) && !isNaN(curVal)) {
+                        const diff = curVal - prevVal;
+                        const inverse = (k.key === 'absent' || k.key === 'ot' || k.key === 'pending');
+                        const dir = Math.abs(diff) < 0.05 ? 'flat' : (diff > 0 ? 'up' : 'down');
+                        const cls = dir === 'flat' ? 'flat' : (inverse ? (dir === 'up' ? 'down' : 'up') : dir);
+                        const arrow = dir === 'flat' ? '·' : (dir === 'up' ? '▲' : '▼');
+                        deltaHtml = `<span class="kpi-delta ${cls}">${arrow} ${Math.abs(diff).toFixed(1)}${k.suffix}</span>`;
+                    }
+                }
+                const sparkVals = k.spark ? k.spark(M) : null;
+                return `<div class="kpi-tile glass tilt-card" style="--glow:${k.glow}">
+      <div class="glass-edge"></div>
+      <div class="kpi-top"><span class="eyebrow">${k.label}</span>${deltaHtml}</div>
+      <div class="kpi-val">${val}${k.suffix}</div>
+      <div class="kpi-lbl">${labelForRange(days)}</div>
+      ${sparkVals ? `<svg class="kpi-spark" viewBox="0 0 120 28" preserveAspectRatio="none">${sparklinePath(sparkVals)}</svg>` : ''}
+    </div>`;
+            }).join('');
+        }
+
+        /* =====================================================================
+           METRIC TILE RENDERERS
+        ===================================================================== */
+        function renderTrendArea(host, M) {
+            const series = [
+                { k: 'present', label: 'Present', c: '#4C7A5D' },
+                { k: 'late', label: 'Late', c: '#B98A2E' },
+                { k: 'wfh', label: 'WFH', c: '#4A6FA0' },
+                { k: 'leave', label: 'Leave', c: '#AD8A3E' },
+                { k: 'absent', label: 'Absent', c: '#9C3B3B' },
+            ];
+            const w = 680, h = 190, pad = 6;
+            const n = M.trend.length;
+            const stepX = n > 1 ? (w - pad * 2) / (n - 1) : 0;
+            const totals = M.trend.map(s => series.reduce((a, se) => a + s[se.k], 0));
+            const maxTotal = Math.max(...totals, 1);
+            const cum = new Array(n).fill(0);
+            let paths = '';
+            series.forEach(se => {
+                const topPts = [], botPts = [];
+                for (let i = 0; i < n; i++) {
+                    const bottom = cum[i];
+                    const top = bottom + M.trend[i][se.k];
+                    const x = pad + i * stepX;
+                    topPts.push([x, h - pad - (top / maxTotal) * (h - pad * 2)]);
+                    botPts.push([x, h - pad - (bottom / maxTotal) * (h - pad * 2)]);
+                    cum[i] = top;
+                }
+                const topLine = topPts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+                const botLine = botPts.slice().reverse().map(p => 'L' + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+                paths += `<path class="trend-band" d="${topLine} ${botLine} Z" fill="${se.c}" fill-opacity="0.72" stroke="${se.c}" stroke-width="0.5"/>`;
+            });
+            let hoverRects = '';
+            for (let i = 0; i < n; i++) {
+                const x = pad + i * stepX;
+                hoverRects += `<rect class="trend-hover" data-i="${i}" x="${(x - stepX / 2).toFixed(1)}" y="0" width="${(stepX || w).toFixed(1)}" height="${h}" fill="transparent"/>`;
+            }
+            host.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${paths}${hoverRects}</svg>
+    <div class="mlegend">${series.map(se => `<span class="li"><span class="sw" style="background:${se.c}"></span>${se.label}</span>`).join('')}</div>`;
+            host.querySelectorAll('.trend-hover').forEach(r => {
+                r.addEventListener('mousemove', e => {
+                    const i = +r.dataset.i, s = M.trend[i];
+                    showTip(e, `<div class="tt-title">Day ${s.day}</div>` + series.map(se => `<div class="tt-row"><span><span class="tt-sw" style="background:${se.c}"></span>${se.label}</span><b>${s[se.k]}</b></div>`).join(''));
+                });
+                r.addEventListener('mouseleave', hideTip);
+            });
+        }
+
+        function renderHealthDonut(host, M) {
+            const segs = [
+                { k: 'present', label: 'Present', v: M.present, c: '#4C7A5D' },
+                { k: 'late', label: 'Late', v: M.late, c: '#B98A2E' },
+                { k: 'wfh', label: 'WFH', v: M.wfh, c: '#4A6FA0' },
+                { k: 'leave', label: 'Leave', v: M.leave, c: '#AD8A3E' },
+                { k: 'absent', label: 'Absent', v: M.absent, c: '#9C3B3B' },
+            ];
+            const total = segs.reduce((a, b) => a + b.v, 0) || 1;
+            const r = 52, cx = 64, cy = 64, circ = 2 * Math.PI * r;
+            let offset = 0, svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#EFE9DC" stroke-width="15"/>`;
+            segs.forEach(seg => {
+                const frac = seg.v / total, dash = frac * circ;
+                if (dash > 0) {
+                    svg += `<circle class="donut-arc" data-v="${seg.v}" data-label="${seg.label}" data-pct="${(frac * 100).toFixed(1)}" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.c}" stroke-width="15" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" style="cursor:default;"/>`;
+                }
+                offset += dash;
+            });
+            svg += `<text x="${cx}" y="${cy - 2}" text-anchor="middle" font-family="Fraunces, serif" font-size="20" font-weight="500" fill="#2A241C">${M.pct}%</text>`;
+            svg += `<text x="${cx}" y="${cy + 15}" text-anchor="middle" font-family="Inter, sans-serif" font-size="8.5" letter-spacing="0.05em" fill="#A69C89">HEALTHY DAYS</text>`;
+            host.innerHTML = `<div class="donut-wrap"><svg width="128" height="128" viewBox="0 0 128 128">${svg}</svg>
+    <div class="donut-legend">${segs.map(s => `<div class="li"><span class="sw" style="background:${s.c}"></span>${s.label}<b>${s.v}</b></div>`).join('')}</div></div>`;
+            host.querySelectorAll('.donut-arc').forEach(arc => {
+                arc.addEventListener('mousemove', e => showTip(e, `<div class="tt-title">${arc.dataset.label}</div><div class="tt-row"><span>Days</span><b>${arc.dataset.v}</b></div><div class="tt-row"><span>Share</span><b>${arc.dataset.pct}%</b></div>`));
+                arc.addEventListener('mouseleave', hideTip);
+            });
+        }
+
+        function renderDeptHeatmap(host, M, days, emps) {
+            const deptsPresent = [...new Set(emps.map(e => e.dept))].sort();
+            if (!deptsPresent.length) { host.innerHTML = '<div class="mtile-empty">No employees match the current filters.</div>'; return; }
+            const rows = deptsPresent.map(dept => {
+                const deptEmps = emps.filter(e => e.dept === dept);
+                const row = days.map(day => {
+                    let present = 0, total = 0;
+                    deptEmps.forEach(emp => {
+                        const c = attendance[emp.id][day - 1]; if (!c) return;
+                        if (c.status === 'weekoff' || c.status === 'holiday') return;
+                        total++;
+                        if (c.status === 'present' || c.status === 'late' || c.status === 'wfh') present++;
+                    });
+                    return total ? Math.round(present / total * 100) : null;
+                });
+                return { dept, row };
+            });
+            const cols = days.length;
+            host.innerHTML = `
+    <div class="heat-daylabels" style="grid-template-columns:76px repeat(${cols},1fr);">
+      <span></span>${days.map(d => `<span>${d}</span>`).join('')}
+    </div>
+    <div class="heat-grid">
+      ${rows.map(r => `
+        <div class="heat-row" style="grid-template-columns:76px repeat(${cols},1fr);">
+          <div class="heat-rowlabel">${r.dept}</div>
+          ${r.row.map((v, i) => `<div class="heat-cell" data-dept="${r.dept}" data-day="${days[i]}" data-v="${v === null ? '—' : v}" style="background:${heatColor(v)}"></div>`).join('')}
+        </div>`).join('')}
+    </div>`;
+            host.querySelectorAll('.heat-cell').forEach(cell => {
+                cell.addEventListener('mousemove', e => showTip(e, `<div class="tt-title">${cell.dataset.dept} · Day ${cell.dataset.day}</div><div class="tt-row"><span>Attendance</span><b>${cell.dataset.v}${cell.dataset.v === '—' ? '' : '%'}</b></div>`));
+                cell.addEventListener('mouseleave', hideTip);
+            });
+        }
+
+        function renderLeaveBreakdown(host, M) {
+            const labels = { paidleave: 'Paid Leave', unplanned: 'Unplanned', birthday: 'Birthday', halfday: 'Half Day' };
+            const colors = { paidleave: '#AD8A3E', unplanned: '#7A2E2E', birthday: '#7D6296', halfday: '#BE6A34' };
+            const keys = Object.keys(labels);
+            const total = keys.reduce((a, k) => a + (M.leaveTypes[k] || 0), 0) || 1;
+            const bar = keys.map(k => {
+                const v = M.leaveTypes[k] || 0, pct = v / total * 100;
+                return pct <= 0 ? '' : `<div class="stack-seg leave-seg" data-k="${k}" data-v="${v}" data-pct="${pct.toFixed(1)}" style="width:${pct}%; background:${colors[k]};"></div>`;
+            }).join('');
+            host.innerHTML = `
+    <div style="font-family:'Fraunces',serif; font-size:26px; font-weight:500; margin-bottom:4px;">${total} <span style="font-size:12px; font-family:'Inter',sans-serif; color:var(--ink-soft); font-weight:400;">leave days taken</span></div>
+    <div class="stack-bar" style="margin-top:8px;">${bar}</div>
+    <div class="mlegend">${keys.map(k => `<span class="li"><span class="sw" style="background:${colors[k]}"></span>${labels[k]}<b style="font-family:'JetBrains Mono',monospace; margin-left:4px; color:var(--ink);">${M.leaveTypes[k] || 0}</b></span>`).join('')}</div>`;
+            host.querySelectorAll('.leave-seg').forEach(seg => {
+                seg.addEventListener('mousemove', e => showTip(e, `<div class="tt-title">${labels[seg.dataset.k]}</div><div class="tt-row"><span>Days</span><b>${seg.dataset.v}</b></div><div class="tt-row"><span>Share</span><b>${seg.dataset.pct}%</b></div>`));
+                seg.addEventListener('mouseleave', hideTip);
+            });
+        }
+
+        function renderDeptRadar(host, M) {
+            const depts = Object.keys(M.byDept);
+            if (!depts.length) { host.innerHTML = '<div class="mtile-empty">No departments in the current filter.</div>'; return; }
+            const axes = ['Attendance', 'Punctuality', 'Hours', 'OT Control', 'Reliability'];
+            const palette = ['#AD8A3E', '#4A6FA0', '#4C7A5D', '#7D6296', '#BE6A34', '#9C3B3B', '#8F887A', '#B98A2E'];
+            const cx = 110, cy = 104, R = 78;
+            const angle = i => (Math.PI * 2 * i / axes.length) - Math.PI / 2;
+            let axesSvg = '';
+            axes.forEach((a, i) => {
+                const ang = angle(i), x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
+                axesSvg += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1"/>`;
+            });
+            [0.25, 0.5, 0.75, 1].forEach(f => {
+                const pts = axes.map((a, i) => { const ang = angle(i); return `${(cx + R * f * Math.cos(ang)).toFixed(1)},${(cy + R * f * Math.sin(ang)).toFixed(1)}`; });
+                axesSvg += `<polygon points="${pts.join(' ')}" fill="none" stroke="var(--border-soft)" stroke-width="1"/>`;
+            });
+            let polys = '', legend = '';
+            depts.forEach((d, di) => {
+                const s = M.byDept[d];
+                const attendancePct = s.total ? (s.present + s.late + s.wfh) / s.total * 100 : 0;
+                const punctualityPct = (s.present + s.late) ? s.present / (s.present + s.late) * 100 : 100;
+                const hoursScore = s.hrsCount ? Math.min(100, (s.hrsSum / s.hrsCount) / 9 * 100) : 0;
+                const otScore = 100 - Math.min(100, (s.otSum / (s.headcount || 1)) * 20);
+                const reliabilityScore = s.total ? 100 - (s.absent / s.total * 100) : 100;
+                const vals = [attendancePct, punctualityPct, hoursScore, otScore, reliabilityScore];
+                const pts = vals.map((v, i) => { const ang = angle(i), f = Math.max(0, Math.min(1, v / 100)); return `${(cx + R * f * Math.cos(ang)).toFixed(1)},${(cy + R * f * Math.sin(ang)).toFixed(1)}`; });
+                const color = palette[di % palette.length];
+                polys += `<polygon class="radar-poly" data-dept="${d}" points="${pts.join(' ')}" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="1.8" style="transition:opacity .15s ease; cursor:default;"/>`;
+                legend += `<span class="li radar-leg" data-dept="${d}"><span class="sw" style="background:${color}"></span>${d}</span>`;
+            });
+            const labelsSvg = axes.map((a, i) => {
+                const ang = angle(i), x = cx + (R + 18) * Math.cos(ang), y = cy + (R + 18) * Math.sin(ang);
+                return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="var(--ink-faint)" font-family="Inter, sans-serif">${a}</text>`;
+            }).join('');
+            host.innerHTML = `<svg width="100%" height="208" viewBox="0 0 220 208">${axesSvg}${polys}${labelsSvg}</svg><div class="mlegend">${legend}</div>`;
+            host.querySelectorAll('.radar-leg').forEach(leg => {
+                leg.addEventListener('mouseenter', () => { host.querySelectorAll('.radar-poly').forEach(p => p.style.opacity = p.dataset.dept === leg.dataset.dept ? '1' : '0.15'); });
+                leg.addEventListener('mouseleave', () => { host.querySelectorAll('.radar-poly').forEach(p => p.style.opacity = ''); });
+            });
+        }
+
+        function renderLocShiftSplit(host, M) {
+            const colors = ['#AD8A3E', '#4A6FA0', '#4C7A5D', '#7D6296'];
+            function miniBars(entries, total) {
+                return entries.map(([k, v], i) => {
+                    const pct = Math.round(v / total * 100);
+                    return `<div class="rank-row"><div class="rank-name" style="width:76px;">${k}</div><div class="rank-track"><div class="rank-fill" style="width:${pct}%; background:${colors[i % colors.length]}"></div></div><div class="rank-val">${v}</div></div>`;
+                }).join('');
+            }
+            const locs = Object.entries(M.byLoc), shifts = Object.entries(M.byShift);
+            const totalLoc = locs.reduce((a, [, v]) => a + v, 0) || 1, totalShift = shifts.reduce((a, [, v]) => a + v, 0) || 1;
+            host.innerHTML = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+    <div><div class="eyebrow" style="margin-bottom:10px;">By Location</div><div class="rank-list">${miniBars(locs, totalLoc)}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:10px;">By Shift</div><div class="rank-list">${miniBars(shifts, totalShift)}</div></div>
+  </div>`;
+        }
+
+        function renderHoursScatter(host, M) {
+            const pts = Object.values(M.perEmp).filter(pe => pe.hrsCount > 0);
+            if (!pts.length) { host.innerHTML = '<div class="mtile-empty">No attendance data to plot for this range.</div>'; return; }
+            const w = 620, h = 210, pad = 34;
+            const xs = pts.map(p => p.hrsSum / p.hrsCount);
+            const xMax = Math.max(...xs, 9) * 1.05, xMin = Math.min(...xs, 6) * 0.95;
+            const yMax = Math.max(...pts.map(p => p.otSum), 1) * 1.15;
+            const deptColor = {}; DEPTS.forEach((d, i) => deptColor[d] = ['#AD8A3E', '#4A6FA0', '#4C7A5D', '#7D6296', '#BE6A34', '#9C3B3B', '#8F887A', '#B98A2E'][i % 8]);
+            let dots = '';
+            pts.forEach(p => {
+                const avgH = p.hrsSum / p.hrsCount;
+                const x = pad + ((avgH - xMin) / ((xMax - xMin) || 1)) * (w - pad * 2);
+                const y = h - pad - (p.otSum / (yMax || 1)) * (h - pad * 2);
+                const r = 4 + Math.min(6, p.leave * 1.4);
+                dots += `<circle class="scatter-dot" data-name="${p.emp.name}" data-dept="${p.emp.dept}" data-hrs="${avgH.toFixed(1)}" data-ot="${p.otSum.toFixed(1)}" data-leave="${p.leave}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${deptColor[p.emp.dept]}" fill-opacity="0.65" stroke="${deptColor[p.emp.dept]}" stroke-width="1"/>`;
+            });
+            host.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}">
+    <line x1="${pad}" y1="${h - pad}" x2="${w - pad}" y2="${h - pad}" stroke="var(--border)"/>
+    <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h - pad}" stroke="var(--border)"/>
+    <text x="${w / 2}" y="${h - 6}" text-anchor="middle" font-size="9" fill="var(--ink-faint)">Avg hours / day →</text>
+    <text x="12" y="${h / 2}" text-anchor="middle" font-size="9" fill="var(--ink-faint)" transform="rotate(-90 12 ${h / 2})">Overtime hrs →</text>
+    ${dots}
+  </svg>
+  <div class="mtile-foot"><span>Bubble size = leave days taken</span><span>${pts.length} employees plotted</span></div>`;
+            host.querySelectorAll('.scatter-dot').forEach(dot => {
+                dot.addEventListener('mousemove', e => showTip(e, `<div class="tt-title">${dot.dataset.name}</div><div class="tt-row"><span>Dept</span><b>${dot.dataset.dept}</b></div><div class="tt-row"><span>Avg hrs/day</span><b>${dot.dataset.hrs}h</b></div><div class="tt-row"><span>Overtime</span><b>${dot.dataset.ot}h</b></div><div class="tt-row"><span>Leave days</span><b>${dot.dataset.leave}</b></div>`));
+                dot.addEventListener('mouseleave', hideTip);
+            });
+        }
+
+        function renderPunctualityFunnel(host, M) {
+            const rows = [
+                { label: 'On Time', v: M.punct.onTime, c: '#4C7A5D' },
+                { label: 'Late <20m', v: M.punct.lateSoft, c: '#B98A2E' },
+                { label: 'Late 20m+', v: M.punct.lateHard, c: '#BE6A34' },
+                { label: 'Absent', v: M.absent, c: '#9C3B3B' },
+            ];
+            const max = Math.max(...rows.map(r => r.v), 1);
+            host.innerHTML = `<div class="rank-list">${rows.map(r => `
+    <div class="rank-row">
+      <div class="rank-name" style="width:96px;">${r.label}</div>
+      <div class="rank-track"><div class="rank-fill" style="width:${(r.v / max * 100).toFixed(1)}%; background:${r.c};"></div></div>
+      <div class="rank-val">${r.v}</div>
+    </div>`).join('')}</div>`;
+        }
+
+        function renderRankedLists(host, M) {
+            const arr = Object.values(M.perEmp);
+            const topOT = [...arr].sort((a, b) => b.otSum - a.otSum).filter(p => p.otSum > 0).slice(0, 5);
+            const topAbs = [...arr].sort((a, b) => b.absent - a.absent).filter(p => p.absent > 0).slice(0, 5);
+            function list(entries, key, unit, color) {
+                if (!entries.length) return `<div class="mtile-empty" style="padding:10px 0;">Nothing to flag</div>`;
+                const max = Math.max(...entries.map(e => e[key]), 1);
+                return entries.map((e, i) => `
+      <div class="rank-row">
+        <div class="rank-n">${i + 1}</div>
+        <div class="rank-name" title="${e.emp.name}">${e.emp.name}</div>
+        <div class="rank-track"><div class="rank-fill" style="width:${(e[key] / max * 100).toFixed(1)}%; background:${color};"></div></div>
+        <div class="rank-val">${e[key]}${unit}</div>
+      </div>`).join('');
+            }
+            host.innerHTML = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div><div class="eyebrow" style="margin-bottom:10px;">Most Overtime</div>${list(topOT, 'otSum', 'h', '#BE6A34')}</div>
+    <div><div class="eyebrow" style="margin-bottom:10px;">Highest Absenteeism</div>${list(topAbs, 'absent', 'd', '#9C3B3B')}</div>
+  </div>`;
+        }
+
+        function renderDayOfWeek(host, M) {
+            const order = [1, 2, 3, 4, 5, 6, 0];
+            const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const rows = order.map((dow, i) => {
+                const a = M.dowAgg[dow];
+                const pct = a.total ? Math.round(a.present / a.total * 100) : null;
+                return { name: names[i], pct };
+            });
+            host.innerHTML = `<div class="rank-list">${rows.map(r => `
+    <div class="rank-row">
+      <div class="rank-name" style="width:40px;">${r.name}</div>
+      <div class="rank-track"><div class="rank-fill" style="width:${r.pct === null ? 0 : r.pct}%; background:${r.pct === null ? 'var(--border)' : (r.pct < 70 ? '#9C3B3B' : '#AD8A3E')};"></div></div>
+      <div class="rank-val">${r.pct === null ? '—' : r.pct + '%'}</div>
+    </div>`).join('')}</div>
+  <div class="mtile-foot"><span>Attendance rate by weekday, current range</span></div>`;
+        }
+
+        function renderManagerTable(host, M) {
+            const rows = Object.entries(M.byManager).map(([name, s]) => ({
+                name, headcount: s.headcount,
+                pct: s.total ? Math.round((s.present + s.late + s.wfh) / s.total * 100) : 0,
+                pending: s.pending
+            })).sort((a, b) => b.headcount - a.headcount);
+            host.innerHTML = `<table class="mtable">
+    <thead><tr><th>Manager</th><th>Team</th><th>Attendance</th><th>Pending</th></tr></thead>
+    <tbody>${rows.map(r => {
+                const color = r.pct >= 85 ? 'var(--present)' : r.pct >= 70 ? 'var(--late)' : 'var(--absent)';
+                const bg = r.pct >= 85 ? 'var(--present-bg)' : r.pct >= 70 ? 'var(--late-bg)' : 'var(--absent-bg)';
+                return `<tr><td>${r.name}</td><td class="mono">${r.headcount}</td><td><span class="pct-pill" style="color:${color}; background:${bg};">${r.pct}%</span></td><td class="mono">${r.pending}</td></tr>`;
+            }).join('')}</tbody>
+  </table>`;
+        }
+
+        function renderPayrollCost(host, M) {
+            const buckets = [];
+            for (let i = 0; i < M.trend.length; i += 7) {
+                const chunk = M.trend.slice(i, i + 7);
+                const hrs = chunk.reduce((a, s) => a + s.hrsSum, 0);
+                buckets.push({ label: 'W' + (buckets.length + 1), cost: hrs * 380 });
+            }
+            const max = Math.max(...buckets.map(b => b.cost), 1);
+            host.innerHTML = `
+    <div style="font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:10px;">₹${Math.round(M.payrollCost).toLocaleString('en-IN')}</div>
+    <div style="display:flex; align-items:flex-end; gap:6px; height:78px;">
+      ${buckets.map(b => `<div title="${b.label}: ₹${Math.round(b.cost).toLocaleString('en-IN')}" style="flex:1; height:${Math.max(4, (b.cost / max * 78))}px; background:linear-gradient(180deg,#C9A227,var(--gold)); border-radius:4px 4px 0 0;"></div>`).join('')}
+    </div>
+    <div class="mtile-foot"><span>Modeled at ₹380/hr blended rate</span><span>${buckets.length} week${buckets.length === 1 ? '' : 's'}</span></div>`;
+        }
+
+        /* ---------------- registry ---------------- */
+        const METRIC_TILES = [
+            { id: 'trend', span: 8, title: 'Attendance Trend', sub: 'Daily composition across the selected range', glow: 'rgba(173,138,62,0.3)', render: renderTrendArea },
+            { id: 'health', span: 4, title: 'Attendance Health', sub: 'Share of days by status', glow: 'rgba(76,122,93,0.3)', render: renderHealthDonut },
+            { id: 'heatmap', span: 7, title: 'Department Heatmap', sub: 'Daily attendance % by department', glow: 'rgba(173,138,62,0.25)', render: renderDeptHeatmap },
+            { id: 'leave', span: 5, title: 'Leave Composition', sub: 'Breakdown of leave types taken', glow: 'rgba(173,138,62,0.25)', render: renderLeaveBreakdown },
+            { id: 'radar', span: 6, title: 'Department Scorecard', sub: 'Five-axis comparison — hover a name to isolate it', glow: 'rgba(125,98,150,0.28)', render: renderDeptRadar },
+            { id: 'locshift', span: 6, title: 'Location & Shift Mix', sub: 'Headcount distribution', glow: 'rgba(74,111,160,0.25)', render: renderLocShiftSplit },
+            { id: 'scatter', span: 7, title: 'Hours vs Overtime', sub: 'Per employee, bubble sized by leave days', glow: 'rgba(190,106,52,0.25)', render: renderHoursScatter },
+            { id: 'funnel', span: 5, title: 'Punctuality Funnel', sub: 'On time, late and absent split', glow: 'rgba(156,59,59,0.22)', render: renderPunctualityFunnel },
+            { id: 'ranked', span: 6, title: 'Outliers to Watch', sub: 'Top overtime and absenteeism this range', glow: 'rgba(173,138,62,0.25)', render: renderRankedLists },
+            { id: 'dow', span: 6, title: 'Weekday Pattern', sub: 'Attendance rate by day of week', glow: 'rgba(76,122,93,0.22)', render: renderDayOfWeek },
+            { id: 'managers', span: 8, title: 'Manager Span of Control', sub: 'Team size and attendance by manager', glow: 'rgba(173,138,62,0.22)', render: renderManagerTable },
+            { id: 'payroll', span: 4, title: 'Est. Payroll Cost', sub: 'Modeled from logged hours, weekly', glow: 'rgba(173,138,62,0.3)', render: renderPayrollCost },
+        ];
+
+        function renderMetricsBento(M, days, emps) {
+            const bento = document.getElementById('metricsBento');
+            bento.innerHTML = METRIC_TILES.map(t => `
+    <div class="mtile glass tilt-card span-${t.span}" style="--glow:${t.glow}">
+      <div class="glass-edge"></div>
+      <div class="mtile-head"><div><h4>${t.title}</h4><div class="sub">${t.sub}</div></div></div>
+      <div class="mtile-body" id="body-${t.id}"></div>
+    </div>`).join('');
+            METRIC_TILES.forEach(t => {
+                const host = document.getElementById('body-' + t.id);
+                try { t.render(host, M, days, emps); }
+                catch (err) { host.innerHTML = '<div class="mtile-empty">No data for the current filters.</div>'; console.error('[metric:' + t.id + ']', err); }
+            });
+        }
+
+        /* =====================================================================
+           REFRESH — call this any time the range, month, or filters change
+        ===================================================================== */
+        function refreshAnalytics() {
+            const days = getSelectedDays();
+            const emps = getFilteredEmployees();
+            const M = computeMetrics(days, emps);
+            const prevDays = getPreviousDays(days);
+            const PM = prevDays ? computeMetrics(prevDays, emps) : null;
+            const labelMap = { today: 'Today', week: 'This Week', month: 'This Month', custom: 'Custom Range' };
+            document.getElementById('analyticsRangeLabel').textContent =
+                `Showing ${labelMap[activeRange]} · ${currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })} · ${emps.length} of ${employees.length} employees`;
+            renderKpiStrip(M, PM, days);
+            renderMetricsBento(M, days, emps);
+            attachTiltAll('.tilt-card, .mtile, .kpi-tile');
+            attachGlassGlow('.glass');
+        }
+
+        document.getElementById('rangeSeg').addEventListener('click', e => {
+            const btn = e.target.closest('button'); if (!btn) return;
+            document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeRange = btn.dataset.range;
+            document.getElementById('customDates').classList.toggle('show', activeRange === 'custom');
+            if (activeRange === 'custom') {
+                const y = currentDate.getFullYear(), m = currentDate.getMonth(), nd = daysInMonth(currentDate);
+                const s = document.getElementById('customStart'), en = document.getElementById('customEnd');
+                if (!s.value) s.value = fmtDate(y, m, 1);
+                if (!en.value) en.value = fmtDate(y, m, Math.min(nd, today.getDate()));
+                s.min = fmtDate(y, m, 1); s.max = fmtDate(y, m, nd);
+                en.min = fmtDate(y, m, 1); en.max = fmtDate(y, m, nd);
+            }
+            refreshAnalytics();
+        });
+        document.getElementById('customStart').addEventListener('change', refreshAnalytics);
+        document.getElementById('customEnd').addEventListener('change', refreshAnalytics);
+
+        /* =====================================================================
+           MATRIX RENDERING (condensed sticky columns)
+        ===================================================================== */
+        const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        function renderMatrix() {
+            const y = currentDate.getFullYear(), m = currentDate.getMonth();
+            const nd = daysInMonth(currentDate);
+            const table = document.getElementById('matrixTable');
+
+            let thead = '<thead><tr>';
+            thead += `<th class="col-check stick stick-head">&nbsp;</th>`;
+            thead += `<th class="col-emp stick stick-head" style="text-align:left;">Employee</th>`;
+            thead += `<th class="col-dept stick stick-head" style="text-align:left;">Department</th>`;
+            for (let day = 1; day <= nd; day++) {
+                const dow = new Date(y, m, day).getDay();
+                const isWeekend = (dow === 0 || dow === 6);
+                const key = fmtDate(y, m, day);
+                const isHoliday = !!HOLIDAYS[key];
+                const isToday = (y === today.getFullYear() && m === today.getMonth() && day === today.getDate());
+                let cls = '';
+                if (isWeekend) cls += ' weekend';
+                if (isHoliday) cls += ' holiday-col';
+                if (isToday) cls += ' today-col';
+                thead += `<th class="${cls}"><div class="daynum">${day}</div><div class="wk">${WD[dow]}${isHoliday ? ' • Hol' : ''}</div></th>`;
+            }
+            thead += '</tr></thead>';
+
+            let tbody = '<tbody>';
+            employees.forEach(emp => {
+                tbody += `<tr data-emp="${emp.id}">`;
+                tbody += `<td class="col-check stick"><input type="checkbox" class="row-check" data-emp="${emp.id}"></td>`;
+                tbody += `<td class="col-emp stick"><div class="emp-cell"><div class="avatar">${emp.initials}</div><div><div class="emp-name">${emp.name}</div><div class="emp-sub">${emp.id}</div></div></div></td>`;
+                tbody += `<td class="col-dept stick"><span class="dept-pill"><span class="dsw"></span>${emp.dept}</span></td>`;
+                attendance[emp.id].forEach(c => {
+                    const isToday = (y === today.getFullYear() && m === today.getMonth() && c.day === today.getDate());
+                    const ov = c.override ? ' override' : '';
+                    const tm = isToday ? ' today-marker' : '';
+                    tbody += `<td class="dcell ${c.status}${ov}${tm}" data-emp="${emp.id}" data-day="${c.day}">
+        <div class="status-label">${c.label}</div>
+        ${c.hrs ? `<div class="hrs">${c.hrs}</div>` : ''}
+      </td>`;
+                });
+                tbody += '</tr>';
+            });
+            tbody += '</tbody>';
+
+            table.innerHTML = thead + tbody;
+            attachMatrixEvents();
+        }
+
+        function attachMatrixEvents() {
+            document.querySelectorAll('.dcell').forEach(cell => {
+                cell.addEventListener('mouseenter', (e) => showPopover(e, cell));
+                cell.addEventListener('mousemove', (e) => positionPopover(e));
+                cell.addEventListener('mouseleave', hidePopover);
+                cell.addEventListener('click', () => openDrawer(cell));
+            });
+            document.querySelectorAll('.row-check').forEach(cb => {
+                cb.addEventListener('change', updateBulkBar);
+            });
+        }
+
+        /* Matrix hover popover (per-cell punch detail) */
+        const popover = document.getElementById('popover');
+        function showPopover(e, cell) {
+            const empId = cell.dataset.emp, day = +cell.dataset.day;
+            const emp = employees.find(x => x.id === empId);
+            const c = attendance[empId][day - 1];
+            popover.innerHTML = `
+    <div class="ph-title">${emp.name} · Day ${day}</div>
+    <div class="prow"><span>Punch In</span><b>${c.inT || '—'}</b></div>
+    <div class="prow"><span>Punch Out</span><b>${c.outT || '—'}</b></div>
+    <div class="prow"><span>Working Hours</span><b>${c.hrs || '—'}</b></div>
+    <div class="prow"><span>Break</span><b>${c.hrs ? '45m' : '—'}</b></div>
+    <div class="prow"><span>Late Minutes</span><b>${c.lateMin || 0}m</b></div>
+    <div class="prow"><span>Overtime</span><b>${c.ot || '0h'}</b></div>
+    <div class="prow"><span>Shift</span><b>${emp.shift}</b></div>
+    <div class="prow"><span>Approval</span><b>${c.status === 'late' || c.status === 'wfh' ? 'Pending' : 'Approved'}</b></div>
+  `;
+            popover.style.display = 'block';
+            positionPopover(e);
+        }
+        function positionPopover(e) {
+            const pad = 14;
+            let x = e.clientX + pad, y = e.clientY + pad;
+            if (x + 270 > window.innerWidth) x = e.clientX - 270 - pad;
+            if (y + 220 > window.innerHeight) y = e.clientY - 220 - pad;
+            popover.style.left = x + 'px';
+            popover.style.top = y + 'px';
+        }
+        function hidePopover() { popover.style.display = 'none'; }
+
+        /* Drawer */
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('overlay');
+        function openDrawer(cell) {
+            const empId = cell.dataset.emp, day = +cell.dataset.day;
+            const emp = employees.find(x => x.id === empId);
+            const c = attendance[empId][day - 1];
+            document.getElementById('drawerName').textContent = emp.name;
+            document.getElementById('drawerSub').textContent = `${emp.id} · ${emp.dept} · ${emp.desig} · Day ${day}, ${currentDate.toLocaleString('default', { month: 'long' })}`;
+            const badge = document.getElementById('drawerBadge');
+            badge.textContent = c.label;
+            badge.style.background = `var(--${c.status}-bg)`;
+            badge.style.color = `var(--${c.status})`;
+            document.getElementById('dIn').textContent = c.inT || '—';
+            document.getElementById('dOut').textContent = c.outT || '—';
+            document.getElementById('dHrs').textContent = c.hrs || '—';
+            document.getElementById('dBreak').textContent = c.hrs ? '45m' : '—';
+            document.getElementById('dLate').textContent = (c.lateMin || 0) + 'm';
+            document.getElementById('dOt').textContent = c.ot || '0h';
+            document.getElementById('dShift').textContent = emp.shift;
+            document.getElementById('dApproval').textContent = c.status === 'late' || c.status === 'wfh' ? 'Pending Review' : 'Approved';
+            document.getElementById('dGeo').textContent = c.status === 'wfh' ? emp.loc + ' (Remote IP)' : emp.loc + ' Office';
+            document.getElementById('dSource').textContent = c.status === 'wfh' ? 'Mobile App' : 'Biometric Terminal';
+            document.getElementById('dNotes').value = '';
+            document.getElementById('dAudit').innerHTML = [
+                ['09:' + (12 + day % 9), 'Punch recorded via terminal'],
+                ['14:0' + (day % 5 + 1), 'Auto-flagged for review'],
+                ['18:2' + (day % 4), c.status === 'late' ? 'Late marker applied' : 'Status confirmed']
+            ].map(a => `<div class="audit-item"><div class="dot"></div><div><div>${a[1]}</div><div class="t">${a[0]}</div></div></div>`).join('');
+
+            drawer.classList.add('open');
+            overlay.style.display = 'block';
+        }
+        document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+        overlay.addEventListener('click', closeDrawer);
+        function closeDrawer() { drawer.classList.remove('open'); overlay.style.display = 'none'; }
+
+        /* Bulk bar */
+        const bulkBar = document.getElementById('bulkBar');
+        function updateBulkBar() {
+            const checked = document.querySelectorAll('.row-check:checked');
+            document.getElementById('bulkCount').textContent = checked.length + ' selected';
+            bulkBar.classList.toggle('show', checked.length > 0);
+        }
+        document.getElementById('bulkClose').addEventListener('click', () => {
+            document.querySelectorAll('.row-check:checked').forEach(cb => cb.checked = false);
+            updateBulkBar();
+        });
+        document.getElementById('bulkToggleBtn').addEventListener('click', () => {
+            bulkBar.classList.toggle('show');
+        });
+
+        /* Toolbar */
+        document.getElementById('prevMonth').addEventListener('click', () => { shiftMonth(-1); });
+        document.getElementById('nextMonth').addEventListener('click', () => { shiftMonth(1); });
+        document.getElementById('todayBtn').addEventListener('click', () => { currentDate = new Date(2026, 6, 1); refresh(); });
+        function shiftMonth(delta) {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + delta, 1);
+            refresh();
+        }
+        function refresh() {
+            const label = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            document.getElementById('monthLabel').textContent = label;
+            generateAttendance();
+            refreshAnalytics();
+            renderMatrix();
+            updateBulkBar();
+        }
+        document.querySelectorAll('.seg button').forEach(b => {
+            b.addEventListener('click', () => {
+                document.querySelectorAll('.seg button').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+            });
+        });
+        let locked = false;
+        document.getElementById('lockBtn').addEventListener('click', function () {
+            locked = !locked;
+            this.classList.toggle('locked', locked);
+        });
+        document.querySelectorAll('.chip:not(.reset)').forEach(chip => {
+            chip.addEventListener('click', () => chip.classList.toggle('active'));
+        });
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('select.fselect').forEach(s => s.selectedIndex = 0);
+            document.querySelector('.search-box input').value = '';
+        });
+
+        /* 3D tilt */
+        function attachTilt(el, max = 5) {
+            if (el._tiltAttached) return;
+            el._tiltAttached = true;
+            el.addEventListener('mousemove', e => {
+                const r = el.getBoundingClientRect();
+                const px = (e.clientX - r.left) / r.width;
+                const py = (e.clientY - r.top) / r.height;
+                const rx = (0.5 - py) * max * 2;
+                const ry = (px - 0.5) * max * 2;
+                el.style.transform = `perspective(800px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateY(-2px)`;
+            });
+            el.addEventListener('mouseleave', () => { el.style.transform = ''; });
+        }
+        function attachTiltAll(selector) {
+            document.querySelectorAll(selector).forEach(el => attachTilt(el));
+        }
+
+        /* Init */
+        refresh();
+    </script>
+</body>
+
+</html>

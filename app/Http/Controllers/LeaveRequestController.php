@@ -211,17 +211,23 @@ class LeaveRequestController extends Controller
     /**
      * Approve a leave request (Manager or Admin only).
      */
-    public function approve(Request $request, LeaveRequest $leaveRequest): RedirectResponse
+    public function approve(Request $request, LeaveRequest $leaveRequest): mixed
     {
         $user = Auth::user();
 
         // Request must be pending
         if ($leaveRequest->status !== 'pending') {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Only pending requests can be approved.'], 422);
+            }
             return back()->with('error', 'Only pending requests can be approved.');
         }
 
         // Self-action protection
         if ($leaveRequest->user_id === $user->id) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'You cannot approve your own leave request.'], 422);
+            }
             return back()->with('error', 'You cannot approve your own leave request.');
         }
 
@@ -245,26 +251,38 @@ class LeaveRequestController extends Controller
         try {
             \App\Services\LeaveBalanceService::approveRequest($leaveRequest, $user, $validated['notes'] ?? null);
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Approval failed: ' . $e->getMessage()], 422);
+            }
             return redirect()->route('leaves.index')->with('error', 'Approval failed: ' . $e->getMessage());
         }
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Leave request approved successfully.']);
+        }
         return redirect()->route('leaves.index')->with('success', 'Leave request approved successfully.');
     }
 
     /**
      * Reject a leave request (Manager or Admin only).
      */
-    public function reject(Request $request, LeaveRequest $leaveRequest): RedirectResponse
+    public function reject(Request $request, LeaveRequest $leaveRequest): mixed
     {
         $user = Auth::user();
 
         // Request must be pending or approved
         if (!in_array($leaveRequest->status, ['pending', 'approved'])) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Only pending or approved requests can be rejected.'], 422);
+            }
             return back()->with('error', 'Only pending or approved requests can be rejected.');
         }
 
         // Self-action protection
         if ($leaveRequest->user_id === $user->id) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'You cannot reject your own leave request.'], 422);
+            }
             return back()->with('error', 'You cannot reject your own leave request.');
         }
 
@@ -289,9 +307,15 @@ class LeaveRequestController extends Controller
         try {
             \App\Services\LeaveBalanceService::rejectRequest($leaveRequest, $user, $request->input('rejection_reason'));
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Rejection failed: ' . $e->getMessage()], 422);
+            }
             return redirect()->route('leaves.index')->with('error', 'Rejection failed: ' . $e->getMessage());
         }
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Leave request rejected successfully.']);
+        }
         return redirect()->route('leaves.index')->with('success', 'Leave request rejected.');
     }
 

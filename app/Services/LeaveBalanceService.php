@@ -91,6 +91,13 @@ class LeaveBalanceService
                 'user_id' => $lockedUser->id,
             ]);
 
+            $current = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $end = \Carbon\Carbon::parse($endDate)->startOfDay();
+            while ($current->lte($end)) {
+                event(new \App\Events\AttendanceOverridden($lockedUser, $current->copy(), $lockedUser));
+                $current->addDay();
+            }
+
             return $request;
         });
     }
@@ -261,6 +268,13 @@ class LeaveBalanceService
                     'notes' => 'Auto-approved for admin.',
                     'user_id' => $user->id,
                 ]);
+
+                $current = \Carbon\Carbon::parse($startDate)->startOfDay();
+                $end = \Carbon\Carbon::parse($endDate)->startOfDay();
+                while ($current->lte($end)) {
+                    event(new \App\Events\AttendanceOverridden($user, $current->copy(), $user));
+                    $current->addDay();
+                }
             }
 
             return $leaveRequest;
@@ -325,6 +339,13 @@ class LeaveBalanceService
                 'notes' => $notes ?? 'Approved by manager/admin.',
                 'user_id' => $approver->id,
             ]);
+
+            $current = \Carbon\Carbon::parse($lockedRequest->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($lockedRequest->end_date)->startOfDay();
+            while ($current->lte($end)) {
+                event(new \App\Events\AttendanceOverridden($applicant, $current->copy(), $approver));
+                $current->addDay();
+            }
         });
     }
 
@@ -379,6 +400,13 @@ class LeaveBalanceService
                 'notes' => $reason,
                 'user_id' => $rejecter->id,
             ]);
+
+            $current = \Carbon\Carbon::parse($lockedRequest->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($lockedRequest->end_date)->startOfDay();
+            while ($current->lte($end)) {
+                event(new \App\Events\AttendanceOverridden($lockedRequest->user, $current->copy(), $rejecter));
+                $current->addDay();
+            }
         });
     }
 
@@ -431,6 +459,13 @@ class LeaveBalanceService
                 'notes' => 'Cancelled by applicant.',
                 'user_id' => $user->id,
             ]);
+
+            $current = \Carbon\Carbon::parse($lockedRequest->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($lockedRequest->end_date)->startOfDay();
+            while ($current->lte($end)) {
+                event(new \App\Events\AttendanceOverridden($lockedRequest->user, $current->copy(), $user));
+                $current->addDay();
+            }
         });
     }
 
@@ -539,6 +574,13 @@ class LeaveBalanceService
                 'notes' => $notes,
                 'user_id' => $admin->id,
             ]);
+
+            $current = \Carbon\Carbon::parse($lockedRequest->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($lockedRequest->end_date)->startOfDay();
+            while ($current->lte($end)) {
+                event(new \App\Events\AttendanceOverridden($applicant, $current->copy(), $admin));
+                $current->addDay();
+            }
         });
     }
 

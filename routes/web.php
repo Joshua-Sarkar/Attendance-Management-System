@@ -79,6 +79,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/attendance/employee/{user}', [ManagerAttendanceController::class, 'show'])
         ->name('admin.attendance.employee.show');
 
+    // Attendance Ledger Routes
+    Route::get('/admin/attendance-ledger', [\App\Http\Controllers\AttendanceLedgerController::class, 'index'])
+        ->name('admin.attendance.ledger');
+    Route::get('/admin/attendance-ledger/dossier', [\App\Http\Controllers\AttendanceLedgerController::class, 'dossier'])
+        ->name('admin.attendance.ledger.dossier');
+    Route::post('/admin/attendance-ledger/override', [\App\Http\Controllers\AttendanceLedgerController::class, 'override'])
+        ->name('admin.attendance.ledger.override');
+    Route::post('/admin/attendance-ledger/bulk-override', [\App\Http\Controllers\AttendanceLedgerController::class, 'bulkOverride'])
+        ->name('admin.attendance.ledger.bulk-override');
+    Route::post('/admin/attendance-ledger/bulk-preview', [\App\Http\Controllers\AttendanceLedgerController::class, 'bulkPreview'])
+        ->name('admin.attendance.ledger.bulk-preview');
+    Route::post('/admin/attendance-ledger/assign-leave', [\App\Http\Controllers\AttendanceLedgerController::class, 'assignLeave'])
+        ->name('admin.attendance.ledger.assign-leave');
+    Route::post('/admin/attendance-ledger/change-shift', [\App\Http\Controllers\AttendanceLedgerController::class, 'changeShift'])
+        ->name('admin.attendance.ledger.change-shift');
+
     // Leaves Management Routes
     Route::get('/leaves', [LeaveRequestController::class, 'index'])->name('leaves.index');
     Route::get('/leaves/create', [LeaveRequestController::class, 'create'])->name('leaves.create');
@@ -88,6 +104,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/leaves/{leaveRequest}/approve', [LeaveRequestController::class, 'approve'])->name('leaves.approve');
     Route::post('/leaves/{leaveRequest}/reject', [LeaveRequestController::class, 'reject'])->name('leaves.reject');
     Route::post('/leaves/{leaveRequest}/override', [LeaveRequestController::class, 'override'])->name('leaves.override');
+
+    // Employee self-service payroll routes
+    Route::get('/my-payroll', [\App\Http\Controllers\EmployeePayrollController::class, 'index'])->name('employee.payroll.index');
+    Route::post('/my-payroll/approve', [\App\Http\Controllers\EmployeePayrollController::class, 'approve'])->name('employee.payroll.approve');
+    Route::post('/my-payroll/dispute', [\App\Http\Controllers\EmployeePayrollController::class, 'dispute'])->name('employee.payroll.dispute');
+    Route::get('/my-payslip/{id}/download', [\App\Http\Controllers\EmployeePayrollController::class, 'downloadPayslip'])->name('employee.payslip.download');
 
     // Admin Employee Import routes
     Route::middleware('admin')->group(function () {
@@ -120,6 +142,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/payroll/corrections/{id}/approve', [\App\Http\Controllers\PayrollController::class, 'correctionApprove'])->name('admin.payroll.corrections.approve');
         Route::post('/admin/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'settingsUpdate'])->name('admin.payroll.settings.update');
         Route::get('/admin/payroll/ledger/export', [\App\Http\Controllers\PayrollController::class, 'exportLedger'])->name('admin.payroll.ledger.export');
+        Route::post('/admin/payroll/reports/export', [\App\Http\Controllers\PayrollController::class, 'exportReport'])->name('admin.payroll.reports.export');
+
+        // New interactive actions
+        Route::post('/admin/payroll/records/{id}/approve', [\App\Http\Controllers\PayrollController::class, 'recordApprove'])->name('admin.payroll.records.approve');
+        Route::post('/admin/payroll/records/{id}/lock', [\App\Http\Controllers\PayrollController::class, 'recordLock'])->name('admin.payroll.records.lock');
+        Route::post('/admin/payroll/records/{id}/unlock', [\App\Http\Controllers\PayrollController::class, 'recordUnlock'])->name('admin.payroll.records.unlock');
+        Route::post('/admin/payroll/disputes/{id}/resolve', [\App\Http\Controllers\PayrollController::class, 'disputeResolve'])->name('admin.payroll.disputes.resolve');
+        Route::post('/admin/payroll/records/{id}/payslip/generate', [\App\Http\Controllers\PayrollController::class, 'payslipGenerate'])->name('admin.payroll.payslips.generate');
+        Route::post('/admin/payroll/records/{id}/payslip/publish', [\App\Http\Controllers\PayrollController::class, 'payslipPublish'])->name('admin.payroll.payslips.publish');
+        Route::post('/admin/payroll/payslips/bulk-generate', [\App\Http\Controllers\PayrollController::class, 'payslipBulkGenerate'])->name('admin.payroll.payslips.bulk-generate');
+        Route::post('/admin/payroll/payslips/bulk-publish', [\App\Http\Controllers\PayrollController::class, 'payslipBulkPublish'])->name('admin.payroll.payslips.bulk-publish');
+        Route::post('/admin/payroll/settings/preview', [\App\Http\Controllers\PayrollController::class, 'settingsPreview'])->name('admin.payroll.settings.preview');
+        Route::post('/admin/payroll/settings/save-recalculate', [\App\Http\Controllers\PayrollController::class, 'settingsSaveRecalculate'])->name('admin.payroll.settings.save-recalculate');
     });
 
     // Profile Correction Requests Routes

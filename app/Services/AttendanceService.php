@@ -1220,6 +1220,8 @@ class AttendanceService
                     $attendance->override_type = $overrideType;
                     $attendance->save();
 
+                    event(new \App\Events\AttendanceOverridden($lockedUser, $date, $admin));
+
                     $savedAttendances[] = $attendance;
                     $appliedCount++;
                 }

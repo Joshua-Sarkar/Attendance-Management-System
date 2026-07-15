@@ -12,6 +12,7 @@ use App\Models\PayrollException;
 use App\Models\PayrollSetting;
 use App\Models\PayrollAuditLog;
 use App\Models\LeaveRequest;
+use App\Models\PayrollDispute;
 use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
@@ -68,8 +69,34 @@ class PayrollController extends Controller
             $cycle = PayrollService::processCycle($period, $actor);
         }
 
+        $reportFilter = $request->get('report_filter', 'current_cycle');
+        $reportCycle = $request->get('report_cycle', $cycle->period);
+        $reportStartDate = $request->get('start_date') ?: $cycle->start_date->format('Y-m-d');
+        $reportEndDate = $request->get('end_date') ?: $cycle->end_date->format('Y-m-d');
+
+        $range = $this->resolveReportRange($request, $cycle);
+        $startDate = $range['start'];
+        $endDate = $range['end'];
+        $resolvedRangeLabel = $range['label'];
+
+        // Resolve affected cycles for reports
+        $startDateStr = $startDate->format('Y-m-d');
+        $endDateStr = $endDate->format('Y-m-d');
+        $cycleIds = PayrollCycle::where(function ($q) use ($startDateStr, $endDateStr) {
+            $q->whereBetween('start_date', [$startDateStr, $endDateStr])
+              ->orWhereBetween('end_date', [$startDateStr, $endDateStr])
+              ->orWhere(function ($q2) use ($startDateStr, $endDateStr) {
+                  $q2->where('start_date', '<=', $startDateStr)
+                     ->where('end_date', '>=', $endDateStr);
+              });
+        })->pluck('id');
+
+        $reportRecords = PayrollRecord::with(['user.department', 'user.employeeProfile'])
+            ->whereIn('payroll_cycle_id', $cycleIds)
+            ->get();
+
         // 2. Fetch records and format them for the BRS UI contract
-        $records = PayrollRecord::with(['user.department', 'user.employeeProfile', 'lastModifiedBy'])
+        $records = PayrollRecord::with(['user.department', 'user.employeeProfile', 'lastModifiedBy', 'disputes'])
             ->where('payroll_cycle_id', $cycle->id)
             ->get();
 
@@ -92,9 +119,11 @@ class PayrollController extends Controller
             $attendanceSnapshot = [];
             $dayIndex = 1;
             foreach ($dailyBreakdown as $dateStr => $dayData) {
-                // Map status to what UI expects: present, absent, half, leave, wfh, off, late
-                $uiStatus = 'present';
+                $dateObj = Carbon::parse($dateStr);
                 $status = $dayData['status'];
+                
+                // Map status to what UI expects
+                $uiStatus = 'present';
                 if (in_array($status, ['present', 'late'])) {
                     $uiStatus = $status === 'late' ? 'late' : 'present';
                 } elseif (in_array($status, ['half', 'hd_upr', 'hd_upa', 'hdp'])) {
@@ -112,7 +141,14 @@ class PayrollController extends Controller
                 $attendanceSnapshot[] = [
                     'day' => $dayIndex++,
                     'status' => $uiStatus,
-                    'date' => Carbon::parse($dateStr)->format('d M'),
+                    'date' => $dateObj->format('d M'),
+                    'dayOfWeek' => $dateObj->format('D'),
+                    'check_in' => $dayData['check_in'] ?? null,
+                    'check_out' => $dayData['check_out'] ?? null,
+                    'hours_worked' => $dayData['hours_worked'] ?? 0.00,
+                    'original_status' => $dayData['original_status'] ?? $status,
+                    'is_override' => $dayData['is_override'] ?? false,
+                    'deducted_amount' => $dayData['deducted_amount'] ?? 0.00,
                 ];
             }
             
@@ -154,6 +190,17 @@ class PayrollController extends Controller
                 $correctionStatus = 'resolved';
             }
 
+            // Calculate dynamic employment category based on joining date and probation days setting
+            $joiningDate = $user->joining_date ?? ($profile->joining_date ?? null);
+            $probationDays = (int) (\App\Models\PayrollSetting::getValue('lifecycle')['probationDays'] ?? 90);
+            $employmentCategory = 'Permanent';
+            if ($joiningDate) {
+                $daysDiff = $joiningDate->diffInDays($cycle->end_date);
+                if ($daysDiff < $probationDays) {
+                    $employmentCategory = 'Probation';
+                }
+            }
+
             return [
                 'record_id' => $r->id,
                 'id' => $user->employee_id ?? 'EMP-' . $user->id,
@@ -161,6 +208,8 @@ class PayrollController extends Controller
                 'initials' => $initials,
                 'dept' => $user->department->name ?? 'Unassigned',
                 'designation' => $profile->designation ?? 'Employee',
+                'joiningDate' => $joiningDate ? $joiningDate->format('Y-m-d') : null,
+                'employment_category' => $employmentCategory,
                 'workingDays' => $r->working_days,
                 'present' => (float)$r->present_days,
                 'late' => $r->late_days,
@@ -181,6 +230,13 @@ class PayrollController extends Controller
                 'pf' => (float)$pf,
                 'esi' => (float)$esi,
                 'profTax' => (float)$pt,
+                'dailyRate' => (float)($metadata['daily_rate'] ?? 0.00),
+                'hourlyRate' => (float)($metadata['hourly_rate'] ?? 0.00),
+                'calendarDays' => (int)($metadata['calendar_days'] ?? 30),
+                'attendanceDeductions' => (float)$r->attendance_deductions,
+                'leaveDeductions' => (float)$r->leave_deductions,
+                'statutoryDeductions' => (float)$r->statutory_deductions,
+                'overtimePay' => (float)$r->overtime_pay,
                 'correctionStatus' => $correctionStatus,
                 'locked' => (bool)$r->locked,
                 'lastModified' => $r->last_modified_at ? $r->last_modified_at->format('d M, g:i A') : $r->updated_at->format('d M, g:i A'),
@@ -189,10 +245,30 @@ class PayrollController extends Controller
                 'generatedDate' => $cycle->locked_at ? $cycle->locked_at->format('d M Y') : '—',
                 'downloadStatus' => $r->locked ? 'downloaded' : 'pending',
                 'emailStatus' => $r->locked ? 'sent' : 'not sent',
-                'attendanceSnapshot' => array_slice($attendanceSnapshot, -10), // last 10 days
+                'attendanceSnapshot' => $attendanceSnapshot,
                 'leaveHistory' => $leaves,
                 'systemExplanation' => $explanation,
                 'remarks' => $r->correction_reason,
+                'employee_review_status' => $r->employee_review_status ?? 'pending',
+                'employee_approved_at' => $r->employee_approved_at ? $r->employee_approved_at->format('d M, g:i A') : null,
+                'admin_approved_at' => $r->admin_approved_at ? $r->admin_approved_at->format('d M, g:i A') : null,
+                'calculation_version' => $r->calculation_version ?? 1,
+                'fingerprint' => $r->fingerprint,
+                'payslip_status' => $r->payslip_status ?? 'pending',
+                'payslip_generated_at' => $r->payslip_generated_at ? $r->payslip_generated_at->format('d M, g:i A') : null,
+                'payslip_published_at' => $r->payslip_published_at ? $r->payslip_published_at->format('d M, g:i A') : null,
+                'disputes' => $r->disputes->map(function($d) {
+                    return [
+                        'id' => $d->id,
+                        'category' => $d->category,
+                        'description' => $d->description,
+                        'expected_correction' => $d->expected_correction,
+                        'status' => $d->status,
+                        'affected_date' => $d->affected_date ? $d->affected_date->format('Y-m-d') : null,
+                        'resolution_notes' => $d->resolution_notes,
+                        'created_at' => $d->created_at->format('d M Y, g:i A'),
+                    ];
+                })->toArray(),
             ];
         });
 
@@ -378,7 +454,6 @@ class PayrollController extends Controller
             });
 
         // 6. Reports (CSS-based rendering data)
-        // Eng, Design, Marketing, Ops, Sales
         $depts = Department::all();
         $deptPayroll = [];
         $deptAttendance = [];
@@ -386,11 +461,11 @@ class PayrollController extends Controller
         $deptCost = [];
 
         foreach ($depts as $d) {
-            $rSubset = $records->filter(fn($rec) => $rec->user->department_id === $d->id);
+            $rSubset = $reportRecords->filter(fn($rec) => $rec->user && $rec->user->department_id === $d->id);
             $sumNet = (float) $rSubset->sum('net_salary');
             $sumGross = (float) $rSubset->sum('gross_salary');
             $sumOT = (float) $rSubset->sum('overtime_hours');
-            $avgAtt = $rSubset->count() > 0 ? round($rSubset->avg(fn($rec) => ($rec->present_days / ($rec->working_days ?: 26)) * 100)) : 90;
+            $avgAtt = $rSubset->count() > 0 ? round($rSubset->avg(fn($rec) => ($rec->present_days / ($rec->working_days ?: 26)) * 100)) : 0;
             
             // Employer cost: gross + 12% PF matching
             $employerCost = $sumGross + ($rSubset->sum('base_salary') * 0.12);
@@ -402,53 +477,191 @@ class PayrollController extends Controller
             $deptCost[] = ['label' => $label, 'value' => round($employerCost)];
         }
 
-        // Add defaults if department tables are empty
-        if (empty($deptPayroll)) {
-            $deptPayroll = [['label' => 'Eng', 'value' => 620000], ['label' => 'Design', 'value' => 310000], ['label' => 'Mktg', 'value' => 275000]];
-            $deptAttendance = [['label' => 'Eng', 'value' => 91], ['label' => 'Design', 'value' => 94], ['label' => 'Mktg', 'value' => 86]];
-            $deptOT = [['label' => 'Eng', 'value' => 38], ['label' => 'Design', 'value' => 14], ['label' => 'Mktg', 'value' => 6]];
-            $deptCost = [['label' => 'Eng', 'value' => 668000], ['label' => 'Design', 'value' => 334000], ['label' => 'Mktg', 'value' => 296000]];
-        }
-
-        $maxPayroll = count($deptPayroll) > 0 ? max(array_column($deptPayroll, 'value')) : 650000;
-        $maxOT = count($deptOT) > 0 ? max(array_column($deptOT, 'value')) : 60;
-        $maxCost = count($deptCost) > 0 ? max(array_column($deptCost, 'value')) : 700000;
+        $maxPayroll = count($deptPayroll) > 0 ? max(array_column($deptPayroll, 'value')) : 0;
+        if ($maxPayroll <= 0) $maxPayroll = 1000;
+        
+        $maxOT = count($deptOT) > 0 ? max(array_column($deptOT, 'value')) : 0;
+        if ($maxOT <= 0) $maxOT = 10;
+        
+        $maxCost = count($deptCost) > 0 ? max(array_column($deptCost, 'value')) : 0;
+        if ($maxCost <= 0) $maxCost = 1000;
 
         // Salary bands donut data
-        $band30_40 = $records->filter(fn($rec) => $rec->net_salary >= 30000 && $rec->net_salary < 40000)->count();
-        $band40_55 = $records->filter(fn($rec) => $rec->net_salary >= 40000 && $rec->net_salary < 55000)->count();
-        $band55_70 = $records->filter(fn($rec) => $rec->net_salary >= 55000 && $rec->net_salary < 70000)->count();
-        $band70plus = $records->filter(fn($rec) => $rec->net_salary >= 70000)->count();
+        $band30_40 = $reportRecords->filter(fn($rec) => $rec->net_salary >= 30000 && $rec->net_salary < 40000)->count();
+        $band40_55 = $reportRecords->filter(fn($rec) => $rec->net_salary >= 40000 && $rec->net_salary < 55000)->count();
+        $band55_70 = $reportRecords->filter(fn($rec) => $rec->net_salary >= 55000 && $rec->net_salary < 70000)->count();
+        $band70plus = $reportRecords->filter(fn($rec) => $rec->net_salary >= 70000)->count();
         
-        $highestEarners = $records->sortByDesc('net_salary')->take(5)->map(function ($rec) {
+        $highestEarners = $reportRecords->sortByDesc('net_salary')->take(5)->map(function ($rec) {
             $parts = explode(' ', $rec->user->name);
             $shortName = count($parts) > 1 ? substr($parts[0], 0, 1) . '. ' . $parts[1] : $rec->user->name;
             return ['label' => $shortName, 'value' => (float)$rec->net_salary];
         })->values()->toArray();
 
+        // Dynamic Payroll Trend calculation
+        $trendQuery = \App\Models\PayrollRecord::select('payroll_cycle_id', \DB::raw('SUM(net_salary) as total_net'))
+            ->groupBy('payroll_cycle_id')
+            ->with('payrollCycle')
+            ->orderBy('payroll_cycle_id', 'asc')
+            ->take(6)
+            ->get();
+            
+        $trendData = [];
+        foreach ($trendQuery as $tRow) {
+            if ($tRow->payrollCycle) {
+                $trendData[] = [
+                    'label' => substr($tRow->payrollCycle->period, 0, 3) . ' ' . substr($tRow->payrollCycle->period, -2),
+                    'value' => round((float)$tRow->total_net / 100000, 1)
+                ];
+            }
+        }
+        $maxTrendValue = count($trendData) > 0 ? max(array_column($trendData, 'value')) : 0;
+        if ($maxTrendValue <= 0) $maxTrendValue = 10;
+
+        // Dynamic Leave Deduction Trend calculation
+        $leaveTrendQuery = \App\Models\PayrollRecord::select('payroll_cycle_id', \DB::raw('SUM(leave_deductions + attendance_deductions) as total_ded'))
+            ->groupBy('payroll_cycle_id')
+            ->with('payrollCycle')
+            ->orderBy('payroll_cycle_id', 'asc')
+            ->take(6)
+            ->get();
+            
+        $leaveTrendData = [];
+        foreach ($leaveTrendQuery as $lRow) {
+            if ($lRow->payrollCycle) {
+                $leaveTrendData[] = [
+                    'label' => substr($lRow->payrollCycle->period, 0, 3) . ' ' . substr($lRow->payrollCycle->period, -2),
+                    'value' => (float)$lRow->total_ded
+                ];
+            }
+        }
+        $maxLeaveTrend = count($leaveTrendData) > 0 ? max(array_column($leaveTrendData, 'value')) : 0;
+        if ($maxLeaveTrend <= 0) $maxLeaveTrend = 1000;
+
         $reports = [
             ['title' => 'Department Payroll', 'desc' => 'Net disbursement by department', 'type' => 'bar', 'max' => $maxPayroll, 'data' => $deptPayroll],
             ['title' => 'Salary Distribution', 'desc' => 'Employees by salary band', 'type' => 'donut', 'data' => [
-                ['label' => '₹30–40k', 'value' => $band30_40 ?: 2],
-                ['label' => '₹40–55k', 'value' => $band40_55 ?: 4],
-                ['label' => '₹55–70k', 'value' => $band55_70 ?: 3],
-                ['label' => '₹70k+', 'value' => $band70plus ?: 1],
+                ['label' => '₹30–40k', 'value' => $band30_40],
+                ['label' => '₹40–55k', 'value' => $band40_55],
+                ['label' => '₹55–70k', 'value' => $band55_70],
+                ['label' => '₹70k+', 'value' => $band70plus],
             ]],
-            ['title' => 'Payroll Trend', 'desc' => 'Net payroll, last 6 cycles', 'type' => 'line', 'max' => 20, 'data' => [
-                ['label' => 'Jan', 'value' => 15.2], ['label' => 'Feb', 'value' => 16.1], ['label' => 'Mar', 'value' => 15.8],
-                ['label' => 'Apr', 'value' => 17.4], ['label' => 'May', 'value' => 17.9], ['label' => 'Jun', 'value' => round((float)$records->sum('net_salary') / 100000, 1) ?: 18.4]
-            ]],
-            ['title' => 'Leave Deduction Trend', 'desc' => 'Unpaid leave impact by month', 'type' => 'bar', 'max' => 45000, 'data' => [
-                ['label' => 'Jan', 'value' => 22000], ['label' => 'Feb', 'value' => 18000], ['label' => 'Mar', 'value' => 31000],
-                ['label' => 'Apr', 'value' => 25000], ['label' => 'May', 'value' => 29000], ['label' => 'Jun', 'value' => (float)$records->sum('attendance_deductions') ?: 38500]
-            ]],
+            ['title' => 'Payroll Trend', 'desc' => 'Net payroll, last 6 cycles (Lakhs)', 'type' => 'line', 'max' => $maxTrendValue, 'data' => $trendData],
+            ['title' => 'Leave Deduction Trend', 'desc' => 'Unpaid leave impact by month', 'type' => 'bar', 'max' => $maxLeaveTrend, 'data' => $leaveTrendData],
             ['title' => 'Attendance Impact', 'desc' => 'Average attendance % by department', 'type' => 'bar', 'max' => 100, 'data' => $deptAttendance],
-            ['title' => 'Overtime Trend', 'desc' => 'OT hours by department', 'type' => 'bar', 'max' => $maxOT ?: 60, 'data' => $deptOT],
-            ['title' => 'Highest Earners', 'desc' => 'Highest net salary this cycle', 'type' => 'list', 'max' => count($highestEarners) > 0 ? max(array_column($highestEarners, 'value')) : 75000, 'data' => $highestEarners],
+            ['title' => 'Overtime Trend', 'desc' => 'OT hours by department', 'type' => 'bar', 'max' => $maxOT, 'data' => $deptOT],
+            ['title' => 'Highest Earners', 'desc' => 'Highest net salary this cycle', 'type' => 'list', 'max' => count($highestEarners) > 0 ? max(array_column($highestEarners, 'value')) : 1000, 'data' => $highestEarners],
             ['title' => 'Department Cost Comparison', 'desc' => 'Total cost incl. employer contributions', 'type' => 'bar', 'max' => $maxCost, 'data' => $deptCost],
         ];
 
-        // 7. General KPIs for Dashboard
+        // 7. Dynamic Workflow Run Pipeline
+        $empCount = max($records->count(), 1);
+        $attendanceImportedCount = $records->count(); // Assuming all loaded employees have attendance
+        
+        $openDisputes = \App\Models\PayrollDispute::whereIn('payroll_record_id', $records->pluck('id'))
+            ->where('status', 'open')
+            ->count();
+            
+        $staleCount = $records->where('employee_review_status', 'stale')->count();
+        $adminAwaiting = $records->whereNull('admin_approved_at')->count();
+        $lockedCount = $records->where('locked', true)->count();
+        $payslipsGenCount = $records->whereIn('payslip_status', ['generated', 'published'])->count();
+        $payslipsPubCount = $records->where('payslip_status', 'published')->count();
+        
+        $pipeline = [
+            [
+                'id' => 'attendance_ready',
+                'label' => 'Attendance Source Ready',
+                'completed' => $attendanceImportedCount,
+                'total' => $empCount,
+                'pct' => round(($attendanceImportedCount / $empCount) * 100),
+                'status' => $attendanceImportedCount === $empCount ? 'done' : 'current',
+                'reason' => '',
+            ],
+            [
+                'id' => 'attendance_verified',
+                'label' => 'Attendance Verified',
+                'completed' => $attendanceImportedCount,
+                'total' => $empCount,
+                'pct' => round(($attendanceImportedCount / $empCount) * 100),
+                'status' => 'done',
+                'reason' => '',
+            ],
+            [
+                'id' => 'payroll_calculated',
+                'label' => 'Payroll Calculated',
+                'completed' => $records->count(),
+                'total' => $empCount,
+                'pct' => round(($records->count() / $empCount) * 100),
+                'status' => $records->count() === $empCount ? 'done' : 'current',
+                'reason' => '',
+            ],
+            [
+                'id' => 'published_review',
+                'label' => 'Published for Review',
+                'completed' => $cycle->status !== 'draft' ? 1 : 0,
+                'total' => 1,
+                'pct' => $cycle->status !== 'draft' ? 100 : 0,
+                'status' => $cycle->status !== 'draft' ? 'done' : 'current',
+                'reason' => $cycle->status === 'draft' ? 'Draft cycle' : '',
+            ],
+            [
+                'id' => 'employee_review',
+                'label' => 'Employee Review/Approval',
+                'completed' => $records->where('employee_review_status', 'approved')->count(),
+                'total' => $empCount,
+                'pct' => round(($records->where('employee_review_status', 'approved')->count() / $empCount) * 100),
+                'status' => $openDisputes > 0 ? 'blocked' : ($records->where('employee_review_status', 'approved')->count() === $empCount ? 'done' : 'current'),
+                'reason' => $openDisputes > 0 ? "{$openDisputes} active Payroll disputes" : ($staleCount > 0 ? "{$staleCount} approvals stale after recalculation" : ""),
+            ],
+            [
+                'id' => 'admin_review',
+                'label' => 'Admin Review/Approval',
+                'completed' => $records->whereNotNull('admin_approved_at')->count(),
+                'total' => $empCount,
+                'pct' => round(($records->whereNotNull('admin_approved_at')->count() / $empCount) * 100),
+                'status' => $adminAwaiting > 0 ? 'current' : 'done',
+                'reason' => $adminAwaiting > 0 ? "{$adminAwaiting} records awaiting admin approval" : '',
+            ],
+            [
+                'id' => 'payroll_locked',
+                'label' => 'Employee Payroll Locked',
+                'completed' => $lockedCount,
+                'total' => $empCount,
+                'pct' => round(($lockedCount / $empCount) * 100),
+                'status' => $lockedCount === $empCount ? 'done' : 'current',
+                'reason' => ($empCount - $lockedCount) > 0 ? ($empCount - $lockedCount) . " open records unlocked" : '',
+            ],
+            [
+                'id' => 'payslips_generated',
+                'label' => 'Payslips Generated',
+                'completed' => $payslipsGenCount,
+                'total' => $empCount,
+                'pct' => round(($payslipsGenCount / $empCount) * 100),
+                'status' => $payslipsGenCount === $empCount ? 'done' : 'current',
+                'reason' => ($lockedCount - $payslipsGenCount) > 0 ? ($lockedCount - $payslipsGenCount) . " locked records missing generated payslips" : '',
+            ],
+            [
+                'id' => 'payslips_published',
+                'label' => 'Payslips Published',
+                'completed' => $payslipsPubCount,
+                'total' => $empCount,
+                'pct' => round(($payslipsPubCount / $empCount) * 100),
+                'status' => $payslipsPubCount === $empCount ? 'done' : 'current',
+                'reason' => ($empCount - $payslipsPubCount) > 0 ? ($empCount - $payslipsPubCount) . " payslips pending publication" : '',
+            ],
+            [
+                'id' => 'cycle_completed',
+                'label' => 'Cycle Completed',
+                'completed' => ($lockedCount === $empCount && $payslipsPubCount === $empCount) ? 1 : 0,
+                'total' => 1,
+                'pct' => ($lockedCount === $empCount && $payslipsPubCount === $empCount) ? 100 : 0,
+                'status' => ($lockedCount === $empCount && $payslipsPubCount === $empCount) ? 'done' : 'upcoming',
+                'reason' => '',
+            ],
+        ];
+
+        // 8. General KPIs for Dashboard
         $grossSum = $records->sum('gross_salary');
         $netSum = $records->sum('net_salary');
         $dedSum = $records->sum(fn($rec) => $rec->gross_salary - $rec->net_salary);
@@ -458,8 +671,8 @@ class PayrollController extends Controller
 
         $kpis = [
             ['label' => 'Total Employees', 'value' => (string)$records->count(), 'sub' => 'Active this cycle'],
-            ['label' => 'Approved', 'value' => (string)$records->where('status', 'approved')->count(), 'sub' => 'Signed off', 'tone' => 'forest'],
-            ['label' => 'Pending Review', 'value' => (string)$records->where('status', 'pending')->count(), 'sub' => 'Awaiting approval', 'tone' => 'oxblood'],
+            ['label' => 'Approved', 'value' => (string)$records->where('employee_review_status', 'approved')->count(), 'sub' => 'Signed off by employee', 'tone' => 'forest'],
+            ['label' => 'Pending Review', 'value' => (string)$records->where('employee_review_status', 'pending')->count(), 'sub' => 'Awaiting employee', 'tone' => 'oxblood'],
             ['label' => 'Locked', 'value' => (string)$records->where('status', 'locked')->count(), 'sub' => 'Finalized records'],
             ['label' => 'Exceptions', 'value' => (string)$exceptionsFlat->where('resolved', false)->count(), 'sub' => 'Flagged records', 'tone' => 'oxblood'],
             ['label' => 'Payroll Completion', 'value' => ($records->count() > 0 ? round(($records->whereIn('status', ['approved', 'locked'])->count() / $records->count()) * 100) : 0) . '%', 'sub' => 'Of cycle processed'],
@@ -481,8 +694,14 @@ class PayrollController extends Controller
             'auditTrail' => $auditTrail,
             'reports' => $reports,
             'kpis' => $kpis,
+            'pipeline' => $pipeline,
             'allPeriods' => ['June 2026', 'July 2026', 'August 2026', 'September 2026'],
             'activeTab' => $activeTab,
+            'reportFilter' => $reportFilter,
+            'reportCycle' => $reportCycle,
+            'reportStartDate' => $reportStartDate,
+            'reportEndDate' => $reportEndDate,
+            'resolvedRangeLabel' => $resolvedRangeLabel,
         ]);
     }
 
@@ -612,7 +831,7 @@ class PayrollController extends Controller
     }
 
     /**
-     * Export the Salary Disbursement Ledger to CSV.
+     * Export the Salary Disbursement Ledger to Excel.
      */
     public function exportLedger(Request $request)
     {
@@ -623,47 +842,544 @@ class PayrollController extends Controller
             ->where('payroll_cycle_id', $cycle->id)
             ->get();
 
-        $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=Salary_Ledger_{$period}.csv",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        ];
-
-        $columns = [
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        
+        // Sheet 1: Salary Ledger Summary
+        $sheet1 = $spreadsheet->getActiveSheet();
+        $sheet1->setTitle('Salary Ledger');
+        
+        $headers1 = [
             'Employee ID', 'Name', 'Department', 'Designation', 'Bank Name', 
             'Account Holder Name', 'Account Number', 'IFSC Code', 'Base Salary', 
             'Gross Salary', 'Total Deductions', 'Net Disbursement'
         ];
+        
+        $sheet1->fromArray($headers1, NULL, 'A1');
+        
+        $rowIdx = 2;
+        foreach ($records as $r) {
+            $user = $r->user;
+            $p = $user->employeeProfile;
+            $deductions = ($r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions);
+            
+            $sheet1->fromArray([
+                $user->employee_id ?? 'EMP-' . $user->id,
+                $user->name,
+                $user->department->name ?? 'Unassigned',
+                $p->designation ?? 'Employee',
+                $p->bank_name ?? '—',
+                $p->account_holder_name ?? $user->name,
+                $p->account_no ? '*******' . substr($p->account_no, -4) : '—',
+                $p->ifsc_code ?? '—',
+                (float)$r->base_salary,
+                (float)$r->gross_salary,
+                (float)$deductions,
+                (float)$r->net_salary
+            ], NULL, 'A' . $rowIdx);
+            $rowIdx++;
+        }
+        
+        // Sheet 2: Attendance & Deductions Breakdown
+        $sheet2 = $spreadsheet->createSheet();
+        $sheet2->setTitle('Attendance & Details');
+        
+        $headers2 = [
+            'Employee ID', 'Name', 'Eligible Days', 'Present Days', 'Absent Days', 
+            'Leave Days', 'Overtime Hours', 'Overtime Pay', 'PF', 'ESI', 'Professional Tax', 'TDS'
+        ];
+        $sheet2->fromArray($headers2, NULL, 'A1');
+        
+        $rowIdx = 2;
+        foreach ($records as $r) {
+            $user = $r->user;
+            $sheet2->fromArray([
+                $user->employee_id ?? 'EMP-' . $user->id,
+                $user->name,
+                (int)$r->working_days,
+                (float)$r->present_days,
+                (float)$r->absent_days,
+                (float)$r->leave_days,
+                (float)$r->overtime_hours,
+                (float)$r->overtime_pay,
+                (float)$r->statutory_deductions,
+                (float)($r->calculation_metadata['esi'] ?? 0.00),
+                (float)($r->calculation_metadata['pt'] ?? 0.00),
+                (float)$r->tax_deductions
+            ], NULL, 'A' . $rowIdx);
+            $rowIdx++;
+        }
+        
+        $fileName = "Salary_Ledger_{$period}.xlsx";
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . urlencode($fileName) . '"');
+        header('Cache-Control: max-age=0');
+        
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
 
-        $callback = function() use($records, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
+    /**
+     * Admin approves an employee's payroll record.
+     */
+    public function recordApprove(Request $request, $id)
+    {
+        $record = PayrollRecord::findOrFail($id);
+        $actor = auth()->user();
 
-            foreach ($records as $r) {
-                $user = $r->user;
-                $p = $user->employeeProfile;
-                
-                fputcsv($file, [
-                    $user->employee_id ?? 'EMP-' . $user->id,
-                    $user->name,
-                    $user->department->name ?? 'Unassigned',
-                    $p->designation ?? 'Employee',
-                    $p->bank_name ?? '—',
-                    $p->account_holder_name ?? $user->name,
-                    $p->account_no ? '*******' . substr($p->account_no, -4) : '—', // Mask bank account for privacy
-                    $p->ifsc_code ?? '—',
-                    $r->base_salary,
-                    $r->gross_salary,
-                    ($r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions),
-                    $r->net_salary
-                ]);
+        if ($record->locked) {
+            return response()->json(['success' => false, 'message' => 'Cannot approve a locked payroll record.']);
+        }
+
+        $record->update([
+            'admin_approved_at' => now(),
+            'admin_approved_by_id' => $actor->id,
+            'status' => 'approved',
+        ]);
+
+        PayrollAuditLog::record(
+            $record->user_id,
+            $actor->id,
+            "Admin approved employee payroll statement version {$record->calculation_version}",
+            "Payroll Correction"
+        );
+
+        // Try automatic lock
+        $locked = PayrollService::lockRecord($record, $actor);
+
+        return response()->json([
+            'success' => true,
+            'message' => $locked ? 'Record approved and locked successfully!' : 'Record approved successfully!',
+            'locked' => $locked,
+        ]);
+    }
+
+    /**
+     * Admin locks an employee's payroll record.
+     */
+    public function recordLock(Request $request, $id)
+    {
+        $record = PayrollRecord::findOrFail($id);
+        $actor = auth()->user();
+
+        if ($record->locked) {
+            return response()->json(['success' => true, 'message' => 'Record is already locked.']);
+        }
+
+        $success = PayrollService::lockRecord($record, $actor);
+
+        if (!$success) {
+            $disputesOpen = \App\Models\PayrollDispute::where('payroll_record_id', $record->id)->where('status', 'open')->exists();
+            $msg = 'Record cannot be locked. Ensure both employee and admin approvals are signed off and no active disputes exist.';
+            if ($disputesOpen) {
+                $msg = 'Record cannot be locked. There is an active unresolved dispute raised by the employee.';
             }
+            return response()->json(['success' => false, 'message' => $msg]);
+        }
 
-            fclose($file);
-        };
+        return response()->json(['success' => true, 'message' => 'Record locked successfully and snapshot created.']);
+    }
 
-        return Response::stream($callback, 200, $headers);
+    /**
+     * Admin unlocks an employee's payroll record.
+     */
+    public function recordUnlock(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string|min:5',
+        ]);
+
+        $record = PayrollRecord::findOrFail($id);
+        $actor = auth()->user();
+
+        if (!$record->locked) {
+            return response()->json(['success' => true, 'message' => 'Record is already unlocked.']);
+        }
+
+        PayrollService::unlockRecord($record, $request->input('reason'), $actor);
+
+        return response()->json(['success' => true, 'message' => 'Record unlocked successfully.']);
+    }
+
+    /**
+     * Resolve dispute.
+     */
+    public function disputeResolve(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:resolved,rejected',
+            'notes' => 'required|string|min:5',
+        ]);
+
+        $dispute = PayrollDispute::findOrFail($id);
+        $actor = auth()->user();
+
+        $dispute->update([
+            'status' => $request->input('status'),
+            'resolved_at' => now(),
+            'resolved_by_id' => $actor->id,
+            'resolution_notes' => $request->input('notes'),
+        ]);
+
+        $record = $dispute->payrollRecord;
+        if ($record && $record->employee_review_status === 'disputed') {
+            // Revert review status to pending to allow employee to re-approve
+            $record->update([
+                'employee_review_status' => 'pending',
+            ]);
+        }
+
+        PayrollAuditLog::record(
+            $dispute->user_id,
+            $actor->id,
+            "Resolved employee dispute (Status: {$request->input('status')}). Notes: {$request->input('notes')}",
+            "Payroll Correction"
+        );
+
+        return response()->json(['success' => true, 'message' => 'Dispute resolved successfully.']);
+    }
+
+    /**
+     * Generate payslip.
+     */
+    public function payslipGenerate(Request $request, $id)
+    {
+        $record = PayrollRecord::findOrFail($id);
+        if (!$record->locked) {
+            return response()->json(['success' => false, 'message' => 'Cannot generate payslip for an unlocked record.']);
+        }
+
+        $record->update([
+            'payslip_status' => 'generated',
+            'payslip_generated_at' => now(),
+        ]);
+
+        PayrollAuditLog::record(
+            $record->user_id,
+            auth()->id(),
+            "Generated payslip for {$record->user->name}",
+            "Locks"
+        );
+
+        return response()->json(['success' => true, 'message' => 'Payslip generated successfully.']);
+    }
+
+    /**
+     * Publish payslip.
+     */
+    public function payslipPublish(Request $request, $id)
+    {
+        $record = PayrollRecord::findOrFail($id);
+        if (!$record->locked) {
+            return response()->json(['success' => false, 'message' => 'Cannot publish payslip for an unlocked record.']);
+        }
+
+        $record->update([
+            'payslip_status' => 'published',
+            'payslip_published_at' => now(),
+        ]);
+
+        PayrollAuditLog::record(
+            $record->user_id,
+            auth()->id(),
+            "Published payslip for {$record->user->name}",
+            "Locks"
+        );
+
+        return response()->json(['success' => true, 'message' => 'Payslip published successfully.']);
+    }
+
+    /**
+     * Bulk generate payslips.
+     */
+    public function payslipBulkGenerate(Request $request)
+    {
+        $period = $request->input('period', 'June 2026');
+        $cycle = PayrollCycle::where('period', $period)->firstOrFail();
+
+        $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)
+            ->where('locked', true)
+            ->get();
+
+        foreach ($records as $r) {
+            $r->update([
+                'payslip_status' => 'generated',
+                'payslip_generated_at' => now(),
+            ]);
+        }
+
+        PayrollAuditLog::record(
+            null,
+            auth()->id(),
+            "Bulk generated payslips for cycle period: {$period}",
+            "Locks"
+        );
+
+        return response()->json(['success' => true, 'message' => 'Payslips generated in bulk successfully.']);
+    }
+
+    /**
+     * Bulk publish payslips.
+     */
+    public function payslipBulkPublish(Request $request)
+    {
+        $period = $request->input('period', 'June 2026');
+        $cycle = PayrollCycle::where('period', $period)->firstOrFail();
+
+        $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)
+            ->where('locked', true)
+            ->get();
+
+        foreach ($records as $r) {
+            $r->update([
+                'payslip_status' => 'published',
+                'payslip_published_at' => now(),
+            ]);
+        }
+
+        PayrollAuditLog::record(
+            null,
+            auth()->id(),
+            "Bulk published payslips for cycle period: {$period}",
+            "Locks"
+        );
+
+        return response()->json(['success' => true, 'message' => 'Payslips published in bulk successfully.']);
+    }
+
+    /**
+     * Preview policy update impact.
+     */
+    public function settingsPreview(Request $request)
+    {
+        $group = $request->input('group');
+        $fields = $request->input('fields', []);
+        $period = $request->input('period', 'June 2026');
+
+        $carbonPeriod = Carbon::parse($period);
+        $year = $carbonPeriod->year;
+        $month = $carbonPeriod->month;
+
+        $cycle = PayrollCycle::where('period', $period)->first();
+        if (!$cycle) {
+            return response()->json(['success' => false, 'message' => 'Active cycle does not exist for preview.']);
+        }
+
+        $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)
+            ->where('locked', false)
+            ->get();
+
+        $affectedCount = 0;
+        $grossDelta = 0.00;
+        $deductionsDelta = 0.00;
+        $netDelta = 0.00;
+        $staleApprovalsCount = 0;
+
+        $oldSettings = PayrollSetting::getValue($group, []);
+        $mockSettings = $oldSettings;
+        foreach ($fields as $k => $v) {
+            if ($v === 'true') $v = true;
+            if ($v === 'false') $v = false;
+            $mockSettings[$k] = $v;
+        }
+
+        PayrollSetting::setValue($group, $mockSettings);
+
+        try {
+            foreach ($records as $r) {
+                $calc = PayrollService::calculateMonthlyPayroll($r->user, $year, $month);
+                
+                $oldGross = (float)$r->gross_salary;
+                $oldNet = (float)$r->net_salary;
+                $oldDeductions = (float)($r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions);
+
+                $newGross = (float)$calc['gross_salary'];
+                $newNet = (float)$calc['net_salary'];
+                $newDeductions = (float)($calc['attendance_deductions'] + $calc['leave_deductions'] + $calc['statutory_deductions'] + $calc['tax_deductions']);
+
+                if (abs($newGross - $oldGross) > 0.01 || abs($newNet - $oldNet) > 0.01) {
+                    $affectedCount++;
+                    $grossDelta += ($newGross - $oldGross);
+                    $deductionsDelta += ($newDeductions - $oldDeductions);
+                    $netDelta += ($newNet - $oldNet);
+
+                    if ($r->employee_review_status === 'approved' || !is_null($r->admin_approved_at)) {
+                        $staleApprovalsCount++;
+                    }
+                }
+            }
+        } finally {
+            PayrollSetting::setValue($group, $oldSettings);
+        }
+
+        return response()->json([
+            'success' => true,
+            'affected_records' => $affectedCount,
+            'gross_delta' => round($grossDelta, 2),
+            'deductions_delta' => round($deductionsDelta, 2),
+            'net_delta' => round($netDelta, 2),
+            'stale_approvals' => $staleApprovalsCount,
+        ]);
+    }
+
+    /**
+     * Save settings and force recalculation of affected unlocked records.
+     */
+    public function settingsSaveRecalculate(Request $request)
+    {
+        $group = $request->input('group');
+        $fields = $request->input('fields', []);
+        $period = $request->input('period', 'June 2026');
+
+        $policy = PayrollSetting::getValue($group, []);
+        foreach ($fields as $key => $val) {
+            if ($val === 'true') $val = true;
+            if ($val === 'false') $val = false;
+            $policy[$key] = $val;
+        }
+
+        PayrollSetting::setValue($group, $policy);
+
+        PayrollAuditLog::record(
+            null,
+            auth()->id(),
+            "Saved & Recalculated config policy parameters for {$group}.",
+            "Settings",
+            null,
+            json_encode($policy)
+        );
+
+        PayrollService::processCycle($period, auth()->user());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Settings saved and payroll cycle recalculated successfully.',
+        ]);
+    }
+
+    /**
+     * Resolve the report period selection and date range.
+     */
+    private function resolveReportRange(Request $request, PayrollCycle $cycle)
+    {
+        $filter = $request->get('report_filter', 'current_cycle');
+        $startDate = null;
+        $endDate = null;
+        $label = '';
+
+        switch ($filter) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today()->endOfDay();
+                $label = $startDate->format('d M Y');
+                break;
+            case 'yesterday':
+                $startDate = Carbon::yesterday();
+                $endDate = Carbon::yesterday()->endOfDay();
+                $label = $startDate->format('d M Y');
+                break;
+            case 'this_week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek()->endOfDay();
+                $label = $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y');
+                break;
+            case 'prev_week':
+                $startDate = Carbon::now()->subWeek()->startOfWeek();
+                $endDate = Carbon::now()->subWeek()->endOfWeek()->endOfDay();
+                $label = $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y');
+                break;
+            case 'this_month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth()->endOfDay();
+                $label = $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y');
+                break;
+            case 'prev_month':
+                $startDate = Carbon::now()->subMonth()->startOfMonth();
+                $endDate = Carbon::now()->subMonth()->endOfMonth()->endOfDay();
+                $label = $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y');
+                break;
+            case 'prev_cycle':
+                $prevPeriod = Carbon::parse($cycle->period)->subMonth()->format('F Y');
+                $prevCycle = PayrollCycle::where('period', $prevPeriod)->first();
+                if (!$prevCycle) {
+                    $startDate = Carbon::parse($cycle->period)->subMonth()->startOfMonth();
+                    $endDate = Carbon::parse($cycle->period)->subMonth()->endOfMonth()->endOfDay();
+                } else {
+                    $startDate = $prevCycle->start_date;
+                    $endDate = $prevCycle->end_date->endOfDay();
+                }
+                $label = "Previous Cycle: " . ($prevCycle ? $prevCycle->period : $prevPeriod) . " (" . $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y') . ")";
+                break;
+            case 'specific_cycle':
+                $specPeriod = $request->get('report_cycle', $cycle->period);
+                $specCycle = PayrollCycle::where('period', $specPeriod)->first();
+                if (!$specCycle) {
+                    $startDate = Carbon::parse($specPeriod)->startOfMonth();
+                    $endDate = Carbon::parse($specPeriod)->endOfMonth()->endOfDay();
+                } else {
+                    $startDate = $specCycle->start_date;
+                    $endDate = $specCycle->end_date->endOfDay();
+                }
+                $label = "Payroll Cycle: " . $specPeriod . " (" . $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y') . ")";
+                break;
+            case 'custom':
+                $startInput = $request->get('start_date');
+                $endInput = $request->get('end_date');
+                
+                if ($startInput && $endInput) {
+                    $parsedStart = Carbon::parse($startInput)->startOfDay();
+                    $parsedEnd = Carbon::parse($endInput)->endOfDay();
+                    if ($parsedStart->lte($parsedEnd)) {
+                        $startDate = $parsedStart;
+                        $endDate = $parsedEnd;
+                    } else {
+                        $startDate = $cycle->start_date;
+                        $endDate = $cycle->end_date->endOfDay();
+                    }
+                } else {
+                    $startDate = $cycle->start_date;
+                    $endDate = $cycle->end_date->endOfDay();
+                }
+                $label = $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y');
+                break;
+            case 'current_cycle':
+            default:
+                $startDate = $cycle->start_date;
+                $endDate = $cycle->end_date->endOfDay();
+                $label = "Payroll Cycle: " . $cycle->period . " (" . $startDate->format('d M Y') . ' – ' . $endDate->format('d M Y') . ")";
+                break;
+        }
+
+        return [
+            'start' => $startDate,
+            'end' => $endDate,
+            'label' => $label,
+            'filter' => $filter,
+        ];
+    }
+
+    /**
+     * Export selected payroll/attendance report to formatted Excel workbook.
+     */
+    public function exportReport(Request $request)
+    {
+        $category = $request->input('category', 'payroll_summary');
+        
+        $period = $request->input('report_cycle', 'June 2026');
+        $cycle = PayrollCycle::where('period', $period)->first();
+        if (!$cycle) {
+            $cycle = PayrollCycle::orderBy('id', 'desc')->first();
+        }
+        
+        $range = $this->resolveReportRange($request, $cycle);
+        
+        return \App\Services\PayrollExportService::export(
+            $category,
+            $range['start'],
+            $range['end'],
+            $range['label'],
+            $cycle
+        );
     }
 }

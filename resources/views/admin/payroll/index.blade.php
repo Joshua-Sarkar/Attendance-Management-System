@@ -33,23 +33,6 @@
                     <span class="flex-1 text-left">Salary Ledger</span>
                 </a>
                 
-                <a href="{{ route('admin.payroll.corrections') }}"
-                   class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors"
-                   :class="activeTab === 'corrections' ? 'bg-brass text-walnut font-medium shadow-soft' : 'text-cream/65 hover:bg-walnut-light hover:text-cream'">
-                    <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="activeTab === 'corrections' ? 'bg-walnut' : 'bg-brass/60'"></span>
-                    <span class="flex-1 text-left">Corrections</span>
-                </a>
-                
-                <a href="{{ route('admin.payroll.exceptions') }}"
-                   class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors"
-                   :class="activeTab === 'exceptions' ? 'bg-brass text-walnut font-medium shadow-soft' : 'text-cream/65 hover:bg-walnut-light hover:text-cream'">
-                    <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="activeTab === 'exceptions' ? 'bg-walnut' : 'bg-brass/60'"></span>
-                    <span class="flex-1 text-left">Exceptions</span>
-                    <span x-show="exceptionsFlat.filter(e => !e.resolved).length > 0"
-                          x-text="exceptionsFlat.filter(e => !e.resolved).length"
-                          class="text-[10.5px] px-1.5 py-0.5 rounded-full bg-oxblood text-cream font-bold"></span>
-                </a>
-                
                 <a href="{{ route('admin.payroll.lock') }}"
                    class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors"
                    :class="activeTab === 'lock' ? 'bg-brass text-walnut font-medium shadow-soft' : 'text-cream/65 hover:bg-walnut-light hover:text-cream'">
@@ -107,10 +90,16 @@
                     <div class="flex items-center gap-3 min-w-0">
                         <span class="lg:hidden font-display text-lg">AMS</span>
                         <h1 class="font-display text-[19px] truncate text-vellum" x-text="currentNavLabel"></h1>
-                        <span class="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] px-2.5 py-1 rounded-full border bg-brass-light/30 text-brass border-brass/30 font-medium">
-                            <span class="w-1.5 h-1.5 rounded-full bg-brass"></span>
-                            <span x-text="cycle.statusLabel"></span>
-                        </span>
+                        <form method="GET" action="" class="hidden sm:inline-flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold text-brass uppercase">Payroll Period:</span>
+                            <select name="period" onchange="this.form.submit()" 
+                                    class="text-[11.5px] bg-cream border border-brass/30 rounded-full px-3 py-1 focus:border-brass outline-none text-brass font-bold uppercase font-mono">
+                                @foreach(\App\Models\PayrollCycle::orderBy('id', 'desc')->get() as $c)
+                                    <option value="{{ $c->period }}" {{ $c->period === $period ? 'selected' : '' }}>{{ $c->period }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-[11.5px] px-2.5 py-1 rounded-full border bg-brass-light/30 text-brass border-brass/30 font-medium capitalize" x-text="cycle.statusLabel"></span>
+                        </form>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="relative hidden md:block">
@@ -173,19 +162,40 @@
 
                         <!-- Pipeline stages -->
                         <div class="relative mt-8 pt-7 border-t border-line">
-                            <p class="text-[11px] uppercase tracking-[0.14em] text-vellum-faint font-semibold mb-5">Workflow Run Pipeline</p>
-                            <div class="flex items-start overflow-x-auto pb-1 gap-2">
+                            <p class="text-[11px] uppercase tracking-[0.14em] text-vellum-faint font-semibold mb-5 font-mono">Workflow Run Pipeline Status</p>
+                            <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-3">
                                 <template x-for="(stage, idx) in pipeline" :key="stage.id">
-                                    <div class="flex items-start shrink-0">
-                                        <div class="tooltip-trigger relative flex flex-col items-center w-28 text-center">
-                                            <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 relative z-10 text-xs"
-                                                :class="stage.status==='done' ? 'bg-forest text-cream border-forest' : stage.status==='current' ? 'bg-brass text-walnut border-brass' : 'bg-cream text-vellum-muted border-line'">
-                                                <span x-text="idx + 1" class="font-mono font-bold"></span>
-                                            </div>
-                                            <p class="text-[11px] font-semibold text-vellum mt-2.5 leading-tight truncate w-full" x-text="stage.label"></p>
-                                            <p class="text-[10px] text-vellum-faint font-mono mt-0.5" x-text="stage.date"></p>
+                                    <div class="flex flex-col items-center p-3 rounded-xl border bg-surface/30 transition text-center relative"
+                                         :class="{
+                                            'border-forest/30 bg-forest/5': stage.status === 'done',
+                                            'border-brass bg-brass-light/20': stage.status === 'current',
+                                            'border-burgundy/30 bg-burgundy/5': stage.status === 'blocked',
+                                            'border-line bg-surface/20': stage.status === 'upcoming'
+                                         }">
+                                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold"
+                                             :class="{
+                                                'bg-forest text-cream border-forest': stage.status === 'done',
+                                                'bg-brass text-walnut border-brass': stage.status === 'current',
+                                                'bg-burgundy text-cream border-burgundy': stage.status === 'blocked',
+                                                'bg-cream text-vellum-muted border border-line': stage.status === 'upcoming'
+                                             }">
+                                            <template x-if="stage.status === 'done'"><span>✓</span></template>
+                                            <template x-if="stage.status !== 'done'"><span x-text="idx + 1"></span></template>
                                         </div>
-                                        <div x-show="idx < pipeline.length - 1" class="w-8 h-0.5 pipeline-line mt-4 opacity-40"></div>
+                                        
+                                        <p class="text-[10px] font-bold text-vellum mt-2 leading-tight" x-text="stage.label"></p>
+                                        
+                                        <!-- Completion details -->
+                                        <p class="text-[10px] text-vellum-faint mt-1 font-mono" x-text="stage.completed + ' / ' + stage.total"></p>
+                                        <p class="text-[9px] text-vellum-muted font-mono" x-text="stage.pct + '%'"></p>
+                                        
+                                        <!-- Blocked / Warnings -->
+                                        <template x-if="stage.status === 'blocked' && stage.reason">
+                                            <div class="mt-2 text-[9px] font-semibold text-burgundy bg-burgundy/10 border border-burgundy/20 px-1.5 py-0.5 rounded leading-tight" x-text="stage.reason"></div>
+                                        </template>
+                                        <template x-if="stage.status !== 'blocked' && stage.reason">
+                                            <div class="mt-2 text-[9px] font-medium text-vellum-muted" x-text="stage.reason"></div>
+                                        </template>
                                     </div>
                                 </template>
                             </div>
@@ -224,38 +234,78 @@
                 <!-- ================= 2. EMPLOYEE LIST ================= -->
                 <div x-show="activeTab === 'employees'" x-cloak class="fade-in space-y-6">
                     <!-- Filters Bar -->
-                    <div class="flex flex-col md:flex-row gap-4 justify-between items-end bg-surface p-4 rounded-2xl border border-hairline/25">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 w-full">
-                            <div>
-                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Search Directory</label>
-                                <input type="text" placeholder="Search by name, code..." x-model="filters.search"
-                                       class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                    <div class="flex flex-col gap-4 bg-surface p-4 rounded-2xl border border-hairline/25">
+                        <div class="flex flex-col md:flex-row gap-4 justify-between items-end w-full">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 w-full">
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Search Directory</label>
+                                    <input type="text" placeholder="Search by name, code..." x-model="filters.search"
+                                           class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Filter Department</label>
+                                    <select x-model="filters.dept" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                                        <option value="">All Departments</option>
+                                        <template x-for="dept in departments" :key="dept">
+                                            <option :value="dept" x-text="dept"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Calculation Status</label>
+                                    <select x-model="filters.status" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                                        <option value="">All Statuses</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="pending">Pending Review</option>
+                                        <option value="correction">Needs Correction</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Filter Department</label>
-                                <select x-model="filters.dept" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
-                                    <option value="">All Departments</option>
-                                    <template x-for="dept in departments" :key="dept">
-                                        <option :value="dept" x-text="dept"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Calculation Status</label>
-                                <select x-model="filters.status" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
-                                    <option value="">All Statuses</option>
-                                    <option value="approved">Approved</option>
-                                    <option value="pending">Pending Review</option>
-                                    <option value="correction">Needs Correction</option>
+                            <div class="w-full md:w-auto">
+                                <select x-model="filters.sort" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none font-mono">
+                                    <option value="name">Sort: Name (A-Z)</option>
+                                    <option value="gross">Sort: Gross (High-Low)</option>
+                                    <option value="net">Sort: Net (High-Low)</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="w-full md:w-auto">
-                            <select x-model="filters.sort" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none font-mono">
-                                <option value="name">Sort: Name (A-Z)</option>
-                                <option value="gross">Sort: Gross (High-Low)</option>
-                                <option value="net">Sort: Net (High-Low)</option>
-                            </select>
+                        
+                        <!-- Row 2: Extended Auditable Filters -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 w-full border-t border-line/40 pt-3">
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Employment Category</label>
+                                <select x-model="filters.category" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass outline-none">
+                                    <option value="">All Categories</option>
+                                    <option value="Permanent">Permanent</option>
+                                    <option value="Probation">Probation</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Employee Review State</label>
+                                <select x-model="filters.employeeReview" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass outline-none">
+                                    <option value="">All States</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="disputed">Disputed</option>
+                                    <option value="stale">Stale</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Admin Review State</label>
+                                <select x-model="filters.adminApproved" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass outline-none">
+                                    <option value="">All States</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Lock State</label>
+                                <select x-model="filters.lockState" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass outline-none">
+                                    <option value="">All States</option>
+                                    <option value="locked">Locked</option>
+                                    <option value="open">Open</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -266,8 +316,8 @@
                                 <thead>
                                     <tr class="border-b border-line bg-surface/50 font-mono text-[10.5px] uppercase tracking-wider text-vellum-faint">
                                         <th class="py-3.5 px-5">Employee</th>
-                                        <th class="py-3.5 px-4 text-center">Worked Days</th>
-                                        <th class="py-3.5 px-4 text-center">Unpaid Leaves</th>
+                                        <th class="py-3.5 px-4 text-center" title="Paid Equivalent Days / Eligible Working Days">Paid / Eligible Days</th>
+                                        <th class="py-3.5 px-4 text-right">Deductions</th>
                                         <th class="py-3.5 px-4 text-right">Base Salary</th>
                                         <th class="py-3.5 px-4 text-right">Gross Salary</th>
                                         <th class="py-3.5 px-4 text-right">Net Disbursement</th>
@@ -286,7 +336,7 @@
                                                 </div>
                                             </td>
                                             <td class="py-3.5 px-4 text-center num" x-text="emp.present + '/' + emp.workingDays"></td>
-                                            <td class="py-3.5 px-4 text-center num text-burgundy font-semibold" x-text="emp.unpaidLeave > 0 ? emp.unpaidLeave : '—'"></td>
+                                            <td class="py-3.5 px-4 text-right num text-burgundy font-semibold" x-text="'₹' + emp.deductions.toLocaleString('en-IN')"></td>
                                             <td class="py-3.5 px-4 text-right num font-semibold" x-text="'₹' + emp.baseSalary.toLocaleString('en-IN')"></td>
                                             <td class="py-3.5 px-4 text-right num" x-text="'₹' + emp.gross.toLocaleString('en-IN')"></td>
                                             <td class="py-3.5 px-4 text-right num text-forest font-bold" x-text="'₹' + emp.net.toLocaleString('en-IN')"></td>
@@ -353,7 +403,12 @@
                                 <div class="space-y-6">
                                     <div class="flex items-center justify-between pb-4 border-b border-line">
                                         <div>
-                                            <h4 class="font-display font-medium text-xl text-vellum" x-text="selectedLedgerEmp.name"></h4>
+                                            <h4 class="font-display font-medium text-xl text-vellum flex items-center gap-2">
+                                                <span x-text="selectedLedgerEmp.name"></span>
+                                                <span class="text-[9px] px-2 py-0.5 rounded font-mono font-bold uppercase border"
+                                                      :class="selectedLedgerEmp.employment_category === 'Probation' ? 'bg-brass-light text-brass-dark border-brass/20' : 'bg-forest-light text-forest border-forest/20'"
+                                                      x-text="selectedLedgerEmp.employment_category"></span>
+                                            </h4>
                                             <p class="text-[12px] text-vellum-faint uppercase tracking-wide" x-text="selectedLedgerEmp.id + ' · ' + selectedLedgerEmp.designation + ' · ' + selectedLedgerEmp.dept"></p>
                                         </div>
                                         <button @click="openDrawer(selectedLedgerEmp)" class="text-xs font-bold uppercase tracking-wider text-brass hover:text-brass-dark">
@@ -411,53 +466,129 @@
 
                 <!-- ================= 4. CORRECTIONS ================= -->
                 <div x-show="activeTab === 'corrections'" x-cloak class="fade-in space-y-6">
-                    <div class="panel bg-surface p-5 border border-hairline/25 rounded-2xl">
-                        <h3 class="font-display font-medium text-lg text-vellum">Administrative Adjustments & Correction Ledger</h3>
-                        <p class="text-xs text-vellum-muted mt-1.5 leading-relaxed">
-                            Every manual financial adjustment requires double-authorization and a documented business reason, creating an immutable audit trail.
-                        </p>
+                    <!-- Employee Disputes Workspace -->
+                    <div class="panel bg-cream border border-line shadow-card p-6 rounded-2xl space-y-4">
+                        <div>
+                            <h3 class="font-display font-medium text-lg text-vellum">Employee Disputes Workspace</h3>
+                            <p class="text-xs text-vellum-muted mt-0.5">Review, approve, or reject pay-dispute claims raised by employees through self-service review.</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- Helper to gather all disputes from employees -->
+                            @php
+                                $allDisputes = \App\Models\PayrollDispute::with('user.department', 'payrollRecord')->orderBy('created_at', 'desc')->get();
+                            @endphp
+                            @forelse($allDisputes as $d)
+                                <div class="border border-line rounded-xl p-4 text-xs space-y-3 bg-surface/30">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-7 h-7 rounded-full bg-brass-light flex items-center justify-center font-display font-medium text-[10px] text-brass-dark">
+                                                {{ strtoupper(substr($d->user->name, 0, 2)) }}
+                                            </div>
+                                            <div>
+                                                <h4 class="font-semibold text-vellum">{{ $d->user->name }}</h4>
+                                                <p class="text-[10px] text-vellum-faint uppercase font-mono tracking-wide">
+                                                    {{ $d->user->employee_id ?? 'EMP-'.$d->user->id }} · {{ $d->user->department->name ?? 'Unassigned' }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2.5 py-0.5 rounded text-[9px] font-bold font-sans uppercase tracking-wider border
+                                                         {{ $d->status === 'open' ? 'bg-burgundy/10 text-burgundy border-burgundy/20' : 'bg-forest/10 text-forest border-forest/20' }}">
+                                                {{ $d->status }}
+                                            </span>
+                                            <span class="text-[10px] font-mono text-vellum-faint">{{ $d->created_at->format('d M Y, g:i A') }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-cream p-3 rounded-lg border border-hairline/25">
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block">Disputed Category & Date</span>
+                                            <span class="font-semibold text-vellum mt-0.5 block">{{ $d->category }} @if($d->affected_date) (Date: {{ $d->affected_date->format('d M Y') }}) @endif</span>
+                                            
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block mt-2">Dispute Description</span>
+                                            <p class="text-vellum mt-0.5">{{ $d->description }}</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block">Expected Correction</span>
+                                            <p class="text-vellum mt-0.5 font-medium italic">{{ $d->expected_correction }}</p>
+
+                                            @if($d->status === 'resolved' && $d->resolution_notes)
+                                                <span class="text-[9px] uppercase font-bold text-forest block mt-2">Resolution Note</span>
+                                                <p class="text-forest mt-0.5">{{ $d->resolution_notes }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    @if($d->status === 'open')
+                                        <div class="flex items-center gap-2 justify-end pt-1">
+                                            <input type="text" id="dispute-note-{{ $d->id }}" placeholder="Resolution/Rejection comments..." 
+                                                   class="text-[11.5px] bg-cream border border-line rounded-lg px-3 py-1.5 w-64 outline-none focus:border-brass">
+                                            <button @click="resolveDisputeAdmin({{ $d->id }}, 'resolved')" 
+                                                    class="px-3 py-1.5 bg-forest text-cream text-[10px] font-bold uppercase tracking-wider rounded transition">
+                                                Resolve (Pending Re-approve)
+                                            </button>
+                                            <button @click="resolveDisputeAdmin({{ $d->id }}, 'rejected')" 
+                                                    class="px-3 py-1.5 bg-burgundy text-cream text-[10px] font-bold uppercase tracking-wider rounded transition">
+                                                Reject Dispute
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            @empty
+                                <p class="text-xs text-vellum-faint italic py-4">No active disputes pending review.</p>
+                            @endforelse
+                        </div>
                     </div>
 
-                    <div class="space-y-4">
-                        <template x-for="emp in employees.filter(e => e.status === 'correction' || e.correctionStatus === 'resolved')" :key="emp.id">
-                            <div class="panel bg-cream border border-line shadow-soft p-6 flex flex-col md:flex-row justify-between gap-6 rounded-2xl">
-                                <div class="flex-1 space-y-3">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-full bg-brass-light flex items-center justify-center font-display font-medium text-xs text-brass-dark" x-text="emp.initials"></div>
-                                        <div>
-                                            <h4 class="font-semibold text-vellum" x-text="emp.name"></h4>
-                                            <p class="text-[11px] text-vellum-faint uppercase font-mono tracking-wide" x-text="emp.id + ' · ' + emp.dept"></p>
+                    <!-- Administrative Adjustments (Manual corrections) -->
+                    <div class="panel bg-cream border border-line shadow-card p-6 rounded-2xl space-y-4">
+                        <div>
+                            <h3 class="font-display font-medium text-lg text-vellum">Administrative Adjustments & Correction Ledger</h3>
+                            <p class="text-xs text-vellum-muted mt-0.5">Every manual financial adjustment requires double-authorization and a documented business reason, creating an immutable audit trail.</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <template x-for="emp in employees.filter(e => e.status === 'correction' || e.correctionStatus === 'resolved')" :key="emp.id">
+                                <div class="panel bg-cream border border-line shadow-soft p-6 flex flex-col md:flex-row justify-between gap-6 rounded-2xl">
+                                    <div class="flex-1 space-y-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-brass-light flex items-center justify-center font-display font-medium text-xs text-brass-dark" x-text="emp.initials"></div>
+                                            <div>
+                                                <h4 class="font-semibold text-vellum" x-text="emp.name"></h4>
+                                                <p class="text-[11px] text-vellum-faint uppercase font-mono tracking-wide" x-text="emp.id + ' · ' + emp.dept"></p>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-sans"
+                                                  :class="emp.correctionStatus === 'resolved' ? 'bg-forest/10 text-forest' : 'bg-burgundy/10 text-burgundy'">
+                                                <span class="w-1 h-1 rounded-full" :class="emp.correctionStatus === 'resolved' ? 'bg-forest' : 'bg-burgundy'"></span>
+                                                <span x-text="emp.correctionStatus === 'resolved' ? 'Approved & Persisted' : 'Awaiting Approval'"></span>
+                                            </span>
                                         </div>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-sans"
-                                              :class="emp.correctionStatus === 'resolved' ? 'bg-forest/10 text-forest' : 'bg-burgundy/10 text-burgundy'">
-                                            <span class="w-1 h-1 rounded-full" :class="emp.correctionStatus === 'resolved' ? 'bg-forest' : 'bg-burgundy'"></span>
-                                            <span x-text="emp.correctionStatus === 'resolved' ? 'Approved & Persisted' : 'Awaiting Approval'"></span>
-                                        </span>
+
+                                        <div class="bg-surface/50 p-3 rounded-lg border border-hairline/15 text-xs space-y-1">
+                                            <p class="text-vellum-faint font-semibold uppercase font-mono text-[10px] tracking-wider">Adjustment Reason / Notes</p>
+                                            <p class="text-vellum" x-text="emp.correctionReason || 'Slack discussion - approved attendance override regularization.'"></p>
+                                        </div>
+                                        
+                                        <p class="text-[11px] text-vellum-muted" x-text="'System trace: ' + emp.systemExplanation"></p>
                                     </div>
 
-                                    <div class="bg-surface/50 p-3 rounded-lg border border-hairline/15 text-xs space-y-1">
-                                        <p class="text-vellum-faint font-semibold uppercase font-mono text-[10px] tracking-wider">Adjustment Reason / Notes</p>
-                                        <p class="text-vellum" x-text="emp.correctionReason || 'Slack discussion - approved attendance override regularization.'"></p>
-                                    </div>
-                                    
-                                    <p class="text-[11px] text-vellum-muted" x-text="'System trace: ' + emp.systemExplanation"></p>
-                                </div>
+                                    <div class="flex flex-col justify-between items-end shrink-0">
+                                        <div class="text-right">
+                                            <span class="text-[10px] uppercase font-bold text-vellum-faint block">Financial Delta</span>
+                                            <span class="font-mono font-bold text-lg mt-0.5 block text-forest" x-text="'+₹' + emp.bonuses.toLocaleString('en-IN')"></span>
+                                        </div>
 
-                                <div class="flex flex-col justify-between items-end shrink-0">
-                                    <div class="text-right">
-                                        <span class="text-[10px] uppercase font-bold text-vellum-faint block">Financial Delta</span>
-                                        <span class="font-mono font-bold text-lg mt-0.5 block text-forest" x-text="'+₹' + emp.bonuses.toLocaleString('en-IN')"></span>
-                                    </div>
-
-                                    <div class="flex gap-3 mt-4" x-show="emp.correctionStatus !== 'resolved'">
-                                        <button @click="approveCorrection(emp)" 
-                                                class="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-forest text-cream hover:bg-forest-dark transition shadow-soft">
-                                            Approve Adjustment
-                                        </button>
+                                        <div class="flex gap-3 mt-4" x-show="emp.correctionStatus !== 'resolved'">
+                                            <button @click="approveCorrection(emp)" 
+                                                    class="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-forest text-cream hover:bg-forest-dark transition shadow-soft">
+                                                Approve Adjustment
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </template>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
@@ -515,63 +646,137 @@
 
                 <!-- ================= 6. PAYROLL LOCK ================= -->
                 <div x-show="activeTab === 'lock'" x-cloak class="fade-in space-y-6">
-                    <div class="panel bg-cream border border-line shadow-card p-8 flex flex-col md:flex-row items-start justify-between gap-8 rounded-2xl">
-                        <div class="flex-1 space-y-4">
+                    <div class="panel bg-cream border border-line shadow-card p-6 rounded-2xl space-y-4">
+                        <div class="flex items-center justify-between border-b border-line pb-4">
                             <div class="flex items-center gap-3">
                                 <svg class="w-7 h-7 text-brass" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                                 </svg>
-                                <h3 class="font-display font-medium text-2xl text-vellum">Dual Sign-Off & Disbursement Lock</h3>
-                            </div>
-                            <p class="text-sm text-vellum-muted leading-relaxed">
-                                Locking the payroll cycle seals all calculations, logs, and ledger entries for the period, making them completely immutable. Locked cycles will generate payslips automatically.
-                            </p>
-                            <div class="bg-surface/50 border border-hairline/20 p-4 rounded-xl space-y-3">
-                                <p class="text-[10px] uppercase font-bold text-brass tracking-wider">Required Dual Authorization Approvals</p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="flex items-center gap-2 text-xs">
-                                        <span class="w-4 h-4 rounded-full bg-forest text-cream flex items-center justify-center font-bold font-sans">✓</span>
-                                        <span class="font-medium text-vellum">Rhea Sarin (Platform Admin)</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 text-xs text-vellum-faint">
-                                        <span class="w-4 h-4 rounded-full bg-surface border border-hairline text-vellum flex items-center justify-center font-bold">✓</span>
-                                        <span>Aditya Verma (Super Administrator)</span>
-                                    </div>
+                                <div>
+                                    <h3 class="font-display font-medium text-lg text-vellum">Per-Employee Locking Workspace</h3>
+                                    <p class="text-xs text-vellum-muted mt-0.5">Authorize approvals, review employee review status, resolve blocks, and seal calculations into immutable snapshots.</p>
                                 </div>
                             </div>
+                            <span class="text-[11px] font-mono font-bold bg-surface/50 border border-hairline/25 px-3 py-1 rounded text-vellum-faint uppercase" x-text="'Period: ' + cycle.period"></span>
                         </div>
-                        
-                        <div class="shrink-0 pt-6">
-                            <template x-if="cycle.status !== 'locked'">
-                                <form method="POST" action="{{ route('admin.payroll.lock') }}">
-                                    @csrf
-                                    <input type="hidden" name="period" x-value="cycle.period" :value="cycle.period">
-                                    <button type="submit" 
-                                            class="px-8 py-4 bg-burgundy hover:bg-burgundy-dark text-cream font-bold uppercase tracking-wider rounded-2xl shadow-lift text-xs">
-                                        Execute Period Disbursement Lock
-                                    </button>
-                                </form>
-                            </template>
-                            <template x-if="cycle.status === 'locked'">
-                                <div class="space-y-4">
-                                    <div class="p-4 bg-burgundy/15 border border-burgundy/30 text-burgundy rounded-xl font-bold text-center text-xs">
-                                        PERIOD IS LOCKED & IMMUTABLE
-                                    </div>
-                                    <button @click="showLockModal = true"
-                                            class="w-full px-4 py-2 border border-burgundy/35 text-burgundy hover:bg-burgundy/5 rounded-xl font-semibold text-xs transition">
-                                        Request Period Unlock
-                                    </button>
-                                </div>
-                            </template>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-line font-mono text-[10px] uppercase font-bold text-vellum-faint bg-surface/20">
+                                        <th class="p-3">Employee</th>
+                                        <th class="p-3 text-right">Net Payout</th>
+                                        <th class="p-3 text-center">Version</th>
+                                        <th class="p-3 text-center">Employee Review</th>
+                                        <th class="p-3 text-center">Admin Status</th>
+                                        <th class="p-3 text-center">Lock Status</th>
+                                        <th class="p-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-line/45">
+                                    <template x-for="emp in filteredEmployees" :key="emp.id">
+                                        <tr class="hover:bg-surface/10 transition">
+                                            <td class="p-3">
+                                                <div class="flex items-center gap-2.5">
+                                                    <div class="w-7 h-7 rounded-full bg-brass-light flex items-center justify-center font-display font-medium text-[10px] text-brass-dark" x-text="emp.initials"></div>
+                                                    <div>
+                                                        <p class="font-semibold text-vellum" x-text="emp.name"></p>
+                                                        <p class="text-[10px] text-vellum-faint uppercase font-mono tracking-wide" x-text="emp.id + ' · ' + emp.dept"></p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="p-3 text-right font-mono font-bold text-vellum" x-text="'₹' + emp.net.toLocaleString('en-IN')"></td>
+                                            <td class="p-3 text-center font-mono" x-text="'v' + emp.calculation_version"></td>
+                                            <td class="p-3 text-center">
+                                                <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans border"
+                                                      :class="{
+                                                        approved: 'bg-forest/10 text-forest border-forest/20',
+                                                        disputed: 'bg-burgundy/10 text-burgundy border-burgundy/20',
+                                                        stale: 'bg-cognac/10 text-cognac border-cognac/20',
+                                                        pending: 'bg-brass/10 text-brass border-brass/20'
+                                                      }[emp.employee_review_status]"
+                                                      x-text="emp.employee_review_status"></span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans border"
+                                                      :class="emp.admin_approved_at ? 'bg-forest/10 text-forest border-forest/20' : 'bg-brass/10 text-brass border-brass/20'"
+                                                      x-text="emp.admin_approved_at ? 'APPROVED' : 'PENDING'"></span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans"
+                                                      :class="emp.locked ? 'bg-burgundy/10 text-burgundy' : 'bg-surface border border-line text-vellum-faint'">
+                                                    <span class="w-1 h-1 rounded-full" :class="emp.locked ? 'bg-burgundy' : 'bg-vellum-faint'"></span>
+                                                    <span x-text="emp.locked ? 'LOCKED' : 'OPEN'"></span>
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-right">
+                                                <div class="flex justify-end gap-1.5">
+                                                    <!-- Approve Admin Button -->
+                                                    <button x-show="!emp.admin_approved_at && !emp.locked" 
+                                                            @click="approveRecordAdmin(emp)"
+                                                            class="px-2 py-1 bg-forest hover:bg-forest-dark text-cream text-[10px] font-bold uppercase tracking-wider rounded transition shadow-soft">
+                                                        Approve Admin
+                                                    </button>
+                                                    <!-- Lock Record Button -->
+                                                    <button x-show="emp.admin_approved_at && emp.employee_review_status === 'approved' && !emp.locked"
+                                                            @click="lockRecordAdmin(emp)"
+                                                            class="px-2 py-1 bg-burgundy hover:bg-burgundy-dark text-cream text-[10px] font-bold uppercase tracking-wider rounded transition shadow-soft">
+                                                        Lock Record
+                                                    </button>
+                                                    <!-- Unlock Record Button -->
+                                                    <button x-show="emp.locked"
+                                                            @click="unlockRecordAdminPrompt(emp)"
+                                                            class="px-2 py-1 bg-cream border border-burgundy text-burgundy hover:bg-burgundy/5 text-[10px] font-bold uppercase tracking-wider rounded transition">
+                                                        Unlock
+                                                    </button>
+                                                    <!-- Warning/Dispute indicators -->
+                                                    <span x-show="emp.employee_review_status === 'disputed'" class="text-[10px] font-bold text-burgundy px-1 block font-sans" title="Employee raised dispute!">⚠ DISPUTE</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Unlock Modal -->
+                <div x-show="unlockPromptOpen" class="fixed inset-0 overflow-hidden z-50 flex items-center justify-center" x-cloak>
+                    <div class="absolute inset-0 bg-walnut/40 backdrop-blur-sm" @click="unlockPromptOpen = false"></div>
+                    <div class="bg-cream border border-line rounded-2xl p-6 shadow-lift max-w-md w-full relative z-10 space-y-4">
+                        <h3 class="font-display font-medium text-lg text-vellum">Request Employee Record Unlock</h3>
+                        <p class="text-xs text-vellum-muted">
+                            Unlocking frozen snapshots requires an authorized justification, which will be logged forensically to the audit log trail.
+                        </p>
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-bold uppercase tracking-wide text-vellum-faint block">Reason for Overriding Lock</label>
+                            <textarea x-model="unlockReason" rows="3" required placeholder="Provide justification detail..."
+                                      class="w-full text-xs bg-cream border border-line rounded px-3 py-2 text-vellum outline-none"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" @click="unlockPromptOpen = false" class="px-4 py-2 border border-hairline text-vellum rounded-xl text-xs">Cancel</button>
+                            <button type="button" @click="submitUnlockRecord()" class="px-4 py-2 bg-burgundy hover:bg-burgundy-dark text-cream font-bold uppercase tracking-wider rounded-xl text-xs">Execute Unlock</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- ================= 7. PAYSLIPS ================= -->
                 <div x-show="activeTab === 'payslips'" x-cloak class="fade-in space-y-6">
-                    <div class="bg-surface p-4 rounded-2xl border border-hairline/25 flex gap-4">
+                    <div class="bg-surface p-4 rounded-2xl border border-hairline/25 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                         <input type="text" placeholder="Search employee payslip..." x-model="payslipFilters.search"
                                class="w-72 text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                        
+                        <div class="flex gap-2">
+                            <button @click="bulkGeneratePayslips()" 
+                                    class="px-4 py-2 border border-brass text-brass hover:bg-brass/5 rounded-xl text-xs font-bold uppercase tracking-wider transition">
+                                Bulk Generate
+                            </button>
+                            <button @click="bulkPublishPayslips()" 
+                                    class="px-4 py-2 bg-brass text-cream hover:bg-brass-dark rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-soft">
+                                Bulk Publish
+                            </button>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -589,9 +794,15 @@
                                             <p class="font-semibold text-vellum" x-text="emp.name"></p>
                                             <p class="text-[11px] text-vellum-faint uppercase font-mono tracking-wide" x-text="emp.id + ' · ' + emp.dept"></p>
                                         </div>
-                                        <span class="text-[10px] px-2 py-0.5 rounded uppercase font-bold" 
-                                              :class="emp.downloadStatus === 'downloaded' ? 'bg-forest/10 text-forest' : 'bg-brass/15 text-brass-dark'"
-                                              x-text="emp.downloadStatus"></span>
+                                        <div class="flex flex-col items-end gap-1">
+                                            <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border" 
+                                                  :class="{
+                                                    published: 'bg-forest/10 text-forest border-forest/20',
+                                                    generated: 'bg-brass/10 text-brass border-brass/20',
+                                                    pending: 'bg-surface border border-line text-vellum-faint'
+                                                  }[emp.payslip_status || 'pending']"
+                                                  x-text="emp.payslip_status || 'pending'"></span>
+                                        </div>
                                     </button>
                                 </template>
                             </div>
@@ -601,6 +812,50 @@
                         <div class="lg:col-span-2 panel bg-cream border border-line shadow-card p-8 rounded-2xl font-sans">
                             <template x-if="payslipEmp">
                                 <div class="space-y-6">
+                                    <!-- Payslip Status Metadata Ribbon -->
+                                    <div class="bg-surface/75 border border-hairline/20 p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 text-xs">
+                                        <div class="space-y-1">
+                                            <p class="text-vellum"><strong>Payslip Status:</strong> 
+                                                <span class="px-2 py-0.5 rounded font-bold uppercase"
+                                                      :class="{
+                                                        published: 'bg-forest/10 text-forest',
+                                                        generated: 'bg-brass/10 text-brass',
+                                                        pending: 'bg-surface text-vellum-faint border border-line'
+                                                      }[payslipEmp.payslip_status]"
+                                                      x-text="payslipEmp.payslip_status"></span>
+                                            </p>
+                                            <p class="text-vellum-muted text-[11px]">
+                                                Generated: <span x-text="payslipEmp.payslip_generated_at || '—'"></span> · 
+                                                Published: <span x-text="payslipEmp.payslip_published_at || '—'"></span>
+                                            </p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <template x-if="!payslipEmp.locked">
+                                                <span class="text-xs text-burgundy italic">Record must be Locked to generate payslips.</span>
+                                            </template>
+                                            <template x-if="payslipEmp.locked">
+                                                <div class="flex gap-2">
+                                                    <button @click="generateSinglePayslip(payslipEmp)"
+                                                            class="px-3.5 py-2 border border-brass text-brass rounded-xl text-xs font-bold uppercase tracking-wider transition hover:bg-brass/5">
+                                                        Generate
+                                                    </button>
+                                                    <button x-show="payslipEmp.payslip_status !== 'published'"
+                                                            @click="publishSinglePayslip(payslipEmp)"
+                                                            class="px-3.5 py-2 bg-brass text-cream rounded-xl text-xs font-bold uppercase tracking-wider transition hover:bg-brass-dark shadow-soft">
+                                                        Publish
+                                                    </button>
+                                                    <a :href="'/my-payslip/' + payslipEmp.record_id + '/download'"
+                                                       class="px-3.5 py-2 bg-forest text-cream rounded-xl text-xs font-bold uppercase tracking-wider transition hover:bg-forest-dark shadow-soft inline-flex items-center gap-1.5">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                        </svg>
+                                                        Download PDF
+                                                    </a>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
                                     <div class="flex justify-between items-start border-b border-line pb-6">
                                         <div>
                                             <h3 class="font-display font-bold text-2xl text-vellum">PAYSLIP REPORT</h3>
@@ -637,7 +892,7 @@
                                             <div class="space-y-1.5">
                                                 <div class="flex justify-between"><span>Base Salary</span><span class="num font-semibold text-vellum" x-text="'₹' + payslipEmp.baseSalary.toLocaleString('en-IN')"></span></div>
                                                 <div class="flex justify-between"><span>Allowances</span><span class="num font-semibold text-vellum" x-text="'₹' + payslipEmp.allowances.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between" x-show="payslipEmp.overtimeHours > 0"><span>Overtime Pay</span><span class="num font-semibold text-vellum text-forest" x-text="'₹' + (payslipEmp.overtimeHours * 250).toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between" x-show="payslipEmp.overtimeHours > 0"><span>Overtime Pay</span><span class="num font-semibold text-vellum text-forest" x-text="'₹' + (payslipEmp.overtimeHours * Math.round(payslipEmp.baseSalary/240)).toLocaleString('en-IN')"></span></div>
                                                 <div class="flex justify-between" x-show="payslipEmp.bonuses > 0"><span>Adjustment / Bonus</span><span class="num font-semibold text-vellum text-forest" x-text="'₹' + payslipEmp.bonuses.toLocaleString('en-IN')"></span></div>
                                             </div>
                                         </div>
@@ -673,12 +928,37 @@
 
                 <!-- ================= 8. AUDIT TRAIL ================= -->
                 <div x-show="activeTab === 'audit'" x-cloak class="fade-in space-y-6">
+                    <!-- Audit Filters Bar -->
+                    <div class="flex flex-col md:flex-row gap-4 justify-between items-end bg-surface p-4 rounded-2xl border border-hairline/25">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 w-full">
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Search Audit Logs</label>
+                                <input type="text" placeholder="Search actor, action, details..." x-model="auditFilters.search"
+                                       class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-vellum-faint block mb-1">Filter Category</label>
+                                <select x-model="auditFilters.category" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none">
+                                    <option value="">All Categories</option>
+                                    <option value="Calculation">Calculation</option>
+                                    <option value="Approval">Approval</option>
+                                    <option value="Correction">Correction</option>
+                                    <option value="Configuration">Configuration</option>
+                                    <option value="Lock">Lock</option>
+                                    <option value="Unlock">Unlock</option>
+                                    <option value="Dispute">Dispute</option>
+                                    <option value="Payslip">Payslip</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="bg-cream border border-line rounded-2xl overflow-hidden shadow-soft">
                         <div class="p-4 border-b border-line bg-surface/50 font-mono text-[10px] uppercase tracking-wider text-vellum-faint font-bold">
                             Immutable Audit Ledger
                         </div>
                         <div class="divide-y divide-line/45">
-                            <template x-for="log in auditTrail" :key="log.id">
+                            <template x-for="log in filteredAuditLogs" :key="log.id">
                                 <div class="p-4 flex flex-col md:flex-row justify-between gap-4 text-xs">
                                     <div class="flex-1 space-y-1">
                                         <div class="flex items-center gap-2.5">
@@ -694,15 +974,139 @@
                                     </div>
                                 </div>
                             </template>
+                            <template x-if="filteredAuditLogs.length === 0">
+                                <div class="p-8 text-center text-xs text-vellum-faint">
+                                    No audit entries found matching search or category selection.
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>
 
                 <!-- ================= 9. REPORTS ================= -->
-                <div x-show="activeTab === 'reports'" x-cloak class="fade-in space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div x-show="activeTab === 'reports'" x-cloak class="fade-in space-y-7" x-data="{ localReportFilter: '{{ $reportFilter }}' }">
+                    
+                    <!-- Shared Report Date and Period Filters -->
+                    <div class="panel bg-cream border border-line shadow-soft p-6 rounded-3xl space-y-4">
+                        <form method="GET" action="{{ route('admin.payroll.reports') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label class="text-[10px] font-bold text-vellum uppercase tracking-wider block mb-1.5 font-mono">Period Filter</label>
+                                <select name="report_filter" x-model="localReportFilter" @change="if ($el.value !== 'custom') $el.form.submit()"
+                                        class="w-full text-xs bg-cream border border-line rounded-xl px-3.5 py-2.5 outline-none focus:border-brass text-vellum font-semibold">
+                                    <option value="today">Today</option>
+                                    <option value="yesterday">Yesterday</option>
+                                    <option value="this_week">This Week</option>
+                                    <option value="prev_week">Previous Week</option>
+                                    <option value="this_month">This Month</option>
+                                    <option value="prev_month">Previous Month</option>
+                                    <option value="current_cycle">Current Payroll Cycle</option>
+                                    <option value="prev_cycle">Previous Payroll Cycle</option>
+                                    <option value="specific_cycle">Specific Payroll Cycle</option>
+                                    <option value="custom">Custom Date Range</option>
+                                </select>
+                            </div>
+
+                            <div x-show="localReportFilter === 'specific_cycle'" class="md:col-span-1">
+                                <label class="text-[10px] font-bold text-vellum uppercase tracking-wider block mb-1.5 font-mono">Select Cycle</label>
+                                <select name="report_cycle" @change="$el.form.submit()"
+                                        class="w-full text-xs bg-cream border border-line rounded-xl px-3.5 py-2.5 outline-none focus:border-brass text-vellum font-semibold">
+                                    @foreach(['June 2026', 'July 2026', 'August 2026', 'September 2026'] as $p)
+                                        <option value="{{ $p }}" {{ $reportCycle === $p ? 'selected' : '' }}>{{ $p }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div x-show="localReportFilter === 'custom'" class="grid grid-cols-2 gap-2 md:col-span-2">
+                                <div>
+                                    <label class="text-[10px] font-bold text-vellum uppercase tracking-wider block mb-1.5 font-mono">Start Date</label>
+                                    <input type="date" name="start_date" value="{{ $reportStartDate }}"
+                                           class="w-full text-xs bg-cream border border-line rounded-xl px-3 py-2 outline-none focus:border-brass text-vellum font-semibold">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-vellum uppercase tracking-wider block mb-1.5 font-mono">End Date</label>
+                                    <input type="date" name="end_date" value="{{ $reportEndDate }}"
+                                           class="w-full text-xs bg-cream border border-line rounded-xl px-3 py-2 outline-none focus:border-brass text-vellum font-semibold">
+                                </div>
+                            </div>
+
+                            <div x-show="localReportFilter === 'custom'">
+                                <button type="submit" class="w-full text-xs font-semibold bg-brass text-walnut px-4 py-2.5 rounded-xl transition hover:bg-brass-dark font-mono uppercase tracking-wider">
+                                    Apply Filter
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="flex items-center gap-2 pt-3 border-t border-line/40">
+                            <span class="text-xs font-semibold text-vellum-faint">Active Resolved Range:</span>
+                            <span class="text-xs font-mono font-bold text-brass uppercase tracking-wider">{{ $resolvedRangeLabel }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Reports & Exports Reconciliation Center -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                        <!-- Left Panel: Report Categories -->
+                        <div class="panel bg-cream border border-line shadow-soft p-2.5 rounded-3xl lg:col-span-1">
+                            <p class="text-[10px] font-bold text-vellum uppercase tracking-wider px-3.5 py-2.5 text-vellum-faint font-mono">Report Categories</p>
+                            <div class="space-y-0.5">
+                                <template x-for="cat in [
+                                    { id: 'payroll_summary', label: 'Payroll Summary' },
+                                    { id: 'attendance_export', label: 'Attendance Export' },
+                                    { id: 'monthly_attendance', label: 'Monthly Attendance' },
+                                    { id: 'leave_report', label: 'Leave Report' },
+                                    { id: 'deduction_report', label: 'Deduction Report' },
+                                    { id: 'salary_report', label: 'Salary Report' },
+                                    { id: 'payroll_reconciliation', label: 'Payroll Reconciliation' },
+                                    { id: 'employee_payroll_detail', label: 'Employee Payroll Detail' },
+                                    { id: 'department_payroll', label: 'Department Payroll' },
+                                    { id: 'overtime_report', label: 'Overtime Report' },
+                                    { id: 'disbursement_register', label: 'Disbursement Register' }
+                                ]" :key="cat.id">
+                                    <button @click="selectedReport = cat.id"
+                                            class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold transition"
+                                            :class="selectedReport === cat.id ? 'bg-brass text-walnut font-medium shadow-soft' : 'text-cream hover:bg-surface' "
+                                            x-text="cat.label"></button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Export Details and Action -->
+                        <div class="panel bg-cream border border-line shadow-soft p-6 rounded-3xl lg:col-span-3 space-y-6">
+                            <div>
+                                <h4 class="font-display font-medium text-lg text-vellum" x-text="getReportTitle()"></h4>
+                                <p class="text-[12px] text-vellum-faint mt-1" x-text="getReportDescription()"></p>
+                            </div>
+
+                            <form method="POST" action="{{ route('admin.payroll.reports.export') }}" class="border-t border-line pt-6 space-y-5">
+                                @csrf
+                                <input type="hidden" name="category" :value="selectedReport">
+                                <input type="hidden" name="report_filter" value="{{ $reportFilter }}">
+                                <input type="hidden" name="start_date" value="{{ $reportStartDate }}">
+                                <input type="hidden" name="end_date" value="{{ $reportEndDate }}">
+                                <input type="hidden" name="report_cycle" value="{{ $reportCycle }}">
+
+                                <div class="bg-surface/50 border border-line p-4 rounded-2xl space-y-2">
+                                    <p class="text-xs font-semibold text-vellum">Exporting constraints:</p>
+                                    <ul class="text-[11px] text-vellum-muted list-disc list-inside space-y-1">
+                                        <li>Period Range: <span class="font-mono font-bold text-brass">{{ $resolvedRangeLabel }}</span></li>
+                                        <li>File Type: <span class="font-bold">Real Excel Workbook (.xlsx)</span></li>
+                                        <li>Contains fully reconciled and synchronised canonical figures.</li>
+                                    </ul>
+                                </div>
+
+                                <button type="submit" class="inline-flex items-center gap-2.5 text-xs font-semibold bg-forest hover:bg-forest-dark text-cream px-5 py-3.5 rounded-xl transition shadow-soft uppercase tracking-wider font-mono">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    Generate & Download Excel Report
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Visual Charts Section -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                         <template x-for="report in reports" :key="report.title">
-                            <div class="panel bg-cream border border-line shadow-soft p-6 space-y-4 rounded-2xl">
+                            <div class="panel bg-cream border border-line shadow-soft p-6 space-y-4 rounded-3xl">
                                 <div>
                                     <h4 class="font-display font-medium text-base text-vellum" x-text="report.title"></h4>
                                     <p class="text-[11px] text-vellum-faint" x-text="report.desc"></p>
@@ -843,11 +1247,42 @@
                                             </div>
                                         </template>
 
-                                        <div class="flex justify-end pt-4 border-t border-line">
-                                            <button type="submit" 
-                                                    class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-brass text-cream hover:bg-brass-dark transition shadow-soft">
-                                                Save Settings Parameters
-                                            </button>
+                                        <div class="flex flex-col gap-4 pt-4 border-t border-line" x-data="{ previewData: null, previewing: false }">
+                                            <div x-show="previewData" class="p-4 bg-brass-light/20 border border-brass/30 rounded-xl text-xs space-y-2" x-cloak>
+                                                <h5 class="font-bold text-brass uppercase">Simulation Impact Summary</h5>
+                                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                    <div>
+                                                        <span class="text-[9px] uppercase font-bold text-vellum-faint block">Affected Employees</span>
+                                                        <span class="font-semibold text-vellum mt-0.5 block" x-text="previewData ? previewData.affected_records + ' employee(s)' : ''"></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-[9px] uppercase font-bold text-vellum-faint block">Gross Delta Sum</span>
+                                                        <span class="font-semibold text-vellum mt-0.5 block font-mono" x-text="previewData ? (previewData.gross_delta >= 0 ? '+' : '') + '₹' + previewData.gross_delta.toLocaleString('en-IN') : ''"></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-[9px] uppercase font-bold text-vellum-faint block">Net Delta Sum</span>
+                                                        <span class="font-semibold text-vellum mt-0.5 block font-mono" :class="previewData && previewData.net_delta < 0 ? 'text-burgundy' : 'text-forest'" x-text="previewData ? (previewData.net_delta >= 0 ? '+' : '') + '₹' + previewData.net_delta.toLocaleString('en-IN') : ''"></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-[9px] uppercase font-bold text-vellum-faint block">Stale Approvals Reset</span>
+                                                        <span class="font-semibold text-vellum mt-0.5 block" x-text="previewData ? previewData.stale_approvals + ' approvals' : ''"></span>
+                                                    </div>
+                                                </div>
+                                                <p class="text-[11px] text-vellum-muted mt-1 leading-relaxed">
+                                                    ⚠ Saving these policy changes will force recalculation of all open employee records, incrementing calculation version and invalidating signed-off approvals.
+                                                </p>
+                                            </div>
+                                            
+                                            <div class="flex justify-end gap-3">
+                                                <button type="button" @click="previewConfigImpact(group.id, $data)" :disabled="previewing"
+                                                        class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border border-brass text-brass hover:bg-brass/5 transition">
+                                                    <span x-text="previewing ? 'Simulating...' : 'Preview Configuration Impact'"></span>
+                                                </button>
+                                                <button type="button" @click="saveAndForceRecalculate(group.id)"
+                                                        class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-brass text-cream hover:bg-brass-dark transition shadow-soft">
+                                                    Save & Recalculate Policy
+                                                </button>
+                                            </div>
                                         </div>
                                     </form>
                                 </div>
@@ -892,52 +1327,152 @@
                             <div class="space-y-6">
                                 <!-- OVERVIEW TAB -->
                                 <div x-show="drawerTab === 'overview'" class="space-y-6">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider">Employment Tenure category:</span>
-                                        <span class="text-xs px-2.5 py-1 rounded-full font-bold font-mono" 
-                                              :class="selectedEmployee.joiningDate ? ( ( (new Date('2026-06-30') - new Date(selectedEmployee.joiningDate)) / 86400000 ) < 90 ? 'bg-brass-light text-brass-dark' : 'bg-forest-light text-forest' ) : 'bg-forest-light text-forest'"
-                                              x-text="selectedEmployee.joiningDate ? ( ( (new Date('2026-06-30') - new Date(selectedEmployee.joiningDate)) / 86400000 ) < 90 ? 'Probation' : 'Permanent' ) : 'Permanent'"></span>
+                                    <!-- Profile Summary -->
+                                    <div class="grid grid-cols-2 gap-4 text-xs bg-surface/40 p-4 rounded-xl border border-hairline/25">
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block">Joining Date</span>
+                                            <span class="font-medium text-vellum mt-0.5 block" x-text="selectedEmployee.joiningDate || '—'"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block">Category / Tenure</span>
+                                            <span class="font-bold text-vellum mt-0.5 block uppercase" x-text="selectedEmployee.employment_category"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block">Selected Payroll Period</span>
+                                            <span class="font-mono text-vellum mt-0.5 block" x-text="cycle.period"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-vellum-faint block">Cycle Rule Type</span>
+                                            <span class="font-mono text-vellum mt-0.5 block" x-text="selectedEmployee.importSource === 'Manual Entry' ? 'Custom' : 'Standard Monthly'"></span>
+                                        </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div class="bg-surface/50 border border-hairline/25 p-4 rounded-xl">
-                                            <span class="text-[10px] uppercase font-bold text-vellum-faint block">Gross Salary</span>
-                                            <span class="font-mono font-bold text-lg text-vellum block mt-1" x-text="'₹' + selectedEmployee.gross.toLocaleString('en-IN')"></span>
+                                    <!-- Earnings & Deductions Hierarchy Grid -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                                        <!-- Earnings Card -->
+                                        <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3">
+                                            <h5 class="font-mono text-[10px] uppercase font-bold text-brass border-b border-brass/25 pb-1">Earnings Component</h5>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between"><span>Base Salary</span><span class="num font-semibold text-vellum" x-text="'₹' + selectedEmployee.baseSalary.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Allowances</span><span class="num font-semibold text-vellum" x-text="'₹' + selectedEmployee.allowances.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Overtime Pay</span><span class="num font-semibold text-forest" x-text="'₹' + selectedEmployee.overtimePay.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Manual Adjustments</span><span class="num font-semibold text-forest" x-text="'₹' + selectedEmployee.bonuses.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between border-t border-line/45 pt-1.5 font-bold"><span>Gross Salary</span><span class="num text-vellum" x-text="'₹' + selectedEmployee.gross.toLocaleString('en-IN')"></span></div>
+                                            </div>
                                         </div>
-                                        <div class="bg-surface/50 border border-hairline/25 p-4 rounded-xl">
-                                            <span class="text-[10px] uppercase font-bold text-vellum-faint block">Net Salary</span>
-                                            <span class="font-mono font-bold text-lg text-forest block mt-1" x-text="'₹' + selectedEmployee.net.toLocaleString('en-IN')"></span>
+
+                                        <!-- Deductions Card -->
+                                        <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3">
+                                            <h5 class="font-mono text-[10px] uppercase font-bold text-burgundy border-b border-burgundy/25 pb-1">Deductions Component</h5>
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between"><span>Attendance Deductions</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.attendanceDeductions.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Leave Deductions</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.leaveDeductions.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Provident Fund (PF)</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.pf.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>ESI</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.esi.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Professional Tax</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.profTax.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between"><span>Tax (TDS)</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.taxAmt.toLocaleString('en-IN')"></span></div>
+                                                <div class="flex justify-between border-t border-line/45 pt-1.5 font-bold"><span>Total Deductions</span><span class="num text-burgundy" x-text="'–₹' + selectedEmployee.deductions.toLocaleString('en-IN')"></span></div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div class="bg-surface/30 p-4 border border-hairline/15 rounded-xl space-y-1">
-                                        <span class="text-[10.5px] uppercase font-bold text-brass font-mono block">Payroll Calculation Trace</span>
-                                        <p class="text-xs text-vellum leading-relaxed font-mono" x-text="selectedEmployee.systemExplanation"></p>
+                                    <!-- Summary Rates & States -->
+                                    <div class="bg-surface/50 border border-hairline/25 p-4 rounded-xl text-xs space-y-2.5">
+                                        <h5 class="font-mono text-[10px] uppercase font-bold text-vellum-faint border-b border-line/45 pb-1">Operational Metrics</h5>
+                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                            <div>
+                                                <span class="text-[9px] text-vellum-muted block font-sans">Daily Salary Rate</span>
+                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="'₹' + selectedEmployee.dailyRate.toLocaleString('en-IN')"></span>
+                                            </div>
+                                            <div>
+                                                <span class="text-[9px] text-vellum-muted block font-sans">Hourly Rate</span>
+                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="'₹' + selectedEmployee.hourlyRate.toLocaleString('en-IN')"></span>
+                                            </div>
+                                            <div>
+                                                <span class="text-[9px] text-vellum-muted block font-sans">Calendar Days</span>
+                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="selectedEmployee.calendarDays + ' days'"></span>
+                                            </div>
+                                            <div>
+                                                <span class="text-[9px] text-vellum-muted block font-sans">Eligible Working Days</span>
+                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="selectedEmployee.workingDays + ' days'"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Disbursement Summary & Approvals -->
+                                    <div class="bg-surface-raised border border-brass/30 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                            <span class="text-[10px] uppercase font-bold text-vellum-faint">Net Salary Disbursed</span>
+                                            <h3 class="font-display font-bold text-2xl text-forest mt-0.5" x-text="'₹' + selectedEmployee.net.toLocaleString('en-IN')"></h3>
+                                            <p class="text-[10px] text-vellum-muted mt-0.5">Calculation version: <span class="font-mono font-bold" x-text="'v' + selectedEmployee.calculation_version"></span></p>
+                                        </div>
+                                        <div class="text-xs space-y-1.5">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold text-vellum">Employee Review:</span>
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                                                      :class="{
+                                                        approved: 'bg-forest/10 text-forest border-forest/20',
+                                                        disputed: 'bg-burgundy/10 text-burgundy border-burgundy/20',
+                                                        stale: 'bg-cognac/10 text-cognac border-cognac/20',
+                                                        pending: 'bg-brass/10 text-brass border-brass/20'
+                                                      }[selectedEmployee.employee_review_status]"
+                                                      x-text="selectedEmployee.employee_review_status"></span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold text-vellum">Admin Approval:</span>
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                                                      :class="selectedEmployee.admin_approved_at ? 'bg-forest/10 text-forest border-forest/20' : 'bg-brass/10 text-brass border-brass/20'"
+                                                      x-text="selectedEmployee.admin_approved_at ? 'Approved' : 'Pending'"></span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <!-- ATTENDANCE SNAPSHOT TAB -->
                                 <div x-show="drawerTab === 'attendance'" class="space-y-6">
-                                    <div class="border border-line rounded-xl overflow-hidden text-xs">
-                                        <div class="p-3 bg-surface/50 border-b border-line font-mono text-[10px] uppercase font-bold text-vellum-faint flex justify-between">
-                                            <span>Date Period</span>
-                                            <span class="text-right">Resolved Status</span>
+                                    <div class="border border-line rounded-xl overflow-hidden text-xs bg-cream">
+                                        <div class="p-3 bg-surface/50 border-b border-line font-mono text-[10px] uppercase font-bold text-vellum-faint grid grid-cols-12 gap-2">
+                                            <span class="col-span-2">Date</span>
+                                            <span class="col-span-2">Check In/Out</span>
+                                            <span class="col-span-1 text-center">Hours</span>
+                                            <span class="col-span-2 text-center">Original</span>
+                                            <span class="col-span-2 text-center">Resolved</span>
+                                            <span class="col-span-1 text-center">Override</span>
+                                            <span class="col-span-2 text-right">Deduction</span>
                                         </div>
-                                        <div class="divide-y divide-line/45">
-                                            <template x-for="day in selectedEmployee.attendanceSnapshot" :key="day.day">
-                                                <div class="p-3 flex justify-between items-center hover:bg-surface/20 transition">
-                                                    <span class="font-medium text-vellum" x-text="day.date"></span>
-                                                    <span class="text-[10.5px] px-2 py-0.5 font-bold uppercase rounded"
-                                                          :class="{
-                                                            present: 'bg-forest/10 text-forest',
-                                                            late: 'bg-brass/20 text-brass-dark',
-                                                            half: 'bg-brass/15 text-brass-dark',
-                                                            leave: 'bg-slate/15 text-slate',
-                                                            wfh: 'bg-forest/10 text-forest',
-                                                            absent: 'bg-burgundy/10 text-burgundy',
-                                                            off: 'bg-surface text-vellum-faint border border-line'
-                                                          }[day.status]"
-                                                          x-text="day.status"></span>
+                                        <div class="divide-y divide-line/45 max-h-[350px] overflow-y-auto">
+                                            <template x-for="day in selectedEmployee.attendanceSnapshot" :key="day.date">
+                                                <div class="p-3 grid grid-cols-12 gap-2 items-center hover:bg-surface/10 transition">
+                                                    <div class="col-span-2">
+                                                        <span class="font-bold text-vellum block" x-text="day.date"></span>
+                                                        <span class="text-[9px] text-vellum-faint block uppercase font-sans" x-text="day.dayOfWeek"></span>
+                                                    </div>
+                                                    <div class="col-span-2 font-mono text-[10.5px]">
+                                                        <span class="text-vellum block" x-text="day.check_in ? day.check_in.split(' ')[1] || day.check_in : '—'"></span>
+                                                        <span class="text-vellum-muted block" x-text="day.check_out ? day.check_out.split(' ')[1] || day.check_out : '—'"></span>
+                                                    </div>
+                                                    <span class="col-span-1 text-center font-mono" x-text="day.hours_worked ? Number(day.hours_worked).toFixed(1) + 'h' : '—'"></span>
+                                                    <div class="col-span-2 text-center">
+                                                        <span class="text-[9.5px] px-1.5 py-0.5 rounded uppercase font-mono bg-surface/50 border border-line text-vellum-faint" x-text="day.original_status || '—'"></span>
+                                                    </div>
+                                                    <div class="col-span-2 text-center">
+                                                        <span class="text-[10px] px-2 py-0.5 font-bold uppercase rounded"
+                                                              :class="{
+                                                                present: 'bg-forest/10 text-forest',
+                                                                late: 'bg-brass/20 text-brass-dark',
+                                                                half: 'bg-brass/15 text-brass-dark',
+                                                                leave: 'bg-slate/15 text-slate',
+                                                                wfh: 'bg-forest/10 text-forest',
+                                                                absent: 'bg-burgundy/10 text-burgundy',
+                                                                off: 'bg-surface text-vellum-faint border border-line'
+                                                              }[day.status]"
+                                                              x-text="day.status"></span>
+                                                    </div>
+                                                    <div class="col-span-1 text-center font-bold">
+                                                        <span x-show="day.is_override" class="text-brass" title="Manual override applied">★</span>
+                                                        <span x-show="!day.is_override" class="text-vellum-muted/20">—</span>
+                                                    </div>
+                                                    <span class="col-span-2 text-right font-mono font-bold text-burgundy" x-text="day.deducted_amount > 0 ? '–₹' + day.deducted_amount.toLocaleString('en-IN') : '₹0'"></span>
                                                 </div>
                                             </template>
                                         </div>
@@ -1017,8 +1552,12 @@
                 showLockModal: false,
                 cycleLocked: {{ $cycle->status === 'locked' ? 'true' : 'false' }},
                 toast: null,
-                filters: { search: '', dept: '', status: '', sort: 'name' },
+                unlockPromptOpen: false,
+                unlockReason: '',
+                selectedRecordToUnlock: null,
+                filters: { search: '', dept: '', status: '', sort: 'name', category: '', employeeReview: '', adminApproved: '', lockState: '' },
                 payslipFilters: { search: '', dept: '', status: '' },
+                auditFilters: { search: '', category: '' },
 
                 donutColors: ['#C6941C', '#6B2039', '#1E3D30', '#A85D1E', '#8A7B5C'],
 
@@ -1026,8 +1565,6 @@
                     { id: 'dashboard', label: 'Dashboard' },
                     { id: 'employees', label: 'Employee Payroll' },
                     { id: 'ledger', label: 'Salary Ledger' },
-                    { id: 'corrections', label: 'Corrections' },
-                    { id: 'exceptions', label: 'Exceptions' },
                     { id: 'lock', label: 'Payroll Lock' },
                     { id: 'payslips', label: 'Payslips' },
                     { id: 'audit', label: 'Audit Trail' },
@@ -1041,15 +1578,7 @@
                     statusLabel: '{{ $cycle->status === "locked" ? "Disbursement Ready" : ($cycle->status === "corrections_pending" ? "Corrections Pending" : "Processing") }}' 
                 },
 
-                pipeline: [
-                    { id: 'imported', label: 'Attendance Imported', status: 'done', date: '28 Jun 2026', tip: 'Attendance records imported' },
-                    { id: 'verified', label: 'Attendance Verified', status: 'done', date: '28 Jun 2026', tip: 'All records cross-checked' },
-                    { id: 'generated', label: 'Payroll Generated', status: 'done', date: '29 Jun 2026', tip: 'Salary computed using cycle rules' },
-                    { id: 'corrections', label: 'Corrections Pending', status: '{{ $cycle->status === "corrections_pending" ? "current" : "done" }}', date: 'In progress', tip: 'Flagged records awaiting HR review' },
-                    { id: 'approved', label: 'Payroll Approved', status: '{{ in_array($cycle->status, ["approved", "locked"]) ? "done" : "upcoming" }}', date: '—', tip: 'Requires all corrections cleared' },
-                    { id: 'payslips', label: 'Payslips Generated', status: '{{ $cycle->status === "locked" ? "done" : "upcoming" }}', date: '—', tip: 'Generated automatically once payroll is locked' },
-                    { id: 'locked', label: 'Payroll Locked', status: '{{ $cycle->status === "locked" ? "done" : "upcoming" }}', date: '—', tip: 'Final state — disbursement-ready and immutable' },
-                ],
+                pipeline: @json($pipeline),
 
                 kpis: @json($kpis),
                 departments: @json($employeesData->pluck('dept')->unique()->values()),
@@ -1080,6 +1609,39 @@
                 exceptions: @json($exceptionsGrouped),
                 exceptionsFlat: @json($exceptionsFlat),
                 reports: @json($reports),
+                selectedReport: 'payroll_summary',
+                getReportTitle() {
+                    const titles = {
+                        payroll_summary: 'Payroll Summary Report',
+                        attendance_export: 'Detailed Attendance Export',
+                        monthly_attendance: 'Monthly Attendance Regularity Report',
+                        leave_report: 'Detailed Leave Report',
+                        deduction_report: 'Detailed Deduction Report',
+                        salary_report: 'Salary Master / Salary Report',
+                        payroll_reconciliation: 'Payroll Reconciliation Export (Redundancy)',
+                        employee_payroll_detail: 'Employee Payroll Detail Report',
+                        department_payroll: 'Department Payroll Cost Report',
+                        overtime_report: 'Overtime Report',
+                        disbursement_register: 'Disbursement Register & Payslip Status',
+                    };
+                    return titles[this.selectedReport] || 'Report';
+                },
+                getReportDescription() {
+                    const descs = {
+                        payroll_summary: 'A high-level summary of gross salaries, total deductions, and net disbursements for all employees.',
+                        attendance_export: 'Employee-day level attendance evidence for the selected date range. Includes shifts, check-in/out times, late minutes, overrides, and leaves.',
+                        monthly_attendance: 'Aggregates employee regularity: present days, absent days, leave counts, overtime hours, punctuality and absenteeism rates.',
+                        leave_report: 'A detailed breakdown of leaves: types, opening balances, leaves taken, approval states, and payroll impacts.',
+                        deduction_report: 'Lists all detailed deduction components separately: Attendance, Unpaid Leave, PF, ESI, Professional Tax, TDS, and other statutory/manual deductions.',
+                        salary_report: 'Contains the canonical salary structures, base salaries, allowances, and statutory settings effective during the period.',
+                        payroll_reconciliation: 'The comprehensive redundancy report with enough raw data (identity, period, salary basis, attendance basis, earnings, deductions, approvals, locks) to manually reconstruct payroll.',
+                        employee_payroll_detail: 'Exposes employee-by-employee detailed line items for earnings and deductions.',
+                        department_payroll: 'Summarizes payroll expenditures and cost comparison across departments.',
+                        overtime_report: 'Detailed overtime breakdown: hours worked, hourly rates, multipliers, and calculated overtime pay.',
+                        disbursement_register: 'Tracks bank disbursement parameters: account details, IFSC, net salaries, approval timestamps, and lock status.',
+                    };
+                    return descs[this.selectedReport] || '';
+                },
                 settingsGroups: @json($settingsGroups),
                 
                 init() {
@@ -1103,7 +1665,11 @@
                         const matchesSearch = !s || e.name.toLowerCase().includes(s) || e.id.toLowerCase().includes(s);
                         const matchesDept = !this.filters.dept || e.dept === this.filters.dept;
                         const matchesStatus = !this.filters.status || e.status === this.filters.status;
-                        return matchesSearch && matchesDept && matchesStatus;
+                        const matchesCategory = !this.filters.category || e.employment_category === this.filters.category;
+                        const matchesEmployeeReview = !this.filters.employeeReview || e.employee_review_status === this.filters.employeeReview;
+                        const matchesAdminApproved = !this.filters.adminApproved || (this.filters.adminApproved === 'approved' ? !!e.admin_approved_at : !e.admin_approved_at);
+                        const matchesLockState = !this.filters.lockState || (this.filters.lockState === 'locked' ? !!e.locked : !e.locked);
+                        return matchesSearch && matchesDept && matchesStatus && matchesCategory && matchesEmployeeReview && matchesAdminApproved && matchesLockState;
                     });
                     if (this.filters.sort === 'net') list = list.slice().sort((a, b) => b.net - a.net);
                     if (this.filters.sort === 'gross') list = list.slice().sort((a, b) => b.gross - a.gross);
@@ -1120,29 +1686,116 @@
                     });
                 },
 
+                get filteredAuditLogs() {
+                    return this.auditTrail.filter(log => {
+                        const s = this.auditFilters.search.toLowerCase();
+                        const matchesSearch = !s || 
+                            log.action.toLowerCase().includes(s) || 
+                            log.actor.toLowerCase().includes(s) || 
+                            log.category.toLowerCase().includes(s) ||
+                            (log.oldValue && String(log.oldValue).toLowerCase().includes(s)) ||
+                            (log.newValue && String(log.newValue).toLowerCase().includes(s));
+                        const matchesCategory = !this.auditFilters.category || log.category === this.auditFilters.category;
+                        return matchesSearch && matchesCategory;
+                    });
+                },
+
                 ledgerFormulaRows(e) {
                     if (!e) return [];
                     const p = this.policies;
-                    const dailyRate = Math.round((e.baseSalary + e.allowances) / 30);
-                    const hourlyRate = Math.round((e.baseSalary + e.allowances) / 30 / 8);
+                    const dailyRate = Math.round(e.baseSalary / e.calendarDays);
                     
-                    return [
-                        { label: 'Employee Category', value: 0, skipValue: true, explain: 'Below ' + p.lifecycle.probationDays + ' days of employment an employee is Probation; auto-promotes to Permanent on day ' + p.lifecycle.probationDays + '.', calc: 'Category: ' + (e.unpaidLeave > 0 ? 'Probation' : 'Permanent'), auditRef: 'Lifecycle Policy' },
+                    const rows = [
                         { label: 'Base Salary', value: e.baseSalary, explain: 'Authoritative fixed monthly base salary.', calc: 'Base = ₹' + e.baseSalary.toLocaleString('en-IN'), auditRef: 'STRUCT-' + e.id },
                         { label: 'Allowances', value: e.allowances, explain: 'Retrieved structural standard allowances.', calc: 'Allowances = ₹' + e.allowances.toLocaleString('en-IN') },
-                        { label: 'Daily Rate (Segment)', value: dailyRate, explain: 'Derived basic daily rate for segment month calendar days.', calc: 'Daily = ₹' + dailyRate.toLocaleString('en-IN') },
-                        { label: 'Hourly Shift Rate', value: hourlyRate, explain: 'Derived basic hourly shift rate.', calc: 'Hourly = ₹' + hourlyRate.toLocaleString('en-IN') },
-                        { label: 'Leave Deductions', value: -(e.unpaidLeave * dailyRate), tone: 'oxblood', explain: e.unpaidLeave + ' unpaid day(s) deducted, per Unplanned Leave policy.', calc: e.unpaidLeave + ' × ₹' + dailyRate.toLocaleString('en-IN') },
-                        { label: 'Half Day Deductions', value: -(e.halfDay * Math.round(dailyRate / 2)), tone: 'oxblood', explain: e.halfDay + ' half day(s) deducted, per Payroll Mapping.', calc: e.halfDay + ' × ₹' + Math.round(dailyRate / 2).toLocaleString('en-IN') },
-                        { label: 'Overtime Pay', value: e.overtimeHours * Math.round(hourlyRate * 1.5), tone: 'forest', explain: e.overtimeHours + ' overtime hour(s) at 1.5x multiplier.', calc: e.overtimeHours + ' × ₹' + Math.round(hourlyRate * 1.5) },
-                        { label: 'Bonuses', value: e.bonuses, tone: 'forest', explain: 'Manual corrections or discretionary adjustments applied.', calc: 'Approved corrections' },
-                        { label: 'Gross Salary', value: e.gross, emphasis: true },
-                        { label: 'Tax (TDS)', value: -e.taxAmt, tone: 'oxblood', explain: 'TDS tax deduction (5% rate).', calc: 'TDS slab applied = –₹' + e.taxAmt.toLocaleString('en-IN') },
-                        { label: 'Provident Fund', value: -e.pf, tone: 'oxblood', explain: 'PF contribution (12% of basic up to ceiling).', calc: 'PF rate = –₹' + e.pf.toLocaleString('en-IN') },
-                        { label: 'ESI', value: -e.esi, tone: 'oxblood', explain: 'ESI contribution (0.75% of gross).', calc: 'ESI rate = –₹' + e.esi.toLocaleString('en-IN') },
-                        { label: 'Professional Tax', value: -e.profTax, tone: 'oxblood', explain: 'Flat professional tax for Uttarakhand.', calc: 'PTAX = –₹' + e.profTax.toLocaleString('en-IN') },
-                        { label: 'Net Salary', value: e.net, emphasis: true }
+                        { label: 'Daily Rate (Segment)', value: dailyRate, explain: 'Derived daily rate = Monthly Base / ' + e.calendarDays + ' calendar days.', calc: 'Daily = ₹' + dailyRate.toLocaleString('en-IN') },
+                        { label: 'Hourly Shift Rate', value: e.hourlyRate, explain: 'Derived basic hourly shift rate.', calc: 'Hourly = ₹' + e.hourlyRate.toLocaleString('en-IN') }
                     ];
+
+                    // Dynamically listing each individual attendance / leave deduction date
+                    if (e.attendanceSnapshot && e.attendanceSnapshot.length > 0) {
+                        e.attendanceSnapshot.forEach(day => {
+                            if (day.deducted_amount > 0) {
+                                const statusLabel = day.status === 'absent' ? 'Unpaid Absence' : 
+                                                    (day.status === 'half' ? 'Half Day Deduction' : 'Unpaid Leave');
+                                rows.push({
+                                    label: day.date + ' ' + statusLabel,
+                                    value: -day.deducted_amount,
+                                    tone: 'oxblood',
+                                    explain: 'Resolved state: ' + day.status.toUpperCase() + ' (Original: ' + day.original_status + ')',
+                                    calc: 'Rate ₹' + dailyRate.toLocaleString('en-IN') + ' × factor'
+                                });
+                            }
+                        });
+                    }
+
+                    // Overtime
+                    if (e.overtimeHours > 0) {
+                        rows.push({
+                            label: 'Overtime Pay',
+                            value: e.overtimePay,
+                            tone: 'forest',
+                            explain: e.overtimeHours + ' overtime hour(s) worked.',
+                            calc: e.overtimeHours + ' hrs × ₹' + e.hourlyRate.toLocaleString('en-IN') + ' × multiplier'
+                        });
+                    }
+
+                    // Bonuses / Corrections
+                    if (e.bonuses > 0) {
+                        rows.push({
+                            label: 'Discretionary Adjustment',
+                            value: e.bonuses,
+                            tone: 'forest',
+                            explain: 'Approved administrative adjustment delta.',
+                            calc: 'Manual override correction'
+                        });
+                    }
+
+                    // Gross
+                    rows.push({ label: 'Gross Salary', value: e.gross, emphasis: true });
+
+                    // Statutory Deductions: PF, ESI, PT, TDS
+                    if (e.pf > 0) {
+                        rows.push({
+                            label: 'Provident Fund (PF)',
+                            value: -e.pf,
+                            tone: 'oxblood',
+                            explain: 'Provident Fund deduction (12% of PF wage base, threshold ceiling ₹15,000 applies where configured).',
+                            calc: 'PF matching contribution'
+                        });
+                    }
+                    if (e.esi > 0) {
+                        rows.push({
+                            label: 'ESI Contribution',
+                            value: -e.esi,
+                            tone: 'oxblood',
+                            explain: 'Employee ESI deduction (0.75% of gross wages). Ceiling threshold ₹21,000.',
+                            calc: '0.75% of ₹' + e.gross.toLocaleString('en-IN')
+                        });
+                    }
+                    if (e.profTax > 0) {
+                        rows.push({
+                            label: 'Professional Tax',
+                            value: -e.profTax,
+                            tone: 'oxblood',
+                            explain: 'Professional Tax slab deduction for Uttarakhand state.',
+                            calc: 'Flat standard deduction'
+                        });
+                    }
+                    if (e.taxAmt > 0) {
+                        rows.push({
+                            label: 'Income Tax (TDS)',
+                            value: -e.taxAmt,
+                            tone: 'oxblood',
+                            explain: 'Tax Deducted at Source (TDS slab calculated dynamically).',
+                            calc: 'Slab rate deduction'
+                        });
+                    }
+
+                    // Net
+                    rows.push({ label: 'Net Salary', value: e.net, emphasis: true });
+
+                    return rows;
                 },
 
                 setLedgerEmp() { this.selectedLedgerEmp = this.employees.find(e => e.id === this.ledgerEmpId) || null },
@@ -1163,10 +1816,28 @@
                     return { approved: 'Approved', pending: 'Pending', correction: 'Correction', locked: 'Locked' }[status] || status
                 },
                 auditDot(type) {
-                    return { correction: 'bg-burgundy', import: 'bg-brass', approval: 'bg-forest', lock: 'bg-vellum', unlock: 'bg-brass-dark' }[type] || 'bg-vellum-faint'
+                    return { 
+                        calculation: 'bg-brass', 
+                        approval: 'bg-forest', 
+                        correction: 'bg-burgundy', 
+                        configuration: 'bg-brass-dark', 
+                        lock: 'bg-vellum', 
+                        unlock: 'bg-cognac', 
+                        dispute: 'bg-burgundy', 
+                        payslip: 'bg-forest' 
+                    }[type] || 'bg-vellum-faint'
                 },
                 auditBadge(type) {
-                    return { correction: 'bg-burgundy/10 text-burgundy', import: 'bg-brass/20 text-brass-dark', approval: 'bg-forest/15 text-forest', lock: 'bg-walnut/15 text-cream', unlock: 'bg-brass/15 text-brass-dark' }[type] || 'bg-surface'
+                    return { 
+                        calculation: 'bg-brass/10 text-brass-dark', 
+                        approval: 'bg-forest/10 text-forest', 
+                        correction: 'bg-burgundy/10 text-burgundy', 
+                        configuration: 'bg-brass-dark/10 text-brass-dark', 
+                        lock: 'bg-surface text-vellum border border-line', 
+                        unlock: 'bg-cognac/10 text-cognac', 
+                        dispute: 'bg-burgundy/10 text-burgundy', 
+                        payslip: 'bg-forest/10 text-forest' 
+                    }[type] || 'bg-surface'
                 },
 
                 linePoints(data, max) {
@@ -1232,6 +1903,287 @@
                     .then(data => {
                         if (data.success) {
                             this.toast = 'Correction approved successfully!';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                approveRecordAdmin(emp) {
+                    this.toast = 'Signing off Admin approval...';
+                    fetch(`/admin/payroll/records/${emp.record_id}/approve`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = data.message;
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                lockRecordAdmin(emp) {
+                    this.toast = 'Sealing record & creating snapshot...';
+                    fetch(`/admin/payroll/records/${emp.record_id}/lock`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = data.message;
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                unlockRecordAdminPrompt(emp) {
+                    this.selectedRecordToUnlock = emp;
+                    this.unlockReason = '';
+                    this.unlockPromptOpen = true;
+                },
+
+                submitUnlockRecord() {
+                    if (!this.unlockReason || this.unlockReason.length < 5) {
+                        alert('Please enter a valid reason (min 5 characters) for override unlock.');
+                        return;
+                    }
+                    this.unlockPromptOpen = false;
+                    this.toast = 'Unlocking employee payroll record...';
+                    
+                    fetch(`/admin/payroll/records/${this.selectedRecordToUnlock.record_id}/unlock`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            reason: this.unlockReason
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Record unlocked successfully.';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                resolveDisputeAdmin(id, status) {
+                    const note = document.getElementById(`dispute-note-${id}`).value;
+                    if (!note || note.length < 5) {
+                        alert('Please enter resolution/rejection comments (min 5 characters).');
+                        return;
+                    }
+                    this.toast = 'Submitting dispute resolution...';
+                    
+                    fetch(`/admin/payroll/disputes/${id}/resolve`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            status: status,
+                            notes: note
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Dispute resolved successfully!';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                generateSinglePayslip(emp) {
+                    this.toast = 'Generating employee payslip snapshot...';
+                    fetch(`/admin/payroll/records/${emp.record_id}/payslip/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Payslip generated successfully!';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                publishSinglePayslip(emp) {
+                    this.toast = 'Publishing payslip to employee dashboard...';
+                    fetch(`/admin/payroll/records/${emp.record_id}/payslip/publish`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Payslip published successfully!';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                bulkGeneratePayslips() {
+                    this.toast = 'Bulk generating payslips...';
+                    fetch('/admin/payroll/payslips/bulk-generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            period: this.cycle.period
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Bulk generated successfully!';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                bulkPublishPayslips() {
+                    this.toast = 'Bulk publishing payslips...';
+                    fetch('/admin/payroll/payslips/bulk-publish', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            period: this.cycle.period
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Bulk published successfully!';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                previewConfigImpact(groupId, alpineData) {
+                    alpineData.previewing = true;
+                    this.toast = 'Simulating policy updates on active records...';
+
+                    // Gather inputs for this group form
+                    const fields = {};
+                    if (groupId === 'lifecycle') {
+                        fields['probationDays'] = 90;
+                        fields['autoPromote'] = true;
+                        fields['probationLeaveBalance'] = 1.5;
+                        fields['probationPayrollCycle'] = 'probation';
+                    } else if (groupId === 'pf') {
+                        fields['employee_rate'] = 12.0;
+                        fields['applicable_above_wage_ceiling'] = true;
+                    } else if (groupId === 'esi') {
+                        fields['eligibility_ceiling'] = 21000;
+                        fields['employee_rate'] = 0.75;
+                    } else if (groupId === 'ptax') {
+                        fields['state'] = 'Uttarakhand';
+                        fields['monthly_professional_tax'] = 250;
+                    }
+
+                    fetch('/admin/payroll/settings/preview', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            group: groupId,
+                            fields: fields,
+                            period: this.cycle.period
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        alpineData.previewing = false;
+                        if (data.success) {
+                            alpineData.previewData = data;
+                            this.toast = 'Simulation complete!';
+                            setTimeout(() => { this.toast = null }, 2000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                saveAndForceRecalculate(groupId) {
+                    this.toast = 'Saving settings and force recalculating...';
+                    
+                    const fields = {};
+                    if (groupId === 'lifecycle') {
+                        fields['probationDays'] = 90;
+                        fields['autoPromote'] = true;
+                        fields['probationLeaveBalance'] = 1.5;
+                        fields['probationPayrollCycle'] = 'probation';
+                    } else if (groupId === 'pf') {
+                        fields['employee_rate'] = 12.0;
+                        fields['applicable_above_wage_ceiling'] = true;
+                    } else if (groupId === 'esi') {
+                        fields['eligibility_ceiling'] = 21000;
+                        fields['employee_rate'] = 0.75;
+                    } else if (groupId === 'ptax') {
+                        fields['state'] = 'Uttarakhand';
+                        fields['monthly_professional_tax'] = 250;
+                    }
+
+                    fetch('/admin/payroll/settings/save-recalculate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            group: groupId,
+                            fields: fields,
+                            period: this.cycle.period
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Settings saved & cycle recalculated successfully!';
                             setTimeout(() => { window.location.reload() }, 1000);
                         } else {
                             this.toast = 'Error: ' + data.message;

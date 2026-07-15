@@ -10,6 +10,8 @@ use App\Models\PayrollRecord;
 use App\Models\PayrollCorrection;
 use App\Models\PayrollException;
 use App\Models\PayrollAuditLog;
+use App\Models\PayrollDispute;
+use App\Models\LeaveRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -51,6 +53,9 @@ class PayrollService
                 'cycle_type' => 'none',
                 'start_date' => null,
                 'end_date' => null,
+                'daily_rate' => 0.00,
+                'hourly_rate' => 0.00,
+                'calendar_days' => 0,
             ];
         }
 
@@ -87,6 +92,9 @@ class PayrollService
                 'cycle_type' => 'none',
                 'start_date' => null,
                 'end_date' => null,
+                'daily_rate' => 0.00,
+                'hourly_rate' => 0.00,
+                'calendar_days' => 0,
             ];
         }
 
@@ -220,6 +228,12 @@ class PayrollService
                 'deducted_amount' => $deductedAmount,
                 'notes' => $state['notes'] ?? '',
                 'has_conflict' => ($checkIn && $state['leave_type']) ? true : false,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'hours_worked' => $hoursWorked ?? 0.00,
+                'leave_type' => $state['leave_type'] ?? null,
+                'is_override' => $state['is_override'] ?? false,
+                'original_status' => $state['original_status'] ?? $status,
             ];
         }
 
@@ -321,6 +335,9 @@ class PayrollService
             'cycle_type' => $cycleInfo['type'],
             'start_date' => $startDate->format('Y-m-d'),
             'end_date' => $endDate->format('Y-m-d'),
+            'daily_rate' => round($lastDaySalary / ($lastDayDaysInMonth ?: 30), 2),
+            'hourly_rate' => round($lastDaySalary / (($lastDayDaysInMonth ?: 30) * 8), 2),
+            'calendar_days' => $lastDayDaysInMonth ?: 30,
         ];
     }
 
@@ -350,14 +367,32 @@ class PayrollService
         }
 
         DB::transaction(function () use ($cycle, $year, $month, $actor) {
-            $users = User::whereHas('payrollProfile', function ($q) {
-                $q->where('payroll_enabled', true);
-            })->get();
+            $users = PayrollEligibilityService::getEligibleEmployees($year, $month);
+            $eligibleUserIds = $users->pluck('id')->toArray();
+
+            // Clean up old unlocked records for employees who are no longer eligible
+            PayrollRecord::where('payroll_cycle_id', $cycle->id)
+                ->whereNotIn('user_id', $eligibleUserIds)
+                ->where('locked', false)
+                ->delete();
 
             PayrollException::where('payroll_cycle_id', $cycle->id)->delete();
 
             foreach ($users as $user) {
+                // Resolve cycle range using resolver
+                $resolver = new PayrollCycleResolver();
+                $cycleInfo = $resolver->resolve($user, $year, $month);
+                if (!$cycleInfo) continue;
+                $startDate = $cycleInfo['start_date'];
+                $endDate = $cycleInfo['end_date'];
+
                 $calc = self::calculateMonthlyPayroll($user, $year, $month);
+
+                // Fetch attendance states to compute fingerprint
+                $attendanceService = app(AttendanceService::class);
+                $states = $attendanceService->getAttendanceStatesForRange($user, $startDate, $endDate);
+
+                $newFingerprint = self::computeFingerprint($user, $startDate, $endDate, $calc, $states);
 
                 $record = PayrollRecord::where('payroll_cycle_id', $cycle->id)
                     ->where('user_id', $user->id)
@@ -373,6 +408,53 @@ class PayrollService
                     ->sum('financial_delta');
 
                 $finalNet = max(0.00, $calc['net_salary'] + $correctionsSum);
+
+                // Fetch existing fingerprint and version
+                $version = 1;
+                $employeeReviewStatus = 'pending';
+                $employeeApprovedAt = null;
+                $adminApprovedAt = null;
+                $adminApprovedById = null;
+
+                if ($record) {
+                    $version = $record->calculation_version ?: 1;
+                    $employeeReviewStatus = $record->employee_review_status ?: 'pending';
+                    $employeeApprovedAt = $record->employee_approved_at;
+                    $adminApprovedAt = $record->admin_approved_at;
+                    $adminApprovedById = $record->admin_approved_by_id;
+
+                    if ($record->fingerprint && $record->fingerprint !== $newFingerprint) {
+                        $version++;
+                        $employeeReviewStatus = 'stale';
+                        $employeeApprovedAt = null;
+                        $adminApprovedAt = null;
+                        $adminApprovedById = null;
+
+                        // Log recalculation and reasons why it became stale
+                        $oldInputs = $record->calculation_metadata['fingerprint_inputs'] ?? null;
+                        $reasons = [];
+                        if ($oldInputs) {
+                            $newInputs = self::getFingerprintInputs($user, $startDate, $endDate);
+                            $reasons = self::detectStaleReasons($oldInputs, $newInputs);
+                        } else {
+                            $reasons = ['Calculation inputs changed'];
+                        }
+
+                        $reasonStr = implode(', ', $reasons);
+                        PayrollAuditLog::record(
+                            $user->id,
+                            $actor->id,
+                            "Recalculation version {$version}: approvals invalidated due to stale inputs. Reasons: {$reasonStr}",
+                            "Salary Change",
+                            $record->fingerprint,
+                            $newFingerprint,
+                            "Automatic recalculation on stale fingerprint inputs"
+                        );
+                    }
+                }
+
+                // Stored fingerprint inputs
+                $fingerprintInputs = self::getFingerprintInputs($user, $startDate, $endDate);
 
                 $recordData = [
                     'payroll_cycle_id' => $cycle->id,
@@ -397,12 +479,22 @@ class PayrollService
                     'half_days' => $calc['half_days'],
                     'late_days' => $calc['late_days'],
                     'wfh_days' => $calc['wfh_days'],
+                    'calculation_version' => $version,
+                    'fingerprint' => $newFingerprint,
+                    'employee_review_status' => $employeeReviewStatus,
+                    'employee_approved_at' => $employeeApprovedAt,
+                    'admin_approved_at' => $adminApprovedAt,
+                    'admin_approved_by_id' => $adminApprovedById,
                     'calculation_metadata' => [
                         'pf' => $calc['pf'],
                         'esi' => $calc['esi'],
                         'prof_tax' => $calc['prof_tax'],
                         'cycle_type' => $calc['cycle_type'],
                         'daily_breakdown' => $calc['daily_breakdown'],
+                        'daily_rate' => $calc['daily_rate'],
+                        'hourly_rate' => $calc['hourly_rate'],
+                        'calendar_days' => $calc['calendar_days'],
+                        'fingerprint_inputs' => $fingerprintInputs,
                     ],
                 ];
 
@@ -692,6 +784,17 @@ class PayrollService
         $profile->update([
             'payroll_enabled' => $payrollEnabled,
         ]);
+
+        // Identify all affected unlocked PayrollRecords for that employee
+        $unlockedRecords = PayrollRecord::where('user_id', $user->id)
+            ->where('locked', false)
+            ->get();
+
+        $actor = auth()->user() ?: User::where('role', 'admin')->first() ?: $user;
+
+        foreach ($unlockedRecords as $record) {
+            self::recalculateRecord($record, $actor);
+        }
     }
 
     /**
@@ -722,5 +825,479 @@ class PayrollService
         }
 
         return null;
+    }
+
+    /**
+     * Get the full raw fingerprint inputs for debugging or staleness checking.
+     */
+    public static function getFingerprintInputs(User $user, Carbon $startDate, Carbon $endDate): array
+    {
+        // Base salary and histories
+        $salaries = [];
+        $current = $startDate->copy();
+        while ($current->lte($endDate)) {
+            $salaries[$current->format('Y-m-d')] = self::resolveBaseSalaryForDate($user, $current);
+            $current->addDay();
+        }
+
+        // Attendance states
+        $attendanceService = app(AttendanceService::class);
+        $states = $attendanceService->getAttendanceStatesForRange($user, $startDate, $endDate);
+        
+        // Leaves
+        $leaves = LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $endDate->format('Y-m-d 23:59:59'))
+            ->where('end_date', '>=', $startDate->format('Y-m-d 00:00:00'))
+            ->orderBy('id')
+            ->get()
+            ->map(function ($l) {
+                return [
+                    'id' => $l->id,
+                    'start_date' => $l->start_date ? Carbon::parse($l->start_date)->format('Y-m-d') : null,
+                    'end_date' => $l->end_date ? Carbon::parse($l->end_date)->format('Y-m-d') : null,
+                    'leave_type' => $l->leave_type,
+                    'is_half_day' => (bool)$l->is_half_day,
+                    'is_paid' => (bool)$l->is_paid,
+                ];
+            })->toArray();
+
+        // Adjustments/Corrections
+        $adjustments = PayrollCorrection::where('user_id', $user->id)
+            ->where('payroll_cycle_id', function ($query) use ($startDate) {
+                $query->select('id')
+                    ->from('payroll_cycles')
+                    ->where('start_date', '<=', $startDate->format('Y-m-d'))
+                    ->where('end_date', '>=', $startDate->format('Y-m-d'));
+            })
+            ->orderBy('id')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'financial_delta' => (float)$c->financial_delta,
+                    'approval_status' => $c->approval_status,
+                ];
+            })->toArray();
+
+        // Settings
+        $settings = PayrollSetting::all()->pluck('value', 'key')->toArray();
+
+        return [
+            'user_id' => $user->id,
+            'joining_date' => $user->joining_date ? Carbon::parse($user->joining_date)->format('Y-m-d') : null,
+            'separation_date' => $user->employeeProfile && ($user->employeeProfile->separation_date ?? $user->employeeProfile->last_working_day)
+                ? Carbon::parse($user->employeeProfile->separation_date ?? $user->employeeProfile->last_working_day)->format('Y-m-d')
+                : null,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'salaries' => $salaries,
+            'attendance' => $states,
+            'leaves' => $leaves,
+            'adjustments' => $adjustments,
+            'settings' => $settings,
+        ];
+    }
+
+    /**
+     * Compute deterministic calculation fingerprint from all inputs.
+     */
+    public static function computeFingerprint(User $user, Carbon $startDate, Carbon $endDate, array $calc, array $states): string
+    {
+        // Fetch leaves
+        $leaves = LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $endDate->format('Y-m-d 23:59:59'))
+            ->where('end_date', '>=', $startDate->format('Y-m-d 00:00:00'))
+            ->orderBy('id')
+            ->get()
+            ->map(function ($l) {
+                return [
+                    'id' => $l->id,
+                    'start_date' => $l->start_date ? Carbon::parse($l->start_date)->format('Y-m-d') : null,
+                    'end_date' => $l->end_date ? Carbon::parse($l->end_date)->format('Y-m-d') : null,
+                    'leave_type' => $l->leave_type,
+                    'is_half_day' => (bool)$l->is_half_day,
+                    'is_paid' => (bool)$l->is_paid,
+                ];
+            })->toArray();
+
+        // Fetch corrections
+        $adjustments = PayrollCorrection::where('user_id', $user->id)
+            ->where('payroll_cycle_id', function ($query) use ($startDate) {
+                $query->select('id')
+                    ->from('payroll_cycles')
+                    ->where('start_date', '<=', $startDate->format('Y-m-d'))
+                    ->where('end_date', '>=', $startDate->format('Y-m-d'));
+            })
+            ->orderBy('id')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'financial_delta' => (float)$c->financial_delta,
+                    'approval_status' => $c->approval_status,
+                ];
+            })->toArray();
+
+        $settings = PayrollSetting::all()->pluck('value', 'key')->toArray();
+
+        $salaries = [];
+        $current = $startDate->copy();
+        while ($current->lte($endDate)) {
+            $salaries[$current->format('Y-m-d')] = self::resolveBaseSalaryForDate($user, $current);
+            $current->addDay();
+        }
+
+        $payload = [
+            'user_id' => $user->id,
+            'joining_date' => $user->joining_date ? Carbon::parse($user->joining_date)->format('Y-m-d') : null,
+            'separation_date' => $user->employeeProfile && ($user->employeeProfile->separation_date ?? $user->employeeProfile->last_working_day)
+                ? Carbon::parse($user->employeeProfile->separation_date ?? $user->employeeProfile->last_working_day)->format('Y-m-d')
+                : null,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'base_salary' => (float)$calc['base_salary'],
+            'attendance' => $states,
+            'leaves' => $leaves,
+            'adjustments' => $adjustments,
+            'settings' => $settings,
+            'salaries' => $salaries,
+        ];
+
+        return self::buildFingerprint($payload);
+    }
+
+    public static function buildFingerprint(array $inputs): string
+    {
+        self::recursiveKsort($inputs);
+        self::normalizeDecimals($inputs);
+        return md5(json_encode($inputs));
+    }
+
+    private static function recursiveKsort(array &$array): void
+    {
+        ksort($array);
+        foreach ($array as &$value) {
+            if (is_array($value)) {
+                self::recursiveKsort($value);
+            }
+        }
+    }
+
+    private static function normalizeDecimals(array &$array): void
+    {
+        foreach ($array as $key => &$value) {
+            if (is_float($value) || is_double($value)) {
+                $value = number_format((float)$value, 4, '.', '');
+            } elseif (is_array($value)) {
+                self::normalizeDecimals($value);
+            } elseif (is_bool($value)) {
+                $value = $value ? 'true' : 'false';
+            }
+        }
+    }
+
+    /**
+     * Compare old and new inputs to find what changed.
+     */
+    public static function detectStaleReasons(array $oldInputs, array $newInputs): array
+    {
+        $reasons = [];
+        if (json_encode($oldInputs['salaries'] ?? []) !== json_encode($newInputs['salaries'] ?? [])) {
+            $reasons[] = 'Salary revision/effective date updated';
+        }
+        if (json_encode($oldInputs['attendance'] ?? []) !== json_encode($newInputs['attendance'] ?? [])) {
+            $reasons[] = 'Attendance records updated (Attendance Engine V2/override)';
+        }
+        if (json_encode($oldInputs['leaves'] ?? []) !== json_encode($newInputs['leaves'] ?? [])) {
+            $reasons[] = 'Leave/Birthday Leave requests updated';
+        }
+        if (json_encode($oldInputs['adjustments'] ?? []) !== json_encode($newInputs['adjustments'] ?? [])) {
+            $reasons[] = 'Manual adjustments/corrections updated';
+        }
+        if (json_encode($oldInputs['settings'] ?? []) !== json_encode($newInputs['settings'] ?? [])) {
+            $reasons[] = 'Payroll settings/rules updated';
+        }
+        if (empty($reasons)) {
+            $reasons[] = 'Inputs changed';
+        }
+        return $reasons;
+    }
+
+    /**
+     * Lock a specific payroll record per employee.
+     */
+    public static function lockRecord(PayrollRecord $record, User $actor): bool
+    {
+        if ($record->locked) {
+            return true;
+        }
+
+        // Check readiness
+        if ($record->employee_review_status !== 'approved') {
+            return false;
+        }
+
+        if (is_null($record->admin_approved_at)) {
+            return false;
+        }
+
+        $hasDispute = PayrollDispute::where('payroll_record_id', $record->id)
+            ->where('status', 'open')
+            ->exists();
+        if ($hasDispute) {
+            return false;
+        }
+
+        // Execute lock and snapshot
+        DB::transaction(function () use ($record, $actor) {
+            $user = $record->user;
+            $profile = $user->employeeProfile;
+            $metadata = $record->calculation_metadata ?? [];
+
+            // Compile the frozen snapshot
+            $snapshot = [
+                'employee' => [
+                    'name' => $user->name,
+                    'employee_id' => $user->employee_id ?? 'EMP-' . $user->id,
+                    'email' => $user->email,
+                    'designation' => $profile->designation ?? 'Employee',
+                    'department' => $user->department->name ?? 'Unassigned',
+                    'joining_date' => $user->joining_date ? $user->joining_date->format('Y-m-d') : null,
+                    'employment_category' => $profile->employee_category ?? 'Permanent',
+                ],
+                'bank_details' => [
+                    'bank_name' => $profile->bank_name ?? '—',
+                    'account_holder_name' => $profile->account_holder_name ?? $user->name,
+                    'account_no' => $profile->account_no ?? '—',
+                    'ifsc_code' => $profile->ifsc_code ?? '—',
+                ],
+                'period' => [
+                    'period' => $record->payrollCycle->period,
+                    'start_date' => $record->payrollCycle->start_date ? $record->payrollCycle->start_date->format('Y-m-d') : null,
+                    'end_date' => $record->payrollCycle->end_date ? $record->payrollCycle->end_date->format('Y-m-d') : null,
+                ],
+                'basis' => [
+                    'base_salary' => (float)$record->base_salary,
+                    'allowances' => (float)$record->allowances,
+                    'daily_rate' => (float)($metadata['daily_rate'] ?? round($record->base_salary / 30, 2)),
+                    'hourly_rate' => (float)($metadata['hourly_rate'] ?? round($record->base_salary / 240, 2)),
+                    'working_days' => $record->working_days,
+                    'present_days' => (float)$record->present_days,
+                    'absent_days' => (float)$record->absent_days,
+                    'leave_days' => (float)$record->leave_days,
+                    'unpaid_leave_days' => (float)$record->unpaid_leave_days,
+                    'birthday_leave_days' => (float)$record->birthday_leave_days,
+                    'half_days' => $record->half_days,
+                    'late_days' => $record->late_days,
+                    'wfh_days' => $record->wfh_days,
+                    'overtime_hours' => (float)$record->overtime_hours,
+                ],
+                'earnings' => [
+                    'base_pay' => (float)($record->gross_salary - $record->allowances - $record->overtime_pay - $record->bonuses),
+                    'allowances' => (float)$record->allowances,
+                    'overtime_pay' => (float)$record->overtime_pay,
+                    'bonuses' => (float)$record->bonuses,
+                ],
+                'deductions' => [
+                    'attendance_deductions' => (float)$record->attendance_deductions,
+                    'leave_deductions' => (float)$record->leave_deductions,
+                    'pf' => (float)($metadata['pf'] ?? 0.00),
+                    'esi' => (float)($metadata['esi'] ?? 0.00),
+                    'prof_tax' => (float)($metadata['prof_tax'] ?? 0.00),
+                    'tax_deductions' => (float)$record->tax_deductions,
+                ],
+                'net_salary' => (float)$record->net_salary,
+                'gross_salary' => (float)$record->gross_salary,
+                'calculation_version' => $record->calculation_version,
+                'fingerprint' => $record->fingerprint,
+                'daily_breakdown' => $metadata['daily_breakdown'] ?? [],
+                'employee_approved_at' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
+                'admin_approved_at' => $record->admin_approved_at ? $record->admin_approved_at->toDateTimeString() : null,
+                'locked_at' => now()->toDateTimeString(),
+                'locked_by' => $actor->name,
+            ];
+
+            $record->update([
+                'locked' => true,
+                'locked_at' => now(),
+                'locked_by_id' => $actor->id,
+                'status' => 'locked',
+                'locked_snapshot' => $snapshot,
+                'payslip_status' => 'generated',
+                'payslip_generated_at' => now(),
+            ]);
+
+            PayrollAuditLog::record(
+                $record->user_id,
+                $actor->id,
+                "Locked employee payroll record (version {$record->calculation_version}) & auto-generated payslip.",
+                "Locks"
+            );
+        });
+
+        return true;
+    }
+
+    /**
+     * Recalculate a single unlocked payroll record.
+     */
+    public static function recalculateRecord(PayrollRecord $record, User $actor): void
+    {
+        if ($record->locked) {
+            return;
+        }
+
+        $user = $record->user;
+        $cycle = $record->payrollCycle;
+        $period = Carbon::parse($cycle->period);
+        $year = $period->year;
+        $month = $period->month;
+
+        $resolver = new PayrollCycleResolver();
+        $cycleInfo = $resolver->resolve($user, $year, $month);
+        if (!$cycleInfo) return;
+        $startDate = $cycleInfo['start_date'];
+        $endDate = $cycleInfo['end_date'];
+
+        $calc = self::calculateMonthlyPayroll($user, $year, $month);
+
+        // Fetch attendance states to compute fingerprint
+        $attendanceService = app(AttendanceService::class);
+        $states = $attendanceService->getAttendanceStatesForRange($user, $startDate, $endDate);
+
+        $newFingerprint = self::computeFingerprint($user, $startDate, $endDate, $calc, $states);
+
+        if ($record->fingerprint !== $newFingerprint) {
+            $version = $record->calculation_version ?: 1;
+            $version++;
+            
+            $employeeReviewStatus = 'stale';
+            $employeeApprovedAt = null;
+            $adminApprovedAt = null;
+            $adminApprovedById = null;
+
+            // Log recalculation and reasons why it became stale
+            $oldInputs = $record->calculation_metadata['fingerprint_inputs'] ?? null;
+            $reasons = [];
+            if ($oldInputs) {
+                $newInputs = self::getFingerprintInputs($user, $startDate, $endDate);
+                $reasons = self::detectStaleReasons($oldInputs, $newInputs);
+            } else {
+                $reasons = ['Calculation inputs changed'];
+            }
+
+            $reasonStr = implode(', ', $reasons);
+            PayrollAuditLog::record(
+                $user->id,
+                $actor->id,
+                "Recalculation version {$version}: approvals invalidated due to stale inputs. Reasons: {$reasonStr}",
+                "Salary Change",
+                $record->fingerprint,
+                $newFingerprint,
+                "Automatic recalculation on stale fingerprint inputs"
+            );
+
+            $correctionsSum = PayrollCorrection::where('payroll_cycle_id', $cycle->id)
+                ->where('user_id', $user->id)
+                ->where('approval_status', 'approved')
+                ->sum('financial_delta');
+
+            $finalNet = max(0.00, $calc['net_salary'] + $correctionsSum);
+            $fingerprintInputs = self::getFingerprintInputs($user, $startDate, $endDate);
+
+            // Preserve historical approvals if they existed
+            $historicalApprovals = $record->calculation_metadata['historical_approvals'] ?? [];
+            if ($record->employee_review_status === 'approved') {
+                $historicalApprovals[] = [
+                    'type' => 'employee',
+                    'version' => $record->calculation_version,
+                    'approved_at' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
+                ];
+            }
+            if ($record->admin_approved_at !== null) {
+                $historicalApprovals[] = [
+                    'type' => 'admin',
+                    'version' => $record->calculation_version,
+                    'approved_at' => $record->admin_approved_at->toDateTimeString(),
+                    'approved_by_id' => $record->admin_approved_by_id,
+                ];
+            }
+
+            $record->update([
+                'base_salary' => $calc['base_salary'],
+                'gross_salary' => $calc['gross_salary'],
+                'net_salary' => $finalNet,
+                'attendance_deductions' => $calc['attendance_deductions'],
+                'leave_deductions' => $calc['leave_deductions'],
+                'statutory_deductions' => $calc['statutory_deductions'],
+                'tax_deductions' => $calc['tax_deductions'],
+                'overtime_hours' => $calc['overtime_hours'],
+                'overtime_pay' => $calc['overtime_pay'],
+                'bonuses' => $calc['bonuses'] + $correctionsSum, 
+                'allowances' => $calc['allowances'],
+                'working_days' => $calc['working_days'],
+                'present_days' => $calc['present_days'],
+                'absent_days' => $calc['absent_days'],
+                'leave_days' => $calc['leave_days'],
+                'unpaid_leave_days' => $calc['unpaid_leave_days'],
+                'birthday_leave_days' => $calc['birthday_leave_days'],
+                'half_days' => $calc['half_days'],
+                'late_days' => $calc['late_days'],
+                'wfh_days' => $calc['wfh_days'],
+                'calculation_version' => $version,
+                'fingerprint' => $newFingerprint,
+                'employee_review_status' => $employeeReviewStatus,
+                'employee_approved_at' => $employeeApprovedAt,
+                'admin_approved_at' => $adminApprovedAt,
+                'admin_approved_by_id' => $adminApprovedById,
+                'calculation_metadata' => [
+                    'pf' => $calc['pf'],
+                    'esi' => $calc['esi'],
+                    'prof_tax' => $calc['prof_tax'],
+                    'cycle_type' => $calc['cycle_type'],
+                    'daily_breakdown' => $calc['daily_breakdown'],
+                    'daily_rate' => $calc['daily_rate'],
+                    'hourly_rate' => $calc['hourly_rate'],
+                    'calendar_days' => $calc['calendar_days'],
+                    'fingerprint_inputs' => $fingerprintInputs,
+                    'historical_approvals' => $historicalApprovals,
+                ],
+            ]);
+
+            // Re-detect exceptions
+            PayrollException::where('payroll_record_id', $record->id)->delete();
+            self::detectAndCreateExceptions($record, $calc);
+        }
+    }
+
+    /**
+     * Unlock a specific locked payroll record.
+     */
+    public static function unlockRecord(PayrollRecord $record, string $reason, User $actor): void
+    {
+        DB::transaction(function () use ($record, $actor) {
+            $record->update([
+                'locked' => false,
+                'locked_at' => null,
+                'locked_by_id' => null,
+                'locked_snapshot' => null,
+                'status' => 'approved',
+                'payslip_status' => 'pending',
+                'payslip_generated_at' => null,
+                'payslip_published_at' => null,
+            ]);
+
+            PayrollAuditLog::record(
+                $record->user_id,
+                $actor->id,
+                "Unlocked employee payroll record. Reason: {$reason}",
+                "Overrides",
+                "locked",
+                "unlocked",
+                $reason
+            );
+        });
     }
 }

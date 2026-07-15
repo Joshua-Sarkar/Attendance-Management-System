@@ -10,7 +10,7 @@ class PayrollCycleResolver
 {
     /**
      * Resolve the payroll cycle for a user in a given calendar month.
-     * Returns an array with cycle details, or null if the user was not yet employed.
+     * Returns an array with cycle details, or null if the user was not yet employed or already separated.
      */
     public function resolve(User $user, int $year, int $month): ?array
     {
@@ -34,6 +34,8 @@ class PayrollCycleResolver
         // Helper to check if a date is within their first month of employment
         $isFirstMonth = $joiningDate->year === $year && $joiningDate->month === $month;
 
+        $res = null;
+
         // If they join during this month:
         if ($isFirstMonth) {
             if ($joiningDate->day <= 19) {
@@ -45,7 +47,7 @@ class PayrollCycleResolver
                     $end = $start->copy();
                 }
 
-                return [
+                $res = [
                     'type' => 'initial_partial',
                     'start_date' => $start,
                     'end_date' => $end,
@@ -58,7 +60,7 @@ class PayrollCycleResolver
                 $start = $joiningDate->copy();
                 $end = Carbon::create($year, $month, 20)->startOfDay()->addMonth();
 
-                return [
+                $res = [
                     'type' => 'initial_partial',
                     'start_date' => $start,
                     'end_date' => $end,
@@ -66,74 +68,99 @@ class PayrollCycleResolver
                     'description' => 'Initial partial cycle crossing months',
                 ];
             }
-        }
+        } else {
+            // Determine the bridge month using the deterministic transition threshold logic:
+            // 120th day of employment
+            $transitionDate = $joiningDate->copy()->addDays($transitionDays)->startOfDay();
+            
+            // Find the bridge month:
+            // If transition date falls on or before the 20th of month X, the bridge month is X - 1.
+            // Otherwise, it is X.
+            $bridgeYear = $transitionDate->year;
+            $bridgeMonth = $transitionDate->month;
+            
+            if ($transitionDate->day <= 20) {
+                $bridgeMonth--;
+                if ($bridgeMonth === 0) {
+                    $bridgeMonth = 12;
+                    $bridgeYear--;
+                }
+            }
 
-        // Determine the bridge month using the deterministic transition threshold logic:
-        // 120th day of employment
-        $transitionDate = $joiningDate->copy()->addDays($transitionDays)->startOfDay();
-        
-        // Find the bridge month:
-        // If transition date falls on or before the 20th of month X, the bridge month is X - 1.
-        // Otherwise, it is X.
-        $bridgeYear = $transitionDate->year;
-        $bridgeMonth = $transitionDate->month;
-        
-        if ($transitionDate->day <= 20) {
-            $bridgeMonth--;
-            if ($bridgeMonth === 0) {
-                $bridgeMonth = 12;
-                $bridgeYear--;
+            $bridgeMonthStart = Carbon::create($bridgeYear, $bridgeMonth, 1)->startOfDay();
+
+            // 1. If target month is AFTER the bridge month:
+            // They are on the standard calendar-month cycle!
+            if ($targetMonthStart->gt($bridgeMonthStart)) {
+                $res = [
+                    'type' => 'calendar_month',
+                    'start_date' => $targetMonthStart->copy(),
+                    'end_date' => $targetMonthEnd->copy(),
+                    'payment_date' => $targetMonthEnd->copy()->addMonth()->setDay(7),
+                    'description' => 'Standard calendar-month cycle',
+                ];
+            }
+            // 2. If target month is EQUAL to the bridge month:
+            // They are on the bridge cycle!
+            elseif ($targetMonthStart->equalTo($bridgeMonthStart)) {
+                $start = Carbon::create($year, $month, 21)->startOfDay()->subMonth();
+                $end = $targetMonthEnd->copy();
+
+                $res = [
+                    'type' => 'bridge',
+                    'start_date' => $start,
+                    'end_date' => $end,
+                    'payment_date' => $end->copy()->addMonth()->setDay(7),
+                    'description' => 'Regularization/bridge cycle',
+                ];
+            }
+            // 3. Otherwise (target month is BEFORE the bridge month):
+            // They are on the standard 20th-to-20th cycle.
+            else {
+                $start = Carbon::create($year, $month, 21)->startOfDay()->subMonth();
+                // Handle June cycle boundary starting July cycle on June 20
+                if ($month === 7 && $start->month === 6) {
+                    $start->setDay(20);
+                }
+                $end = Carbon::create($year, $month, 20)->startOfDay();
+
+                if ($joiningDate->gt($start)) {
+                    $start = $joiningDate->copy();
+                }
+
+                $res = [
+                    'type' => 'standard_20_20',
+                    'start_date' => $start,
+                    'end_date' => $end,
+                    'payment_date' => $end->copy()->addMonth()->setDay(7),
+                    'description' => 'Standard 20th-to-20th cycle',
+                ];
             }
         }
 
-        $bridgeMonthStart = Carbon::create($bridgeYear, $bridgeMonth, 1)->startOfDay();
-
-        // 1. If target month is AFTER the bridge month:
-        // They are on the standard calendar-month cycle!
-        if ($targetMonthStart->gt($bridgeMonthStart)) {
-            return [
-                'type' => 'calendar_month',
-                'start_date' => $targetMonthStart->copy(),
-                'end_date' => $targetMonthEnd->copy(),
-                'payment_date' => $targetMonthEnd->copy()->addMonth()->setDay(7),
-                'description' => 'Standard calendar-month cycle',
-            ];
+        if (!$res) {
+            return null;
         }
 
-        // 2. If target month is EQUAL to the bridge month:
-        // They are on the bridge cycle!
-        if ($targetMonthStart->equalTo($bridgeMonthStart)) {
-            $start = Carbon::create($year, $month, 21)->startOfDay()->subMonth();
-            $end = $targetMonthEnd->copy();
-
-            return [
-                'type' => 'bridge',
-                'start_date' => $start,
-                'end_date' => $end,
-                'payment_date' => $end->copy()->addMonth()->setDay(7),
-                'description' => 'Regularization/bridge cycle',
-            ];
+        // Post-processing: Handle termination/separation boundaries
+        $profile = $user->employeeProfile;
+        $separationDate = null;
+        if ($profile) {
+            $separationDate = $profile->separation_date ?? $profile->last_working_day;
         }
 
-        // 3. Otherwise (target month is BEFORE the bridge month):
-        // They are on the standard 20th-to-20th cycle.
-        $start = Carbon::create($year, $month, 21)->startOfDay()->subMonth();
-        // Handle June cycle boundary starting July cycle on June 20
-        if ($month === 7 && $start->month === 6) {
-            $start->setDay(20);
+        if ($separationDate) {
+            $separationDate = Carbon::parse($separationDate)->startOfDay();
+            // If they separated before the resolved cycle starts, they are not employed during this cycle
+            if ($separationDate->lt($res['start_date'])) {
+                return null;
+            }
+            // If they separated during the resolved cycle, cap the end date at their separation date
+            if ($separationDate->lt($res['end_date'])) {
+                $res['end_date'] = $separationDate;
+            }
         }
-        $end = Carbon::create($year, $month, 20)->startOfDay();
 
-        if ($joiningDate->gt($start)) {
-            $start = $joiningDate->copy();
-        }
-
-        return [
-            'type' => 'standard_20_20',
-            'start_date' => $start,
-            'end_date' => $end,
-            'payment_date' => $end->copy()->addMonth()->setDay(7),
-            'description' => 'Standard 20th-to-20th cycle',
-        ];
+        return $res;
     }
 }

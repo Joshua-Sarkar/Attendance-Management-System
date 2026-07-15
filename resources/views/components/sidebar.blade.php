@@ -63,6 +63,11 @@
                     </svg>
                 </button>
                 <div x-show="attendanceOpen" x-collapse class="pl-4 space-y-1">
+                    <a href="{{ route('admin.attendance.ledger') }}" target="_blank"
+                       class="nav-item flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition duration-150 ease-in-out
+                       {{ request()->routeIs('admin.attendance.ledger') ? 'text-brass-bright font-semibold' : 'text-vellum-light-muted hover:text-vellum-light' }}">
+                        Attendance Ledger
+                    </a>
                     @if($role === 'admin')
                         <a href="{{ route('admin.attendance.logs') }}" 
                            class="nav-item flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition duration-150 ease-in-out
@@ -89,6 +94,18 @@
                     <path d="M12 7v5l3.5 2"/>
                 </svg>
                 My Attendance
+            </a>
+
+            <!-- My Payroll Link for standard employees -->
+            <a href="{{ route('employee.payroll.index') }}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-[14.5px] font-medium transition duration-150 ease-in-out border border-transparent
+               {{ request()->routeIs('employee.payroll.*') 
+                   ? 'bg-brass/[0.12] text-brass-bright font-semibold border-l-[3px] border-l-brass-bright border-y-transparent border-r-transparent' 
+                   : 'text-vellum-light-muted hover:bg-brass/[0.04] hover:text-vellum-light' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-4 h-4 flex-shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                My Payroll
             </a>
         @endif
 
