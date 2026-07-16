@@ -500,22 +500,17 @@ class PayrollExportService
 
         $headers = [
             'Employee ID', 'Employee Name', 'Department', 'Base Salary', 'Gross Salary', 
-            'Attendance Deduction', 'Unpaid Leave Deduction', 'PF Deduction', 'ESI Deduction', 
-            'Professional Tax', 'TDS (Tax)', 'Other Deductions', 'Total Deductions', 'Net Salary'
+            'Attendance Deduction', 'Other Deductions', 'Total Deductions', 'Net Salary'
         ];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:N7');
+        self::applyHeaderStyles($sheet, 'A7:I7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
-            $metadata = $r->calculation_metadata ?? [];
-            $pf = $metadata['pf'] ?? 0.00;
-            $esi = $metadata['esi'] ?? 0.00;
-            $pt = $metadata['prof_tax'] ?? $metadata['pt'] ?? $metadata['prof_tax'] ?? 0.00;
             $other = (float)($r->calculation_metadata['other_deductions'] ?? 0.00);
 
-            $totalDed = $r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions;
+            $totalDed = $r->attendance_deductions + $other;
 
             $sheet->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
@@ -524,29 +519,24 @@ class PayrollExportService
                 (float)$r->base_salary,
                 (float)$r->gross_salary,
                 (float)$r->attendance_deductions,
-                (float)$r->leave_deductions,
-                (float)$pf,
-                (float)$esi,
-                (float)$pt,
-                (float)$r->tax_deductions,
                 $other,
                 (float)$totalDed,
                 (float)$r->net_salary
             ], null, 'A' . $rowIdx);
 
-            $sheet->getStyle('D'.$rowIdx.':N'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('D'.$rowIdx.':I'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
         // Totals Row
         $sheet->setCellValue('A' . $rowIdx, 'TOTAL');
-        for ($col = 'D'; $col <= 'N'; $col++) {
+        for ($col = 'D'; $col <= 'I'; $col++) {
             $sheet->setCellValue($col . $rowIdx, "=SUM({$col}8:{$col}" . ($rowIdx - 1) . ")");
         }
-        $sheet->getStyle('A'.$rowIdx.':N'.$rowIdx)->getFont()->setBold(true);
-        $sheet->getStyle('D'.$rowIdx.':N'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+        $sheet->getStyle('A'.$rowIdx.':I'.$rowIdx)->getFont()->setBold(true);
+        $sheet->getStyle('D'.$rowIdx.':I'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
 
-        self::applyTableBorders($sheet, 7, $rowIdx, 'N');
+        self::applyTableBorders($sheet, 7, $rowIdx, 'I');
         $sheet->setAutoFilter('A7:N7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
@@ -696,36 +686,27 @@ class PayrollExportService
         $sheet4->setTitle('Deduction Detail');
         self::applyTitleBlock($sheet4, 'Earnings & Deductions Reconciliation', $rangeLabel);
 
-        $headers4 = ['Employee ID', 'Employee Name', 'Gross Salary', 'Attendance Ded', 'Leave Ded', 'PF', 'ESI', 'Professional Tax', 'TDS', 'Total Deductions', 'Net Salary'];
+        $headers4 = ['Employee ID', 'Employee Name', 'Gross Salary', 'Attendance Ded', 'Total Deductions', 'Net Salary'];
         $sheet4->fromArray($headers4, null, 'A7');
-        self::applyHeaderStyles($sheet4, 'A7:K7');
+        self::applyHeaderStyles($sheet4, 'A7:F7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
-            $metadata = $r->calculation_metadata ?? [];
-            $pf = $metadata['pf'] ?? 0.00;
-            $esi = $metadata['esi'] ?? 0.00;
-            $pt = $metadata['prof_tax'] ?? $metadata['pt'] ?? 0.00;
-            $totalDed = $r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions;
+            $totalDed = $r->attendance_deductions;
 
             $sheet4->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
                 $user->name,
                 (float)$r->gross_salary,
                 (float)$r->attendance_deductions,
-                (float)$r->leave_deductions,
-                (float)$pf,
-                (float)$esi,
-                (float)$pt,
-                (float)$r->tax_deductions,
                 (float)$totalDed,
                 (float)$r->net_salary
             ], null, 'A' . $rowIdx);
-            $sheet4->getStyle('C'.$rowIdx.':K'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet4->getStyle('C'.$rowIdx.':F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
-        self::applyTableBorders($sheet4, 7, $rowIdx - 1, 'K');
+        self::applyTableBorders($sheet4, 7, $rowIdx - 1, 'F');
         $sheet4->setAutoFilter('A7:K7');
         $sheet4->freezePane('A8');
         self::autofit($sheet4);
@@ -770,21 +751,16 @@ class PayrollExportService
 
         $headers = [
             'Employee ID', 'Employee Name', 'Department', 'Designation', 'Base Salary', 
-            'Allowances', 'Overtime Pay', 'Gross Salary', 'PF', 'ESI', 'Professional Tax', 
-            'TDS', 'Attendance Ded', 'Leave Ded', 'Total Deductions', 'Net Salary'
+            'Allowances', 'Overtime Pay', 'Gross Salary', 'Attendance Ded', 'Total Deductions', 'Net Salary'
         ];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:P7');
+        self::applyHeaderStyles($sheet, 'A7:K7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
             $p = $user->employeeProfile;
-            $metadata = $r->calculation_metadata ?? [];
-            $pf = $metadata['pf'] ?? 0.00;
-            $esi = $metadata['esi'] ?? 0.00;
-            $pt = $metadata['prof_tax'] ?? $metadata['pt'] ?? 0.00;
-            $totalDed = $r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions;
+            $totalDed = $r->attendance_deductions;
 
             $sheet->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
@@ -795,20 +771,15 @@ class PayrollExportService
                 (float)$r->allowances,
                 (float)$r->overtime_pay,
                 (float)$r->gross_salary,
-                (float)$pf,
-                (float)$esi,
-                (float)$pt,
-                (float)$r->tax_deductions,
                 (float)$r->attendance_deductions,
-                (float)$r->leave_deductions,
                 (float)$totalDed,
                 (float)$r->net_salary
             ], null, 'A' . $rowIdx);
-            $sheet->getStyle('E'.$rowIdx.':P'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('E'.$rowIdx.':K'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
-        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'P');
+        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'K');
         $sheet->setAutoFilter('A7:P7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
@@ -832,8 +803,8 @@ class PayrollExportService
             $count = $rSubset->count();
             $base = (float)$rSubset->sum('base_salary');
             $gross = (float)$rSubset->sum('gross_salary');
-            $pfMatch = $base * 0.12;
-            $cost = $gross + $pfMatch;
+            $pfMatch = 0.00;
+            $cost = $gross;
             $net = (float)$rSubset->sum('net_salary');
 
             $sheet->fromArray([

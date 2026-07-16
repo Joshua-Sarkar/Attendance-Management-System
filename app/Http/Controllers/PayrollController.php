@@ -16,6 +16,7 @@ use App\Models\PayrollDispute;
 use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\DB;
 
 class PayrollController extends Controller
 {
@@ -24,7 +25,7 @@ class PayrollController extends Controller
      */
     public function index(Request $request)
     {
-        $period = $request->get('period', 'June 2026');
+        $period = $request->get('period', PayrollCycle::orderBy('start_date', 'desc')->value('period') ?: 'June 2026');
         $actor = auth()->user();
         
         $routeName = $request->route() ? $request->route()->getName() : 'admin.payroll.index';
@@ -68,6 +69,26 @@ class PayrollController extends Controller
         if (!$cycle) {
             $cycle = PayrollService::processCycle($period, $actor);
         }
+
+        $cycleInstances = PayrollCycle::orderBy('start_date', 'desc')->get()->map(function($c) {
+            $eligibleCount = \App\Services\PayrollEligibilityService::getEligibleEmployees($c->start_date->year, $c->start_date->month)->count();
+            $recordCount = $c->payrollRecords()->count();
+            $lockedCount = $c->payrollRecords()->where('locked', true)->count();
+            $paymentDay = (int) (\App\Models\PayrollSetting::getValue('payroll')['salaryPaymentDay'] ?? 7);
+            $paymentDate = $c->end_date->copy()->addMonth()->setDay($paymentDay);
+            
+            return [
+                'id' => $c->id,
+                'period' => $c->period,
+                'start_date' => $c->start_date->format('d M Y'),
+                'end_date' => $c->end_date->format('d M Y'),
+                'payment_date' => $paymentDate->format('d M Y'),
+                'status' => $c->status,
+                'eligible_count' => $eligibleCount,
+                'record_count' => $recordCount,
+                'locked_count' => $lockedCount,
+            ];
+        })->toArray();
 
         $reportFilter = $request->get('report_filter', 'current_cycle');
         $reportCycle = $request->get('report_cycle', $cycle->period);
@@ -239,6 +260,7 @@ class PayrollController extends Controller
                 'overtimePay' => (float)$r->overtime_pay,
                 'correctionStatus' => $correctionStatus,
                 'locked' => (bool)$r->locked,
+                'locked_at' => $r->locked_at ? $r->locked_at->format('d M, g:i A') : null,
                 'lastModified' => $r->last_modified_at ? $r->last_modified_at->format('d M, g:i A') : $r->updated_at->format('d M, g:i A'),
                 'modifiedBy' => $r->lastModifiedBy->name ?? 'System',
                 'importSource' => $user->payrollProfile->import_source ?? 'Zimyo Import',
@@ -279,9 +301,9 @@ class PayrollController extends Controller
                 'title' => 'General',
                 'desc' => 'Company profile and branding used across payroll documents.',
                 'fields' => [
-                    ['label' => 'Company name', 'hint' => 'Shown on payslips and reports', 'type' => 'text', 'value' => 'Venture Request'],
-                    ['label' => 'Default currency', 'hint' => 'Used across all payroll calculations', 'type' => 'text', 'value' => 'INR (₹)'],
-                    ['label' => 'Fiscal year start', 'hint' => 'Month the financial year begins', 'type' => 'text', 'value' => 'April'],
+                    ['key' => 'company_name', 'label' => 'Company name', 'hint' => 'Shown on payslips and reports', 'type' => 'text', 'value' => 'Venture Request'],
+                    ['key' => 'default_currency', 'label' => 'Default currency', 'hint' => 'Used across all payroll calculations', 'type' => 'text', 'value' => 'INR (₹)'],
+                    ['key' => 'fiscal_year_start', 'label' => 'Fiscal year start', 'hint' => 'Month the financial year begins', 'type' => 'text', 'value' => 'April'],
                 ]
             ],
             [
@@ -289,10 +311,10 @@ class PayrollController extends Controller
                 'title' => 'Employee Lifecycle Policy',
                 'desc' => 'BRS §1 — governs when Probation employees auto-promote to Permanent. The Lifecycle Engine reads only these values.',
                 'fields' => [
-                    ['label' => 'Probation duration', 'hint' => 'Employment Duration below this = Probation', 'type' => 'text', 'value' => PayrollSetting::getValue('lifecycle')['probationDays'] . ' days'],
-                    ['label' => 'Auto-promote on expiry', 'hint' => 'AMS changes category automatically — no manual step', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('lifecycle')['autoPromote']],
-                    ['label' => 'Probation paid-leave balance', 'hint' => 'Leave balance granted during probation', 'type' => 'text', 'value' => (string)PayrollSetting::getValue('lifecycle')['probationLeaveBalance']],
-                    ['label' => 'Probation payroll cycle', 'hint' => 'Cycle used before day 90', 'type' => 'text', 'value' => PayrollSetting::getValue('lifecycle')['probationPayrollCycle']],
+                    ['key' => 'probationDays', 'label' => 'Probation duration', 'hint' => 'Employment Duration below this = Probation (in days)', 'type' => 'number', 'value' => (int)PayrollSetting::getValue('lifecycle')['probationDays']],
+                    ['key' => 'autoPromote', 'label' => 'Auto-promote on expiry', 'hint' => 'AMS changes category automatically — no manual step', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('lifecycle')['autoPromote']],
+                    ['key' => 'probationLeaveBalance', 'label' => 'Probation paid-leave balance', 'hint' => 'Leave balance granted during probation', 'type' => 'number', 'value' => (float)PayrollSetting::getValue('lifecycle')['probationLeaveBalance']],
+                    ['key' => 'probationPayrollCycle', 'label' => 'Probation payroll cycle', 'hint' => 'Cycle used before day 90', 'type' => 'select', 'options' => [['value' => '20th-to-20th', 'label' => '20th to 20th']], 'value' => PayrollSetting::getValue('lifecycle')['probationPayrollCycle']],
                 ]
             ],
             [
@@ -309,14 +331,14 @@ class PayrollController extends Controller
                 }, PayrollSetting::getValue('shifts'))
             ],
             [
-                'id' => 'cycle',
+                'id' => 'cycle', // maps to 'payroll' setting key in database
                 'title' => 'Payroll Cycle',
                 'desc' => 'BRS §12–13 — cycle length and disbursement date, independent of employee category.',
                 'fields' => [
-                    ['label' => 'Permanent employee cycle', 'hint' => 'Calendar month, 1st to last day', 'type' => 'text', 'value' => PayrollSetting::getValue('payroll')['permanentCycle']],
-                    ['label' => 'Probation employee cycle', 'hint' => 'Bridges into calendar-month cycle at day 90', 'type' => 'text', 'value' => PayrollSetting::getValue('payroll')['probationCycle']],
-                    ['label' => 'Salary payment date', 'hint' => 'Day of month every employee is paid', 'type' => 'text', 'value' => PayrollSetting::getValue('payroll')['salaryPaymentDay'] . 'th'],
-                    ['label' => 'Auto-lock on cycle end', 'hint' => 'Locks payroll automatically after payment date', 'type' => 'toggle', 'value' => false],
+                    ['key' => 'permanentCycle', 'label' => 'Permanent employee cycle', 'hint' => 'Calendar month, 1st to last day', 'type' => 'select', 'options' => [['value' => 'calendar-month', 'label' => 'Calendar Month (1st to last day)'], ['value' => '20th-to-20th', 'label' => '20th to 20th']], 'value' => PayrollSetting::getValue('payroll')['permanentCycle']],
+                    ['key' => 'probationCycle', 'label' => 'Probation employee cycle', 'hint' => 'Bridges into calendar-month cycle at day 90', 'type' => 'select', 'options' => [['value' => '20th-to-20th', 'label' => '20th to 20th'], ['value' => 'calendar-month', 'label' => 'Calendar Month (1st to last day)']], 'value' => PayrollSetting::getValue('payroll')['probationCycle']],
+                    ['key' => 'salaryPaymentDay', 'label' => 'Salary payment date', 'hint' => 'Day of month every employee is paid', 'type' => 'select', 'options' => array_map(fn($d) => ['value' => $d, 'label' => $d . 'th'], range(1, 28)), 'value' => (int)PayrollSetting::getValue('payroll')['salaryPaymentDay']],
+                    ['key' => 'autoLock', 'label' => 'Auto-lock on cycle end', 'hint' => 'Locks payroll automatically after payment date', 'type' => 'toggle', 'value' => (bool)(PayrollSetting::getValue('payroll')['autoLock'] ?? false)],
                 ]
             ],
             [
@@ -324,10 +346,10 @@ class PayrollController extends Controller
                 'title' => 'Attendance Policy',
                 'desc' => 'BRS §3–5 — governs working days, resolution order, and thresholds.',
                 'fields' => [
-                    ['label' => 'Working days', 'hint' => 'Standard working days per week', 'type' => 'text', 'value' => implode(', ', PayrollSetting::getValue('workWeek')['workingDays'])],
-                    ['label' => 'Weekly off', 'hint' => 'Treat as weekly off', 'type' => 'text', 'value' => implode(', ', PayrollSetting::getValue('workWeek')['weeklyOff'])],
-                    ['label' => 'Minimum hours for Present', 'hint' => 'Below this, day auto-resolves to Half Day', 'type' => 'text', 'value' => PayrollSetting::getValue('attendance')['minWorkingHoursForPresent'] . 'h'],
-                    ['label' => 'Late auto-converts to Half Day', 'hint' => 'Unless manually overridden by an administrator', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('attendance')['autoHalfDayOnLateArrival']],
+                    ['key' => 'workingDays', 'label' => 'Working days', 'hint' => 'Standard working days per week', 'type' => 'text', 'value' => implode(', ', PayrollSetting::getValue('workWeek')['workingDays'])],
+                    ['key' => 'weeklyOff', 'label' => 'Weekly off', 'hint' => 'Treat as weekly off', 'type' => 'text', 'value' => implode(', ', PayrollSetting::getValue('workWeek')['weeklyOff'])],
+                    ['key' => 'minWorkingHoursForPresent', 'label' => 'Minimum hours for Present', 'hint' => 'Below this, day auto-resolves to Half Day', 'type' => 'number', 'value' => (int)PayrollSetting::getValue('attendance')['minWorkingHoursForPresent']],
+                    ['key' => 'autoHalfDayOnLateArrival', 'label' => 'Late auto-converts to Half Day', 'hint' => 'Unless manually overridden by an administrator', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('attendance')['autoHalfDayOnLateArrival']],
                 ]
             ],
             [
@@ -343,14 +365,14 @@ class PayrollController extends Controller
                 'title' => 'Leave Policy',
                 'desc' => 'BRS §7–9 — Planned, Unplanned, and Birthday Leave rules.',
                 'fields' => [
-                    ['label' => 'Monthly leave credit (Permanent)', 'hint' => 'Credited on the 1st of every month', 'type' => 'text', 'value' => '+' . PayrollSetting::getValue('leave')['monthlyCreditAmount'] . ' leaves'],
-                    ['label' => 'Unplanned leave — future dates', 'hint' => 'Only Today and Past dates are allowed', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['unplanned']['allowFutureDates']],
-                    ['label' => 'Birthday Leave eligibility', 'hint' => 'Days before birthday the credit appears', 'type' => 'text', 'value' => PayrollSetting::getValue('leave')['birthday']['eligibleFromDaysBefore'] . ' day before'],
-                    ['label' => 'Birthday Leave auto-approved', 'hint' => 'Never consumes standard balance', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['birthday']['autoApproved']],
-                    ['label' => 'Half Day Planned consumption', 'hint' => 'Fraction of Planned Leave balance consumed', 'type' => 'text', 'value' => (string)PayrollSetting::getValue('leave')['halfDayPlanned']['consumes']],
-                    ['label' => 'Half Day Unplanned consumption', 'hint' => 'Fraction of Unplanned Leave balance consumed', 'type' => 'text', 'value' => (string)PayrollSetting::getValue('leave')['halfDayUnplanned']['consumes']],
-                    ['label' => 'Reject over-balance requests immediately', 'hint' => 'Bypass request creation if it exceeds balance', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['rejectOverBalanceImmediately']],
-                    ['label' => 'Paid leave carry-forward', 'hint' => 'Unused paid leave rolls to next cycle', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['carryForward']],
+                    ['key' => 'monthlyCreditAmount', 'label' => 'Monthly leave credit (Permanent)', 'hint' => 'Credited on the 1st of every month', 'type' => 'number', 'value' => (int)PayrollSetting::getValue('leave')['monthlyCreditAmount']],
+                    ['key' => 'allowFutureDates', 'label' => 'Unplanned leave — future dates', 'hint' => 'Only Today and Past dates are allowed', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['unplanned']['allowFutureDates']],
+                    ['key' => 'eligibleFromDaysBefore', 'label' => 'Birthday Leave eligibility', 'hint' => 'Days before birthday the credit appears', 'type' => 'number', 'value' => (int)PayrollSetting::getValue('leave')['birthday']['eligibleFromDaysBefore']],
+                    ['key' => 'autoApproved', 'label' => 'Birthday Leave auto-approved', 'hint' => 'Never consumes standard balance', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['birthday']['autoApproved']],
+                    ['key' => 'halfDayPlannedConsumes', 'label' => 'Half Day Planned consumption', 'hint' => 'Fraction of Planned Leave balance consumed', 'type' => 'number', 'step' => '0.1', 'value' => (float)PayrollSetting::getValue('leave')['halfDayPlanned']['consumes']],
+                    ['key' => 'halfDayUnplannedConsumes', 'label' => 'Half Day Unplanned consumption', 'hint' => 'Fraction of Unplanned Leave balance consumed', 'type' => 'number', 'step' => '0.1', 'value' => (float)PayrollSetting::getValue('leave')['halfDayUnplanned']['consumes']],
+                    ['key' => 'rejectOverBalanceImmediately', 'label' => 'Reject over-balance requests immediately', 'hint' => 'Bypass request creation if it exceeds balance', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['rejectOverBalanceImmediately']],
+                    ['key' => 'carryForward', 'label' => 'Paid leave carry-forward', 'hint' => 'Unused paid leave rolls to next cycle', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('leave')['carryForward']],
                 ]
             ],
             [
@@ -358,36 +380,9 @@ class PayrollController extends Controller
                 'title' => 'Overtime Rules',
                 'desc' => 'How extra hours convert into overtime pay.',
                 'fields' => [
-                    ['label' => 'Overtime rate multiplier', 'hint' => 'Applied to hourly rate beyond standard hours', 'type' => 'text', 'value' => PayrollSetting::getValue('overtime')['multiplier'] ?? '1.5x'],
-                    ['label' => 'Overtime eligibility', 'hint' => 'Minimum hours before overtime accrues', 'type' => 'text', 'value' => PayrollSetting::getValue('overtime')['eligibility'] ?? '8h/day'],
-                    ['label' => 'Cap overtime hours per cycle', 'hint' => 'Maximum OT hours counted per employee', 'type' => 'text', 'value' => PayrollSetting::getValue('overtime')['cap'] ?? '30h'],
-                ]
-            ],
-            [
-                'id' => 'pf',
-                'title' => 'Provident Fund (PF)',
-                'desc' => 'Employer and employee PF contribution settings.',
-                'fields' => [
-                    ['label' => 'Employee PF rate', 'hint' => 'Percentage of basic salary', 'type' => 'text', 'value' => PayrollSetting::getValue('pf')['employee_rate'] . '%'],
-                    ['label' => 'PF applicable above wage ceiling', 'hint' => 'Apply PF even above statutory ceiling (15,000)', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('pf')['applicable_above_wage_ceiling']],
-                ]
-            ],
-            [
-                'id' => 'esi',
-                'title' => 'ESI',
-                'desc' => 'Employee State Insurance contribution settings.',
-                'fields' => [
-                    ['label' => 'ESI eligibility ceiling', 'hint' => 'Gross salary below which ESI applies', 'type' => 'text', 'value' => '₹' . PayrollSetting::getValue('esi')['eligibility_ceiling']],
-                    ['label' => 'Employee ESI rate', 'hint' => 'Percentage of gross salary', 'type' => 'text', 'value' => PayrollSetting::getValue('esi')['employee_rate'] . '%'],
-                ]
-            ],
-            [
-                'id' => 'ptax',
-                'title' => 'Professional Tax',
-                'desc' => 'State-mandated professional tax slabs.',
-                'fields' => [
-                    ['label' => 'State', 'hint' => 'Determines applicable slab', 'type' => 'text', 'value' => PayrollSetting::getValue('ptax')['state'] ?? 'Uttarakhand'],
-                    ['label' => 'Monthly professional tax', 'hint' => 'Flat deduction per employee', 'type' => 'text', 'value' => '₹' . PayrollSetting::getValue('ptax')['monthly_professional_tax']],
+                    ['key' => 'multiplier', 'label' => 'Overtime rate multiplier', 'hint' => 'Applied to hourly rate beyond standard hours', 'type' => 'number', 'step' => '0.1', 'value' => (float)(PayrollSetting::getValue('overtime')['multiplier'] ?? 1.5)],
+                    ['key' => 'eligibility', 'label' => 'Overtime eligibility', 'hint' => 'Minimum hours before overtime accrues', 'type' => 'number', 'value' => (int)(PayrollSetting::getValue('overtime')['eligibility'] ?? 8)],
+                    ['key' => 'cap', 'label' => 'Cap overtime hours per cycle', 'hint' => 'Maximum OT hours counted per employee', 'type' => 'number', 'value' => (int)(PayrollSetting::getValue('overtime')['cap'] ?? 30)],
                 ]
             ],
             [
@@ -402,8 +397,8 @@ class PayrollController extends Controller
                 'title' => 'Lock Rules',
                 'desc' => 'Constraints applied when locking a cycle.',
                 'fields' => [
-                    ['label' => 'Exclude unresolved corrections from lock', 'hint' => 'Flagged employees block lock if unresolved', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('lock')['excludeUnresolvedFromLock']],
-                    ['label' => 'Require dual sign-off to unlock', 'hint' => 'Two admins must approve any post-lock unlock', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('lock')['requireDualSignoffToUnlock']],
+                    ['key' => 'excludeUnresolvedFromLock', 'label' => 'Exclude unresolved corrections from lock', 'hint' => 'Flagged employees block lock if unresolved', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('lock')['excludeUnresolvedFromLock']],
+                    ['key' => 'requireDualSignoffToUnlock', 'label' => 'Require dual sign-off to unlock', 'hint' => 'Two admins must approve any post-lock unlock', 'type' => 'toggle', 'value' => (bool)PayrollSetting::getValue('lock')['requireDualSignoffToUnlock']],
                 ]
             ]
         ];
@@ -678,7 +673,7 @@ class PayrollController extends Controller
             ['label' => 'Payroll Completion', 'value' => ($records->count() > 0 ? round(($records->whereIn('status', ['approved', 'locked'])->count() / $records->count()) * 100) : 0) . '%', 'sub' => 'Of cycle processed'],
             ['label' => 'Gross Payroll', 'value' => '₹' . round($grossSum / 100000, 1) . 'L', 'sub' => 'Before deductions'],
             ['label' => 'Net Payroll', 'value' => '₹' . round($netSum / 100000, 1) . 'L', 'sub' => 'After all deductions', 'tone' => 'forest'],
-            ['label' => 'Deductions', 'value' => '₹' . round($dedSum / 100000, 1) . 'L', 'sub' => 'Tax, PF, ESI', 'tone' => 'oxblood'],
+            ['label' => 'Deductions', 'value' => '₹' . round($dedSum / 100000, 1) . 'L', 'sub' => 'Attendance Deductions', 'tone' => 'oxblood'],
             ['label' => 'Average Salary', 'value' => '₹' . number_format($avgNet), 'sub' => 'Net, per employee'],
             ['label' => 'Average Attendance', 'value' => $avgAttGlobal . '%', 'sub' => 'Across all departments'],
             ['label' => 'Average Overtime', 'value' => $avgOTGlobal . 'h', 'sub' => 'Per employee this cycle'],
@@ -695,7 +690,8 @@ class PayrollController extends Controller
             'reports' => $reports,
             'kpis' => $kpis,
             'pipeline' => $pipeline,
-            'allPeriods' => ['June 2026', 'July 2026', 'August 2026', 'September 2026'],
+            'allPeriods' => PayrollCycle::orderBy('start_date', 'desc')->pluck('period')->toArray() ?: ['June 2026'],
+            'cycleInstances' => $cycleInstances,
             'activeTab' => $activeTab,
             'reportFilter' => $reportFilter,
             'reportCycle' => $reportCycle,
@@ -993,6 +989,10 @@ class PayrollController extends Controller
         $record = PayrollRecord::findOrFail($id);
         $actor = auth()->user();
 
+        if ($actor->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized actor. Only admins can unlock payroll records.'], 403);
+        }
+
         if (!$record->locked) {
             return response()->json(['success' => true, 'message' => 'Record is already unlocked.']);
         }
@@ -1000,6 +1000,31 @@ class PayrollController extends Controller
         PayrollService::unlockRecord($record, $request->input('reason'), $actor);
 
         return response()->json(['success' => true, 'message' => 'Record unlocked successfully.']);
+    }
+
+    /**
+     * Admin reopens an employee's payroll record.
+     */
+    public function recordReopen(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string|min:5',
+        ]);
+
+        $record = PayrollRecord::findOrFail($id);
+        $actor = auth()->user();
+
+        if ($actor->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized actor. Only admins can reopen payroll records.'], 403);
+        }
+
+        if (!$record->locked) {
+            return response()->json(['success' => false, 'message' => 'Record is not locked.']);
+        }
+
+        PayrollService::reopenRecord($record, $request->input('reason'), $actor);
+
+        return response()->json(['success' => true, 'message' => 'Record reopened and recalculated successfully.']);
     }
 
     /**
@@ -1154,6 +1179,7 @@ class PayrollController extends Controller
     public function settingsPreview(Request $request)
     {
         $group = $request->input('group');
+        $groupKey = $group === 'cycle' ? 'payroll' : $group;
         $fields = $request->input('fields', []);
         $period = $request->input('period', 'June 2026');
 
@@ -1176,15 +1202,39 @@ class PayrollController extends Controller
         $netDelta = 0.00;
         $staleApprovalsCount = 0;
 
-        $oldSettings = PayrollSetting::getValue($group, []);
+        $oldSettings = PayrollSetting::getValue($groupKey, []);
         $mockSettings = $oldSettings;
         foreach ($fields as $k => $v) {
             if ($v === 'true') $v = true;
             if ($v === 'false') $v = false;
-            $mockSettings[$k] = $v;
+            if (is_numeric($v)) {
+                if (str_contains($v, '.')) {
+                    $v = (float)$v;
+                } else {
+                    $v = (int)$v;
+                }
+            }
+
+            if ($groupKey === 'leave') {
+                if ($k === 'allowFutureDates') {
+                    $mockSettings['unplanned']['allowFutureDates'] = $v;
+                } elseif ($k === 'eligibleFromDaysBefore') {
+                    $mockSettings['birthday']['eligibleFromDaysBefore'] = $v;
+                } elseif ($k === 'autoApproved') {
+                    $mockSettings['birthday']['autoApproved'] = $v;
+                } elseif ($k === 'halfDayPlannedConsumes') {
+                    $mockSettings['halfDayPlanned']['consumes'] = $v;
+                } elseif ($k === 'halfDayUnplannedConsumes') {
+                    $mockSettings['halfDayUnplanned']['consumes'] = $v;
+                } else {
+                    $mockSettings[$k] = $v;
+                }
+            } else {
+                $mockSettings[$k] = $v;
+            }
         }
 
-        PayrollSetting::setValue($group, $mockSettings);
+        PayrollSetting::setValue($groupKey, $mockSettings);
 
         try {
             foreach ($records as $r) {
@@ -1210,7 +1260,7 @@ class PayrollController extends Controller
                 }
             }
         } finally {
-            PayrollSetting::setValue($group, $oldSettings);
+            PayrollSetting::setValue($groupKey, $oldSettings);
         }
 
         return response()->json([
@@ -1229,22 +1279,47 @@ class PayrollController extends Controller
     public function settingsSaveRecalculate(Request $request)
     {
         $group = $request->input('group');
+        $groupKey = $group === 'cycle' ? 'payroll' : $group;
         $fields = $request->input('fields', []);
         $period = $request->input('period', 'June 2026');
 
-        $policy = PayrollSetting::getValue($group, []);
+        $policy = PayrollSetting::getValue($groupKey, []);
         foreach ($fields as $key => $val) {
             if ($val === 'true') $val = true;
             if ($val === 'false') $val = false;
-            $policy[$key] = $val;
+            if (is_numeric($val)) {
+                if (str_contains($val, '.')) {
+                    $val = (float)$val;
+                } else {
+                    $val = (int)$val;
+                }
+            }
+
+            if ($groupKey === 'leave') {
+                if ($key === 'allowFutureDates') {
+                    $policy['unplanned']['allowFutureDates'] = $val;
+                } elseif ($key === 'eligibleFromDaysBefore') {
+                    $policy['birthday']['eligibleFromDaysBefore'] = $val;
+                } elseif ($key === 'autoApproved') {
+                    $policy['birthday']['autoApproved'] = $val;
+                } elseif ($key === 'halfDayPlannedConsumes') {
+                    $policy['halfDayPlanned']['consumes'] = $val;
+                } elseif ($key === 'halfDayUnplannedConsumes') {
+                    $policy['halfDayUnplanned']['consumes'] = $val;
+                } else {
+                    $policy[$key] = $val;
+                }
+            } else {
+                $policy[$key] = $val;
+            }
         }
 
-        PayrollSetting::setValue($group, $policy);
+        PayrollSetting::setValue($groupKey, $policy);
 
         PayrollAuditLog::record(
             null,
             auth()->id(),
-            "Saved & Recalculated config policy parameters for {$group}.",
+            "Saved & Recalculated config policy parameters for {$groupKey}.",
             "Settings",
             null,
             json_encode($policy)
@@ -1381,5 +1456,144 @@ class PayrollController extends Controller
             $range['label'],
             $cycle
         );
+    }
+
+    /**
+     * Preview the next payroll cycle before opening it.
+     */
+    public function previewNextCycle(Request $request)
+    {
+        $latestCycle = PayrollCycle::orderBy('start_date', 'desc')->first();
+        if (!$latestCycle) {
+            $nextPeriodDate = Carbon::create(2026, 6, 1);
+        } else {
+            $nextPeriodDate = Carbon::parse($latestCycle->period)->addMonth();
+        }
+        $nextPeriod = $nextPeriodDate->format('F Y');
+
+        $year = $nextPeriodDate->year;
+        $month = $nextPeriodDate->month;
+
+        $startDate = Carbon::create($year, $month, 1)->startOfDay();
+        $endDate = $startDate->copy()->endOfMonth()->startOfDay();
+        $paymentDay = (int) (\App\Models\PayrollSetting::getValue('payroll')['salaryPaymentDay'] ?? 7);
+        $paymentDate = $endDate->copy()->addMonth()->setDay($paymentDay)->startOfDay();
+
+        // Eligible employees
+        $eligibleUsers = \App\Services\PayrollEligibilityService::getEligibleEmployees($year, $month);
+        
+        $newlyEntering = [];
+        $excluded = [];
+
+        $allPayrollUsers = User::where('role', '!=', 'admin')
+            ->whereHas('payrollProfile', function ($query) {
+                $query->where('payroll_enabled', true);
+            })
+            ->get();
+
+        foreach ($allPayrollUsers as $user) {
+            $isEligible = $eligibleUsers->contains('id', $user->id);
+            if ($isEligible) {
+                $hadPrevious = false;
+                if ($latestCycle) {
+                    $hadPrevious = PayrollRecord::where('payroll_cycle_id', $latestCycle->id)
+                        ->where('user_id', $user->id)
+                        ->exists();
+                }
+                if (!$hadPrevious) {
+                    $newlyEntering[] = [
+                        'name' => $user->name,
+                        'employee_id' => $user->employee_id ?? 'EMP-' . $user->id,
+                        'joining_date' => $user->joining_date ? Carbon::parse($user->joining_date)->format('d M Y') : '—',
+                    ];
+                }
+            } else {
+                $reason = 'Excluded by payroll policy';
+                $joiningDate = $user->joining_date;
+                if ($joiningDate) {
+                    $joiningDate = Carbon::parse($joiningDate)->startOfDay();
+                    if ($joiningDate->gt($endDate)) {
+                        $reason = 'Joined after cycle ended (' . $joiningDate->format('d M Y') . ')';
+                    }
+                }
+                
+                $profile = $user->employeeProfile;
+                if ($profile) {
+                    $separationDate = $profile->separation_date ?? $profile->last_working_day;
+                    if ($separationDate) {
+                        $separationDate = Carbon::parse($separationDate)->startOfDay();
+                        if ($separationDate->lt($startDate)) {
+                            $reason = 'Separated before cycle started (' . $separationDate->format('d M Y') . ')';
+                        }
+                    }
+                }
+
+                if (!$user->payrollProfile || !$user->payrollProfile->payroll_enabled) {
+                    $reason = 'Payroll disabled';
+                }
+
+                $excluded[] = [
+                    'name' => $user->name,
+                    'employee_id' => $user->employee_id ?? 'EMP-' . $user->id,
+                    'reason' => $reason,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'period' => $nextPeriod,
+            'start_date' => $startDate->format('d M Y'),
+            'end_date' => $endDate->format('d M Y'),
+            'payment_date' => $paymentDate->format('d M Y'),
+            'eligible_count' => $eligibleUsers->count(),
+            'newly_entering' => $newlyEntering,
+            'excluded' => $excluded,
+        ]);
+    }
+
+    /**
+     * Create / Open the next payroll cycle.
+     */
+    public function createNextCycle(Request $request)
+    {
+        $actor = auth()->user();
+        
+        $nextPeriod = $request->input('period');
+        if (!$nextPeriod) {
+            $latestCycle = PayrollCycle::orderBy('start_date', 'desc')->first();
+            if (!$latestCycle) {
+                $nextPeriodDate = Carbon::create(2026, 6, 1);
+            } else {
+                $nextPeriodDate = Carbon::parse($latestCycle->period)->addMonth();
+            }
+            $nextPeriod = $nextPeriodDate->format('F Y');
+        }
+
+        $cycle = PayrollCycle::where('period', $nextPeriod)->first();
+        if ($cycle) {
+            return response()->json([
+                'success' => true,
+                'message' => "Payroll cycle {$nextPeriod} already exists.",
+                'period' => $nextPeriod,
+            ]);
+        }
+
+        DB::transaction(function () use ($nextPeriod, $actor) {
+            PayrollService::processCycle($nextPeriod, $actor);
+        });
+
+        PayrollAuditLog::record(
+            null,
+            $actor->id,
+            "Created/Opened new payroll cycle instance: {$nextPeriod}",
+            "Cycle"
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Payroll cycle {$nextPeriod} created and employee records generated successfully.",
+            'period' => $nextPeriod,
+        ]);
     }
 }

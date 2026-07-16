@@ -263,46 +263,20 @@ class PayrollService
             $grossSalary = $proratedBaseSalary + $allowances + $overtimePay + $bonuses;
         }
 
-        // Statutory Deductions:
-        // 1. PF
-        $pfPolicy = PayrollSetting::getValue('pf');
-        $pfRate = (float) ($pfPolicy['employee_rate'] ?? 12) / 100;
-        $pfCeiling = 15000.00;
-        $pfAppliesAboveCeiling = filter_var($pfPolicy['applicable_above_wage_ceiling'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        
-        $pfBasis = $proratedBaseSalary;
-        if (!$pfAppliesAboveCeiling && $pfBasis > $pfCeiling) {
-            $pf = round($pfCeiling * $pfRate, 2);
-        } else {
-            $pf = round($pfBasis * $pfRate, 2);
-        }
+        // Statutory Deductions (Removed/Zeroed out for simplified model)
+        $pf = 0.00;
+        $esi = 0.00;
+        $pt = 0.00;
+        $statutoryDeductions = 0.00;
 
-        // 2. ESI
-        $esiPolicy = PayrollSetting::getValue('esi');
-        $esiCeiling = (float) ($esiPolicy['eligibility_ceiling'] ?? 21000);
-        $esiRate = (float) ($esiPolicy['employee_rate'] ?? 0.75) / 100;
-        
-        if ($grossSalary <= $esiCeiling) {
-            $esi = round($grossSalary * $esiRate, 2);
-        } else {
-            $esi = 0.00;
-        }
+        // Tax Deductions / TDS (Removed/Zeroed out for simplified model)
+        $taxDeductions = 0.00;
 
-        // 3. Professional Tax
-        $ptPolicy = PayrollSetting::getValue('ptax');
-        $pt = (float) ($ptPolicy['monthly_professional_tax'] ?? 200);
+        // Leave Deductions (Removed/Zeroed out - merged into attendance deductions)
+        $leaveDeductions = 0.00;
 
-        $statutoryDeductions = $pf + $esi + $pt;
-
-        // Tax Deductions (TDS):
-        $tdsRate = 0.05; // Default 5% TDS
-        $taxDeductions = round(($grossSalary - $attendanceDeductions - $leaveDeductions) * $tdsRate, 2);
-        if ($taxDeductions < 0) {
-            $taxDeductions = 0.00;
-        }
-
-        // Calculate Net Salary
-        $netSalary = $grossSalary - $attendanceDeductions - $leaveDeductions - $statutoryDeductions - $taxDeductions;
+        // Calculate Net Salary using active simplified model
+        $netSalary = $grossSalary - $attendanceDeductions;
         if ($netSalary < 0) {
             $netSalary = 0.00;
         }
@@ -415,6 +389,7 @@ class PayrollService
                 $employeeApprovedAt = null;
                 $adminApprovedAt = null;
                 $adminApprovedById = null;
+                $historicalApprovals = [];
 
                 if ($record) {
                     $version = $record->calculation_version ?: 1;
@@ -422,9 +397,27 @@ class PayrollService
                     $employeeApprovedAt = $record->employee_approved_at;
                     $adminApprovedAt = $record->admin_approved_at;
                     $adminApprovedById = $record->admin_approved_by_id;
+                    $historicalApprovals = $record->calculation_metadata['historical_approvals'] ?? [];
 
                     if ($record->fingerprint && $record->fingerprint !== $newFingerprint) {
                         $version++;
+
+                        if ($record->employee_review_status === 'approved') {
+                            $historicalApprovals[] = [
+                                'type' => 'employee',
+                                'version' => $record->calculation_version,
+                                'approved_at' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
+                            ];
+                        }
+                        if ($record->admin_approved_at !== null) {
+                            $historicalApprovals[] = [
+                                'type' => 'admin',
+                                'version' => $record->calculation_version,
+                                'approved_at' => $record->admin_approved_at->toDateTimeString(),
+                                'approved_by_id' => $record->admin_approved_by_id,
+                            ];
+                        }
+
                         $employeeReviewStatus = 'stale';
                         $employeeApprovedAt = null;
                         $adminApprovedAt = null;
@@ -495,6 +488,8 @@ class PayrollService
                         'hourly_rate' => $calc['hourly_rate'],
                         'calendar_days' => $calc['calendar_days'],
                         'fingerprint_inputs' => $fingerprintInputs,
+                        'historical_approvals' => $historicalApprovals,
+                        'reopen_history' => $record ? ($record->calculation_metadata['reopen_history'] ?? []) : [],
                     ],
                 ];
 
@@ -737,16 +732,31 @@ class PayrollService
      */
     public static function updateProfile(User $user, array $data): void
     {
+        $baseSalary = isset($data['base_salary']) && $data['base_salary'] !== '' ? (float) $data['base_salary'] : null;
+        $effectiveDate = isset($data['salary_effective_date']) && $data['salary_effective_date'] !== '' ? $data['salary_effective_date'] : null;
+        $payrollEnabled = filter_var($data['payroll_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $resolvedEffective = $effectiveDate ?? now()->format('Y-m-d');
+        $effectiveDateObj = \Carbon\Carbon::parse($resolvedEffective)->startOfDay();
+
+        // Check if a locked payroll overlaps or follows the effective date
+        $lockedRecord = PayrollRecord::where('user_id', $user->id)
+            ->where('locked', true)
+            ->whereHas('payrollCycle', function ($q) use ($effectiveDateObj) {
+                $q->where('end_date', '>=', $effectiveDateObj->format('Y-m-d'));
+            })
+            ->first();
+
+        if ($lockedRecord) {
+            throw new \Exception("Cannot modify salary. A locked payroll record exists for this employee after or overlapping the effective date.");
+        }
+
         $profile = $user->payrollProfile()->firstOrCreate([], [
             'base_salary' => null,
             'salary_effective_date' => null,
             'payroll_enabled' => false,
             'import_source' => 'Manual',
         ]);
-
-        $baseSalary = isset($data['base_salary']) && $data['base_salary'] !== '' ? (float) $data['base_salary'] : null;
-        $effectiveDate = isset($data['salary_effective_date']) && $data['salary_effective_date'] !== '' ? $data['salary_effective_date'] : null;
-        $payrollEnabled = filter_var($data['payroll_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $oldSalary = $profile->base_salary !== null ? (float) $profile->base_salary : null;
         $oldDate = $profile->salary_effective_date !== null ? $profile->salary_effective_date->format('Y-m-d') : null;
@@ -1273,31 +1283,83 @@ class PayrollService
     }
 
     /**
-     * Unlock a specific locked payroll record.
+     * Unlock a specific locked payroll record (delegates to reopenRecord).
      */
     public static function unlockRecord(PayrollRecord $record, string $reason, User $actor): void
     {
-        DB::transaction(function () use ($record, $actor) {
+        self::reopenRecord($record, $reason, $actor);
+    }
+
+    /**
+     * Reopen a locked payroll record, preserving approvals/versions/fingerprint in history,
+     * invalidating active approvals, revoking payslips, and triggering a fresh recalculation.
+     */
+    public static function reopenRecord(PayrollRecord $record, string $reason, User $actor): void
+    {
+        DB::transaction(function () use ($record, $reason, $actor) {
+            $oldVersion = $record->calculation_version ?? 1;
+            $oldFingerprint = $record->fingerprint;
+            $oldNet = $record->net_salary;
+            $oldLockedAt = $record->locked_at;
+            $oldLockedById = $record->locked_by_id;
+            $oldEmployeeApprovedAt = $record->employee_approved_at;
+            $oldAdminApprovedAt = $record->admin_approved_at;
+            $oldAdminApprovedById = $record->admin_approved_by_id;
+            $oldPayslipStatus = $record->payslip_status;
+
+            // Preserve old lock and approval details in calculation_metadata
+            $metadata = $record->calculation_metadata ?? [];
+            
+            // Reopen history log array
+            $reopenHistory = $metadata['reopen_history'] ?? [];
+            $reopenHistory[] = [
+                'reopened_at' => now()->toDateTimeString(),
+                'reopened_by_id' => $actor->id,
+                'reopened_by_name' => $actor->name,
+                'reason' => $reason,
+                'old_version' => $oldVersion,
+                'old_fingerprint' => $oldFingerprint,
+                'old_net_salary' => $oldNet,
+                'old_employee_approved_at' => $oldEmployeeApprovedAt ? $oldEmployeeApprovedAt->toDateTimeString() : null,
+                'old_admin_approved_at' => $oldAdminApprovedAt ? $oldAdminApprovedAt->toDateTimeString() : null,
+                'old_admin_approved_by_id' => $oldAdminApprovedById,
+                'old_locked_at' => $oldLockedAt ? $oldLockedAt->toDateTimeString() : null,
+                'old_locked_by_id' => $oldLockedById,
+                'old_payslip_status' => $oldPayslipStatus,
+            ];
+            $metadata['reopen_history'] = $reopenHistory;
+
+            // Mark old payslip as revoked, reset approvals and unlocked status
             $record->update([
                 'locked' => false,
                 'locked_at' => null,
                 'locked_by_id' => null,
                 'locked_snapshot' => null,
-                'status' => 'approved',
-                'payslip_status' => 'pending',
+                'calculation_version' => $oldVersion + 1,
+                'employee_review_status' => 'pending',
+                'employee_approved_at' => null,
+                'admin_approved_at' => null,
+                'admin_approved_by_id' => null,
+                'status' => 'pending',
+                'payslip_status' => 'revoked', // mark old payslip as revoked
                 'payslip_generated_at' => null,
                 'payslip_published_at' => null,
+                'calculation_metadata' => $metadata,
             ]);
 
+            // Record detailed audit trail log
             PayrollAuditLog::record(
                 $record->user_id,
                 $actor->id,
-                "Unlocked employee payroll record. Reason: {$reason}",
-                "Overrides",
+                "Payroll reopened: Previous version v{$oldVersion} (fingerprint: {$oldFingerprint}, net: Rs. {$oldNet}, locked). Approvals invalidated. Payslip revoked.",
+                "Unlock",
                 "locked",
                 "unlocked",
                 $reason
             );
+
+            // Recalculate against current canonical data
+            self::recalculateRecord($record, $actor);
         });
     }
 }

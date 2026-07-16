@@ -148,6 +148,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/payroll/records/{id}/approve', [\App\Http\Controllers\PayrollController::class, 'recordApprove'])->name('admin.payroll.records.approve');
         Route::post('/admin/payroll/records/{id}/lock', [\App\Http\Controllers\PayrollController::class, 'recordLock'])->name('admin.payroll.records.lock');
         Route::post('/admin/payroll/records/{id}/unlock', [\App\Http\Controllers\PayrollController::class, 'recordUnlock'])->name('admin.payroll.records.unlock');
+        Route::post('/admin/payroll/records/{id}/reopen', [\App\Http\Controllers\PayrollController::class, 'recordReopen'])->name('admin.payroll.records.reopen');
         Route::post('/admin/payroll/disputes/{id}/resolve', [\App\Http\Controllers\PayrollController::class, 'disputeResolve'])->name('admin.payroll.disputes.resolve');
         Route::post('/admin/payroll/records/{id}/payslip/generate', [\App\Http\Controllers\PayrollController::class, 'payslipGenerate'])->name('admin.payroll.payslips.generate');
         Route::post('/admin/payroll/records/{id}/payslip/publish', [\App\Http\Controllers\PayrollController::class, 'payslipPublish'])->name('admin.payroll.payslips.publish');
@@ -155,6 +156,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/payroll/payslips/bulk-publish', [\App\Http\Controllers\PayrollController::class, 'payslipBulkPublish'])->name('admin.payroll.payslips.bulk-publish');
         Route::post('/admin/payroll/settings/preview', [\App\Http\Controllers\PayrollController::class, 'settingsPreview'])->name('admin.payroll.settings.preview');
         Route::post('/admin/payroll/settings/save-recalculate', [\App\Http\Controllers\PayrollController::class, 'settingsSaveRecalculate'])->name('admin.payroll.settings.save-recalculate');
+        Route::get('/admin/payroll/cycles/next-preview', [\App\Http\Controllers\PayrollController::class, 'previewNextCycle'])->name('admin.payroll.cycles.next-preview');
+        Route::post('/admin/payroll/cycles/create', [\App\Http\Controllers\PayrollController::class, 'createNextCycle'])->name('admin.payroll.cycles.create');
     });
 
     // Profile Correction Requests Routes

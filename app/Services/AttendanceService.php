@@ -337,8 +337,8 @@ class AttendanceService
             // Map deductions and classification for all current states
             if (in_array($status, ['hdp', 'hd_upa'])) {
                 $classification = 'half_day';
-                $salaryDeduction = 0.0;
-                $leaveDeduction = 0.5;
+                $salaryDeduction = 0.5;
+                $leaveDeduction = 0.0;
             } elseif ($status === 'hd_upr') {
                 $classification = 'half_day';
                 $salaryDeduction = 0.5;
@@ -349,8 +349,8 @@ class AttendanceService
                 $leaveDeduction = 0.0;
             } elseif ($status === 'planned' || $status === 'upa') {
                 $classification = 'full_day';
-                $salaryDeduction = 0.0;
-                $leaveDeduction = 1.0;
+                $salaryDeduction = 1.0;
+                $leaveDeduction = 0.0;
             } elseif ($status === 'absent' || $status === 'upr') {
                 $classification = 'full_day';
                 $salaryDeduction = 1.0;
@@ -400,23 +400,23 @@ class AttendanceService
                 if ($leave->is_half_day) {
                     $status = 'hd_upa';
                     $classification = 'half_day';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.5;
+                    $salaryDeduction = $leave->is_paid ? 0.0 : 0.5;
+                    $leaveDeduction = 0.0;
                 } else {
                     $status = 'upa';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 1.0;
+                    $salaryDeduction = $leave->is_paid ? 0.0 : 1.0;
+                    $leaveDeduction = 0.0;
                 }
             } else { // Fallback to planned/casual_leave/sick_leave etc.
                 if ($leave->is_half_day) {
                     $status = 'hdp';
                     $classification = 'half_day';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 0.5;
+                    $salaryDeduction = $leave->is_paid ? 0.0 : 0.5;
+                    $leaveDeduction = 0.0;
                 } else {
                     $status = 'planned';
-                    $salaryDeduction = 0.0;
-                    $leaveDeduction = 1.0;
+                    $salaryDeduction = $leave->is_paid ? 0.0 : 1.0;
+                    $leaveDeduction = 0.0;
                 }
             }
         }

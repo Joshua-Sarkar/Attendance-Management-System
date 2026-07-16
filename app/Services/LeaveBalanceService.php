@@ -13,10 +13,38 @@ use Illuminate\Support\Facades\DB;
 class LeaveBalanceService
 {
     /**
+     * Check if payroll is locked for the dates of the leave request.
+     */
+    public static function checkPayrollLock(User $employee, $startDate, $endDate = null): void
+    {
+        $startStr = \Carbon\Carbon::parse($startDate)->format('Y-m-d');
+        $endStr = $endDate ? \Carbon\Carbon::parse($endDate)->format('Y-m-d') : $startStr;
+
+        $locked = \App\Models\PayrollRecord::where('user_id', $employee->id)
+            ->where('locked', true)
+            ->whereHas('payrollCycle', function ($q) use ($startStr, $endStr) {
+                $q->where(function($query) use ($startStr, $endStr) {
+                    $query->whereBetween('start_date', [$startStr, $endStr])
+                          ->orWhereBetween('end_date', [$startStr, $endStr])
+                          ->orWhere(function($q2) use ($startStr, $endStr) {
+                              $q2->where('start_date', '<=', $startStr)
+                                 ->where('end_date', '>=', $endStr);
+                          });
+                });
+            })
+            ->exists();
+
+        if ($locked) {
+            throw new \Exception("Cannot modify leave request. Payroll is locked and immutable for this period.");
+        }
+    }
+
+    /**
      * Submit and auto-approve Birthday Leave.
      */
     public static function submitBirthdayLeave(User $user, \Carbon\Carbon $startDate, \Carbon\Carbon $endDate, string $reason): LeaveRequest
     {
+        self::checkPayrollLock($user, $startDate, $endDate);
         $today = \Carbon\Carbon::today();
         $availableToday = $user->getAvailableBirthdayYears($today);
         $availableForLeave = $user->getAvailableBirthdayYears($startDate);
@@ -148,6 +176,7 @@ class LeaveBalanceService
         return DB::transaction(function () use ($user, $data) {
             $startDate = \Carbon\Carbon::parse($data['start_date'])->startOfDay();
             $endDate = \Carbon\Carbon::parse($data['end_date'])->startOfDay();
+            self::checkPayrollLock($user, $startDate, $endDate);
             $isHalfDay = filter_var($data['is_half_day'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $totalDays = $isHalfDay ? 0.5 : ((int)$startDate->diffInDays($endDate) + 1);
 
@@ -286,6 +315,7 @@ class LeaveBalanceService
      */
     public static function approveRequest(LeaveRequest $leaveRequest, User $approver, ?string $notes = null): void
     {
+        self::checkPayrollLock($leaveRequest->user, $leaveRequest->start_date, $leaveRequest->end_date);
         DB::transaction(function () use ($leaveRequest, $approver, $notes) {
             $lockedRequest = LeaveRequest::where('id', $leaveRequest->id)->lockForUpdate()->firstOrFail();
             if ($lockedRequest->status !== 'pending') {
@@ -354,6 +384,7 @@ class LeaveBalanceService
      */
     public static function rejectRequest(LeaveRequest $leaveRequest, User $rejecter, string $reason): void
     {
+        self::checkPayrollLock($leaveRequest->user, $leaveRequest->start_date, $leaveRequest->end_date);
         DB::transaction(function () use ($leaveRequest, $rejecter, $reason) {
             $lockedRequest = LeaveRequest::where('id', $leaveRequest->id)->lockForUpdate()->firstOrFail();
             if (!in_array($lockedRequest->status, ['pending', 'approved'])) {
@@ -410,11 +441,9 @@ class LeaveBalanceService
         });
     }
 
-    /**
-     * Cancel leave request.
-     */
     public static function cancelRequest(LeaveRequest $leaveRequest, User $user): void
     {
+        self::checkPayrollLock($leaveRequest->user, $leaveRequest->start_date, $leaveRequest->end_date);
         DB::transaction(function () use ($leaveRequest, $user) {
             $lockedRequest = LeaveRequest::where('id', $leaveRequest->id)->lockForUpdate()->firstOrFail();
             if (!in_array($lockedRequest->status, ['pending', 'approved'])) {
@@ -474,6 +503,7 @@ class LeaveBalanceService
      */
     public static function overrideRequest(LeaveRequest $leaveRequest, User $admin, string $status, string $notes): void
     {
+        self::checkPayrollLock($leaveRequest->user, $leaveRequest->start_date, $leaveRequest->end_date);
         DB::transaction(function () use ($leaveRequest, $admin, $status, $notes) {
             $lockedRequest = LeaveRequest::where('id', $leaveRequest->id)->lockForUpdate()->firstOrFail();
             $oldStatus = $lockedRequest->status;

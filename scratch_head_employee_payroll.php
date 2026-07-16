@@ -132,28 +132,25 @@
 
                             <!-- Payslip Section nested in Hero -->
                             <div class="mt-6 pt-6 border-t border-line/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div class="space-y-1">
-                                    <p class="text-xs font-bold text-walnut uppercase tracking-wider font-mono">Payslip Document</p>
-                                    <!-- Contextual Descriptions -->
-                                    <p class="text-[11.5px] text-vellum-muted"
-                                       x-text="!record.locked ? (record.payslip_status === 'revoked' ? 'Your payroll was reopened for correction. A new payslip will be available after the revised calculation is approved and finalised.' : 'Your payroll is awaiting administrator approval.') : (record.payslip_status === 'published' ? 'Your official signed payslip is ready for download.' : (record.payslip_status === 'generated' ? 'Your payroll has been finalised. The payslip is awaiting publication by Payroll Administration.' : 'Your payroll has been finalised. The payslip is awaiting generation by Payroll Administration.'))"></p>
+                                <div class="space-y-0.5">
+                                    <p class="text-xs font-semibold text-walnut">Payslip Document</p>
+                                    <p class="text-[11px] text-vellum-muted" x-text="record.locked && record.payslip_status === 'published' ? 'Your official signed payslip is ready.' : 'Payslips are generated and published only after cycle finalisation and lock.'"></p>
                                 </div>
-                                <div class="shrink-0 flex items-center gap-3">
-                                    <!-- Status badge -->
-                                    <span class="inline-flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-xl border font-bold uppercase tracking-wider font-mono"
-                                          :class="!record.locked ? (record.payslip_status === 'revoked' ? 'bg-burgundy/10 text-burgundy border-burgundy/20' : 'bg-brass/10 text-brass border-brass/20') : (record.payslip_status === 'published' ? 'bg-forest/10 text-forest border-forest/20' : 'bg-brass/10 text-brass border-brass/20')"
-                                          x-text="!record.locked ? (record.payslip_status === 'revoked' ? 'PAYSLIP REVOKED AFTER REOPEN' : 'PAYROLL NOT FINALISED') : (record.payslip_status === 'published' ? 'PAYSLIP AVAILABLE' : (record.payslip_status === 'generated' ? 'PAYSLIP GENERATED — AWAITING PUBLICATION' : 'PAYSLIP AWAITING GENERATION'))">
-                                    </span>
-                                    
-                                    <!-- Download Button -->
+                                <div class="shrink-0">
                                     <template x-if="record.locked && record.payslip_status === 'published'">
                                         <a :href="'/my-payslip/' + record.record_id + '/download'" 
-                                           class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono bg-forest hover:bg-forest-dark text-cream px-5 py-3 rounded-xl transition shadow-soft">
+                                           class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono bg-brass hover:bg-brass-dark text-walnut px-5 py-3 rounded-xl transition shadow-soft">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                             </svg>
                                             Download Payslip PDF
                                         </a>
+                                    </template>
+                                    <template x-if="!record.locked || record.payslip_status !== 'published'">
+                                        <span class="inline-flex items-center gap-1.5 text-[11px] px-3.5 py-2 rounded-xl bg-surface border border-line text-vellum-muted font-mono uppercase tracking-wider">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-vellum-faint"></span>
+                                            Payslip Unavailable
+                                        </span>
                                     </template>
                                 </div>
                             </div>
@@ -261,114 +258,84 @@
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
                             <!-- B. EARNINGS SUMMARY -->
-                            <div class="panel bg-cream border border-line p-6 rounded-3xl space-y-4 shadow-soft">
-                                <h3 class="font-display font-bold text-base text-walnut border-b border-line pb-2.5">Earnings Breakdowns</h3>
+                            <div class="panel bg-cream border border-line p-6 rounded-3xl space-y-4">
+                                <h3 class="font-display font-medium text-base text-walnut border-b border-line pb-2.5">Earnings Breakdowns</h3>
                                 <div class="space-y-3.5 text-xs">
                                     <div class="flex justify-between items-center py-1 border-b border-line/45">
-                                        <span class="text-vellum-muted font-semibold">Base Salary</span>
+                                        <span class="text-vellum-muted">Base Salary</span>
                                         <span class="font-mono font-bold text-vellum" x-text="'₹' + record.baseSalary.toLocaleString('en-IN')"></span>
                                     </div>
                                     <div class="flex justify-between items-center py-1 border-b border-line/45">
-                                        <span class="text-vellum-muted font-semibold">Allowances</span>
+                                        <span class="text-vellum-muted">Allowances</span>
                                         <span class="font-mono font-bold text-vellum" x-text="'₹' + record.allowances.toLocaleString('en-IN')"></span>
                                     </div>
                                     <div class="flex justify-between items-center py-1 border-b border-line/45">
                                         <div>
-                                            <span class="text-vellum-muted font-semibold">Overtime Pay</span>
+                                            <span class="text-vellum-muted">Overtime Pay</span>
                                             <span class="block text-[10px] text-vellum-faint" x-text="record.overtimeHours + ' hours worked @ 1.5x multiplier'"></span>
                                         </div>
                                         <span class="font-mono font-bold text-forest" x-text="record.overtimePay > 0 ? '+₹' + record.overtimePay.toLocaleString('en-IN') : '₹0.00'"></span>
                                     </div>
                                     <div class="flex justify-between items-center py-1 border-b border-line/45">
                                         <div>
-                                            <span class="text-vellum-muted font-semibold">Bonuses & Adjustments</span>
+                                            <span class="text-vellum-muted">Bonuses & Adjustments</span>
                                             <span class="block text-[10px] text-vellum-faint">Discretionary adjustments & corrections</span>
                                         </div>
                                         <span class="font-mono font-bold text-forest" x-text="record.bonuses > 0 ? '+₹' + record.bonuses.toLocaleString('en-IN') : '₹0.00'"></span>
                                     </div>
                                     <div class="flex justify-between items-center pt-2.5 font-bold text-walnut text-sm">
                                         <span>TOTAL GROSS EARNINGS</span>
-                                        <span class="font-mono text-forest" x-text="'₹' + record.gross.toLocaleString('en-IN')"></span>
+                                        <span class="font-mono" x-text="'₹' + record.gross.toLocaleString('en-IN')"></span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- C. DEDUCTION SUMMARY -->
-                            <div class="panel bg-cream border border-line p-6 rounded-3xl space-y-4 shadow-soft">
-                                <h3 class="font-display font-bold text-base text-walnut border-b border-line pb-2.5">Deduction Breakdowns</h3>
+                            <div class="panel bg-cream border border-line p-6 rounded-3xl space-y-4">
+                                <h3 class="font-display font-medium text-base text-walnut border-b border-line pb-2.5">Deduction Breakdowns</h3>
                                 <div class="space-y-3.5 text-xs">
                                     <div class="flex justify-between items-center py-1 border-b border-line/45">
                                         <div>
-                                            <span class="text-vellum-muted font-semibold">Attendance Deductions</span>
-                                            <span class="block text-[10px] text-vellum-faint">Deductions for absences, late arrival thresholds, half days, and unpaid leaves</span>
+                                            <span class="text-vellum-muted">Attendance Deductions</span>
+                                            <span class="block text-[10px] text-vellum-faint">Deductions for late arrival thresholds or half days</span>
                                         </div>
                                         <span class="font-mono font-bold text-burgundy" x-text="record.attendanceDeductions > 0 ? '-₹' + record.attendanceDeductions.toLocaleString('en-IN') : '₹0.00'"></span>
                                     </div>
-                                    <!-- Spacer/empty rows to align with earnings panel height -->
-                                    <div class="flex justify-between items-center py-1 border-b border-line/45 invisible">
-                                        <span class="text-vellum-muted font-semibold">Spacer</span>
-                                        <span class="font-mono">₹0.00</span>
+                                    <div class="flex justify-between items-center py-1 border-b border-line/45">
+                                        <div>
+                                            <span class="text-vellum-muted">Unpaid Leave Deductions</span>
+                                            <span class="block text-[10px] text-vellum-faint" x-text="record.unpaidLeave + ' unpaid leave days calculated'"></span>
+                                        </div>
+                                        <span class="font-mono font-bold text-burgundy" x-text="record.leaveDeductions > 0 ? '-₹' + record.leaveDeductions.toLocaleString('en-IN') : '₹0.00'"></span>
                                     </div>
-                                    <div class="flex justify-between items-center py-1 border-b border-line/45 invisible">
-                                        <span class="text-vellum-muted font-semibold">Spacer</span>
-                                        <span class="font-mono">₹0.00</span>
+                                    <div class="flex justify-between items-center py-1 border-b border-line/45">
+                                        <span class="text-vellum-muted">Provident Fund (PF)</span>
+                                        <span class="font-mono font-bold text-burgundy" x-text="record.pf > 0 ? '-₹' + record.pf.toLocaleString('en-IN') : '₹0.00'"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1 border-b border-line/45">
+                                        <span class="text-vellum-muted">ESI Contribution</span>
+                                        <span class="font-mono font-bold text-burgundy" x-text="record.esi > 0 ? '-₹' + record.esi.toLocaleString('en-IN') : '₹0.00'"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1 border-b border-line/45">
+                                        <span class="text-vellum-muted">Professional Tax</span>
+                                        <span class="font-mono font-bold text-burgundy" x-text="record.profTax > 0 ? '-₹' + record.profTax.toLocaleString('en-IN') : '₹0.00'"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-1 border-b border-line/45">
+                                        <span class="text-vellum-muted">Income Tax (TDS)</span>
+                                        <span class="font-mono font-bold text-burgundy" x-text="record.taxAmt > 0 ? '-₹' + record.taxAmt.toLocaleString('en-IN') : '₹0.00'"></span>
                                     </div>
                                     <div class="flex justify-between items-center pt-2.5 font-bold text-burgundy text-sm">
                                         <span>TOTAL DEDUCTIONS</span>
-                                        <span class="font-mono" x-text="'-₹' + record.deductions.toLocaleString('en-IN')"></span>
+                                        <span class="font-mono" x-text="'₹' + record.deductions.toLocaleString('en-IN')"></span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Structured Calculation Explanation -->
-                        <div class="panel bg-cream border border-line p-8 rounded-3xl space-y-6 shadow-soft">
-                            <h3 class="font-display font-bold text-lg text-walnut border-b border-line pb-2.5">How Your Pay Was Calculated</h3>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-                                <!-- PAYROLL BASIS -->
-                                <div class="space-y-3 border-r border-line/45 last:border-none pr-4">
-                                    <h4 class="font-bold text-brass uppercase text-[10px] tracking-wider">Payroll Basis</h4>
-                                    <div class="space-y-1.5">
-                                        <div class="flex justify-between"><span>Base Salary:</span><span class="font-bold text-walnut" x-text="'₹' + record.baseSalary.toLocaleString('en-IN')"></span></div>
-                                        <div class="flex justify-between"><span>Cycle Period:</span><span class="font-bold text-walnut" x-text="selectedPeriod"></span></div>
-                                        <div class="flex justify-between"><span>Calculation Version:</span><span class="font-bold text-walnut" x-text="'v' + record.calculation_version"></span></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- ATTENDANCE IMPACT -->
-                                <div class="space-y-3 border-r border-line/45 last:border-none pr-4">
-                                    <h4 class="font-bold text-brass uppercase text-[10px] tracking-wider">Attendance Basis</h4>
-                                    <div class="space-y-1.5">
-                                        <div class="flex justify-between"><span>Working Days:</span><span class="font-bold text-walnut" x-text="record.workingDays + ' d'"></span></div>
-                                        <div class="flex justify-between"><span>Present Equivalent:</span><span class="font-bold text-forest" x-text="record.present + ' d'"></span></div>
-                                        <div class="flex justify-between"><span>Late Arrivals:</span><span class="font-bold text-burgundy" x-text="record.late + ' d'"></span></div>
-                                        <div class="flex justify-between"><span>Half Days:</span><span class="font-bold text-burgundy" x-text="record.halfDay + ' d'"></span></div>
-                                        <div class="flex justify-between"><span>Unpaid Leaves:</span><span class="font-bold text-burgundy" x-text="record.unpaidLeave + ' d'"></span></div>
-                                        <div class="flex justify-between"><span>Overtime Hours:</span><span class="font-bold text-forest" x-text="record.overtimeHours + ' h'"></span></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- CALCULATION RESULT -->
-                                <div class="space-y-3">
-                                    <h4 class="font-bold text-forest uppercase text-[10px] tracking-wider font-display">Calculation Summary</h4>
-                                    <div class="space-y-1.5 bg-surface/50 p-2.5 rounded-xl border border-line/65">
-                                        <div class="flex justify-between"><span>Gross Earnings:</span><span class="font-bold text-forest" x-text="'₹' + record.gross.toLocaleString('en-IN')"></span></div>
-                                        <div class="flex justify-between"><span>Total Deductions:</span><span class="font-bold text-burgundy" x-text="'-₹' + record.deductions.toLocaleString('en-IN')"></span></div>
-                                        <div class="flex justify-between border-t border-line/60 pt-1.5 font-bold text-walnut"><span>Net Pay:</span><span class="font-bold text-forest" x-text="'₹' + record.net.toLocaleString('en-IN')"></span></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                            <!-- Accordion for dense forensic log -->
-                            <div x-data="{ open: false }" class="border border-line/45 rounded-xl mt-4">
-                                <button @click="open = !open" class="w-full flex justify-between items-center px-4 py-2 bg-surface/35 text-[11px] font-mono text-vellum-faint uppercase font-bold outline-none rounded-xl">
-                                    <span>Show Developer Forensic Log</span>
-                                    <span x-text="open ? '▲' : '▼'"></span>
-                                </button>
-                                <div x-show="open" class="p-4 bg-surface/10 border-t border-line/45 font-mono text-[10px] leading-relaxed text-vellum-muted" x-text="record.systemExplanation" x-cloak></div>
-                            </div>
+                        <!-- Calculation Forensic Explanation -->
+                        <div class="panel bg-cream border border-line p-6 rounded-3xl space-y-3">
+                            <h3 class="font-display font-medium text-base text-walnut">System Forensic Calculation Statement</h3>
+                            <div class="bg-surface/50 border border-line p-4 rounded-2xl font-mono text-xs leading-relaxed text-vellum-muted" x-text="record.systemExplanation"></div>
                         </div>
 
                         <!-- ================= D. ATTENDANCE BASIS ================= -->
@@ -418,47 +385,28 @@
                                 </div>
 
                                 <!-- Daily Attendance Calendar Snapshot -->
-                                <div class="pt-6 border-t border-line/65 space-y-4">
+                                <div class="pt-4 border-t border-line/65 space-y-4">
                                     <div>
-                                        <h4 class="font-display font-bold text-sm text-walnut">Daily Attendance & Payroll Impact Calendar</h4>
-                                        <p class="text-[11px] text-vellum-muted">A day-by-day lookup mapping shift states and direct financial impacts.</p>
+                                        <h4 class="font-display font-medium text-sm text-walnut">Daily Attendance & Payroll Impact Calendar</h4>
+                                        <p class="text-[11px] text-vellum-muted">A day-by-day lookup mapping shift states resolved by the attendance engine.</p>
                                     </div>
 
                                     <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
                                         <template x-for="day in record.attendanceSnapshot" :key="day.day">
-                                            <div class="p-3 border border-line rounded-2xl text-center bg-surface/35 hover:border-brass/35 transition flex flex-col justify-between min-h-[110px]">
-                                                <div>
-                                                     <div class="flex justify-between items-center text-[9px] font-bold text-vellum-faint uppercase font-mono">
-                                                         <span x-text="day.date"></span>
-                                                         <span x-text="day.dayOfWeek"></span>
-                                                     </div>
-                                                     <span class="block text-[11px] font-semibold text-walnut mt-1" x-text="'Day ' + day.day"></span>
-                                                </div>
-                                                
-                                                 <div class="mt-2.5">
-                                                     <span class="inline-block text-[9px] px-2 py-0.5 font-bold uppercase rounded-lg font-mono border"
-                                                           :class="{
-                                                             present: 'bg-forest/10 text-forest border-forest/15',
-                                                             wfh: 'bg-forest/10 text-forest border-forest/15',
-                                                             bday: 'bg-forest/10 text-forest border-forest/15',
-                                                             planned: 'bg-forest/10 text-forest border-forest/15',
-                                                             late: 'bg-brass/25 text-brass-dark border border-brass/35',
-                                                             half: 'bg-brass/20 text-brass-dark border border-brass/30',
-                                                             hdp: 'bg-brass/20 text-brass-dark border border-brass/30',
-                                                             hd_upa: 'bg-burgundy/10 text-burgundy border-burgundy/15',
-                                                             hd_upr: 'bg-burgundy/10 text-burgundy border-burgundy/15',
-                                                             absent: 'bg-burgundy/10 text-burgundy border-burgundy/15',
-                                                             upr: 'bg-burgundy/10 text-burgundy border-burgundy/15',
-                                                             upa: 'bg-burgundy/10 text-burgundy border-burgundy/15',
-                                                             off: 'bg-surface text-vellum-faint border border-line'
-                                                           }[day.status]"
-                                                           x-text="day.status"></span>
-                                                     
-                                                     <span class="block text-[9.5px] mt-1.5 font-mono"
-                                                           :class="day.deducted_amount > 0 ? 'text-burgundy font-bold' : 'text-vellum-faint'"
-                                                           x-text="day.deducted_amount > 0 ? '–₹' + day.deducted_amount.toLocaleString('en-IN') : (day.status === 'off' ? 'Off Day' : 'Paid')">
-                                                     </span>
-                                                </div>
+                                            <div class="p-3 border border-line rounded-2xl text-center bg-surface/35 hover:border-brass/35 transition">
+                                                <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono" x-text="day.date"></span>
+                                                <span class="block text-[11px] font-semibold text-walnut mt-0.5" x-text="'Day ' + day.day"></span>
+                                                <span class="inline-block text-[9px] px-2 py-0.5 font-bold uppercase rounded-lg mt-2 font-mono"
+                                                      :class="{
+                                                        present: 'bg-forest/10 text-forest border border-forest/15',
+                                                        late: 'bg-brass/20 text-brass-dark border border-brass/25',
+                                                        half: 'bg-brass/15 text-brass-dark border border-brass/20',
+                                                        leave: 'bg-surface border border-line text-vellum-muted',
+                                                        wfh: 'bg-forest/10 text-forest border border-forest/15',
+                                                        absent: 'bg-burgundy/10 text-burgundy border border-burgundy/15',
+                                                        off: 'bg-surface text-vellum-faint border border-line'
+                                                      }[day.status]"
+                                                      x-text="day.status"></span>
                                             </div>
                                         </template>
                                     </div>
@@ -581,10 +529,15 @@
                         { label: 'Allowances', value: e.allowances, explain: 'Retrieved structural standard allowances.', calc: 'Allowances = ₹' + e.allowances.toLocaleString('en-IN') },
                         { label: 'Daily Rate (Segment)', value: e.dailyRate, explain: 'Derived basic daily rate for segment month (' + e.calendarDays + ' calendar days).', calc: 'Daily = ₹' + e.dailyRate.toLocaleString('en-IN') },
                         { label: 'Hourly Shift Rate', value: e.hourlyRate, explain: 'Derived basic hourly shift rate (daily rate / 8).', calc: 'Hourly = ₹' + e.hourlyRate.toLocaleString('en-IN') },
-                        { label: 'Attendance Deductions', value: -e.attendanceDeductions, tone: 'oxblood', explain: 'Deductions for absences, late arrival thresholds, half days, and unpaid leaves.', calc: 'Attendance delta = –₹' + e.attendanceDeductions.toLocaleString('en-IN') },
-                        { label: 'Overtime Pay', value: e.overtimePay, tone: 'forest', explain: e.overtimeHours + ' overtime hour(s) at 1.5x multiplier.', calc: 'OT delta = +₹' + e.overtimePay.toLocaleString('en-IN') },
+                        { label: 'Leave Deductions', value: -(e.unpaidLeave * e.dailyRate), tone: 'oxblood', explain: e.unpaidLeave + ' unpaid day(s) deducted, per Unplanned Leave policy.', calc: e.unpaidLeave + ' × ₹' + e.dailyRate.toLocaleString('en-IN') },
+                        { label: 'Half Day Deductions', value: -(e.halfDay * Math.round(e.dailyRate / 2)), tone: 'oxblood', explain: e.halfDay + ' half day(s) deducted, per Payroll Mapping.', calc: e.halfDay + ' × ₹' + Math.round(e.dailyRate / 2).toLocaleString('en-IN') },
+                        { label: 'Overtime Pay', value: e.overtimeHours * Math.round(e.hourlyRate * 1.5), tone: 'forest', explain: e.overtimeHours + ' overtime hour(s) at 1.5x multiplier.', calc: e.overtimeHours + ' × ₹' + Math.round(e.hourlyRate * 1.5) },
                         { label: 'Bonuses & Adjustments', value: e.bonuses, tone: 'forest', explain: 'Manual corrections or discretionary adjustments applied by admin.', calc: 'Approved corrections' },
                         { label: 'Gross Salary', value: e.gross, emphasis: true },
+                        { label: 'Tax (TDS)', value: -e.taxAmt, tone: 'oxblood', explain: 'TDS tax deduction (5% rate).', calc: 'TDS slab applied = –₹' + e.taxAmt.toLocaleString('en-IN') },
+                        { label: 'Provident Fund', value: -e.pf, tone: 'oxblood', explain: 'PF contribution (12% of basic up to ceiling).', calc: 'PF rate = –₹' + e.pf.toLocaleString('en-IN') },
+                        { label: 'ESI', value: -e.esi, tone: 'oxblood', explain: 'ESI contribution (0.75% of gross).', calc: 'ESI rate = –₹' + e.esi.toLocaleString('en-IN') },
+                        { label: 'Professional Tax', value: -e.profTax, tone: 'oxblood', explain: 'Flat professional tax for Uttarakhand.', calc: 'PTAX = –₹' + e.profTax.toLocaleString('en-IN') },
                         { label: 'Net Salary', value: e.net, emphasis: true }
                     ];
                 }

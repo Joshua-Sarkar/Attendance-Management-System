@@ -666,10 +666,10 @@
                                     <tr class="border-b border-line font-mono text-[10px] uppercase font-bold text-vellum-faint bg-surface/20">
                                         <th class="p-3">Employee</th>
                                         <th class="p-3 text-right">Net Payout</th>
-                                        <th class="p-3 text-center">Version</th>
+                                        <th class="p-3 text-center">Version & Fingerprint</th>
                                         <th class="p-3 text-center">Employee Review</th>
                                         <th class="p-3 text-center">Admin Status</th>
-                                        <th class="p-3 text-center">Lock Status</th>
+                                        <th class="p-3 text-center">Detailed Status</th>
                                         <th class="p-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -680,13 +680,16 @@
                                                 <div class="flex items-center gap-2.5">
                                                     <div class="w-7 h-7 rounded-full bg-brass-light flex items-center justify-center font-display font-medium text-[10px] text-brass-dark" x-text="emp.initials"></div>
                                                     <div>
-                                                        <p class="font-semibold text-vellum" x-text="emp.name"></p>
+                                                        <p class="font-semibold text-vellum cursor-pointer hover:text-brass" @click="openDrawer(emp)" x-text="emp.name"></p>
                                                         <p class="text-[10px] text-vellum-faint uppercase font-mono tracking-wide" x-text="emp.id + ' · ' + emp.dept"></p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="p-3 text-right font-mono font-bold text-vellum" x-text="'₹' + emp.net.toLocaleString('en-IN')"></td>
-                                            <td class="p-3 text-center font-mono" x-text="'v' + emp.calculation_version"></td>
+                                            <td class="p-3 text-center font-mono">
+                                                <span class="block font-bold text-walnut" x-text="'v' + emp.calculation_version"></span>
+                                                <span class="block text-[9px] text-vellum-faint" x-text="emp.fingerprint ? emp.fingerprint.substring(0,8) : '—'"></span>
+                                            </td>
                                             <td class="p-3 text-center">
                                                 <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans border"
                                                       :class="{
@@ -696,39 +699,57 @@
                                                         pending: 'bg-brass/10 text-brass border-brass/20'
                                                       }[emp.employee_review_status]"
                                                       x-text="emp.employee_review_status"></span>
+                                                <span class="block text-[8px] text-vellum-faint mt-0.5" x-text="emp.employee_approved_at || '—'"></span>
                                             </td>
                                             <td class="p-3 text-center">
                                                 <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans border"
                                                       :class="emp.admin_approved_at ? 'bg-forest/10 text-forest border-forest/20' : 'bg-brass/10 text-brass border-brass/20'"
                                                       x-text="emp.admin_approved_at ? 'APPROVED' : 'PENDING'"></span>
+                                                <span class="block text-[8px] text-vellum-faint mt-0.5" x-text="emp.admin_approved_at || '—'"></span>
                                             </td>
                                             <td class="p-3 text-center">
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans"
-                                                      :class="emp.locked ? 'bg-burgundy/10 text-burgundy' : 'bg-surface border border-line text-vellum-faint'">
-                                                    <span class="w-1 h-1 rounded-full" :class="emp.locked ? 'bg-burgundy' : 'bg-vellum-faint'"></span>
-                                                    <span x-text="emp.locked ? 'LOCKED' : 'OPEN'"></span>
-                                                </span>
+                                                <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider font-sans border"
+                                                      :class="resolveRecordStatus(emp).class"
+                                                      x-text="resolveRecordStatus(emp).label"></span>
+                                                <span class="block text-[8px] text-vellum-faint mt-0.5" x-show="emp.locked" x-text="emp.locked_at || '—'"></span>
                                             </td>
                                             <td class="p-3 text-right">
-                                                <div class="flex justify-end gap-1.5">
-                                                    <!-- Approve Admin Button -->
-                                                    <button x-show="!emp.admin_approved_at && !emp.locked" 
+                                                <div class="flex justify-end items-center gap-1.5">
+                                                    <!-- Unlocked + no employee approval -->
+                                                    <button x-show="!emp.locked && emp.employee_review_status !== 'approved'"
+                                                            @click="openDrawer(emp)"
+                                                            class="px-2 py-1 bg-cream border border-brass text-brass hover:bg-brass/5 text-[10px] font-bold uppercase tracking-wider rounded transition">
+                                                        View Calculation
+                                                    </button>
+                                                    
+                                                    <!-- Employee approved + admin pending -->
+                                                    <button x-show="!emp.locked && emp.employee_review_status === 'approved' && !emp.admin_approved_at"
                                                             @click="approveRecordAdmin(emp)"
                                                             class="px-2 py-1 bg-forest hover:bg-forest-dark text-cream text-[10px] font-bold uppercase tracking-wider rounded transition shadow-soft">
-                                                        Approve Admin
+                                                        Review & Approve
                                                     </button>
-                                                    <!-- Lock Record Button -->
-                                                    <button x-show="emp.admin_approved_at && emp.employee_review_status === 'approved' && !emp.locked"
+                                                    
+                                                    <!-- Both approved + current calculation matches -->
+                                                    <button x-show="!emp.locked && emp.employee_review_status === 'approved' && emp.admin_approved_at"
                                                             @click="lockRecordAdmin(emp)"
                                                             class="px-2 py-1 bg-burgundy hover:bg-burgundy-dark text-cream text-[10px] font-bold uppercase tracking-wider rounded transition shadow-soft">
-                                                        Lock Record
+                                                        Lock Payroll
                                                     </button>
-                                                    <!-- Unlock Record Button -->
+                                                    
+                                                    <!-- Locked: View Finalised -->
                                                     <button x-show="emp.locked"
-                                                            @click="unlockRecordAdminPrompt(emp)"
-                                                            class="px-2 py-1 bg-cream border border-burgundy text-burgundy hover:bg-burgundy/5 text-[10px] font-bold uppercase tracking-wider rounded transition">
-                                                        Unlock
+                                                            @click="openDrawer(emp)"
+                                                            class="px-2 py-1 bg-cream border border-brass text-brass hover:bg-brass/5 text-[10px] font-bold uppercase tracking-wider rounded transition">
+                                                        View Finalised
                                                     </button>
+                                                    
+                                                    <!-- Locked: Reopen -->
+                                                    <button x-show="emp.locked"
+                                                            @click="reopenRecordAdminPrompt(emp)"
+                                                            class="px-2 py-1 bg-cream border border-burgundy text-burgundy hover:bg-burgundy/5 text-[10px] font-bold uppercase tracking-wider rounded transition">
+                                                        Reopen Payroll
+                                                    </button>
+                                                    
                                                     <!-- Warning/Dispute indicators -->
                                                     <span x-show="emp.employee_review_status === 'disputed'" class="text-[10px] font-bold text-burgundy px-1 block font-sans" title="Employee raised dispute!">⚠ DISPUTE</span>
                                                 </div>
@@ -741,22 +762,35 @@
                     </div>
                 </div>
 
-                <!-- Custom Unlock Modal -->
-                <div x-show="unlockPromptOpen" class="fixed inset-0 overflow-hidden z-50 flex items-center justify-center" x-cloak>
-                    <div class="absolute inset-0 bg-walnut/40 backdrop-blur-sm" @click="unlockPromptOpen = false"></div>
+                <!-- Custom Reopen Modal -->
+                <div x-show="reopenPromptOpen" class="fixed inset-0 overflow-hidden z-50 flex items-center justify-center" x-cloak>
+                    <div class="absolute inset-0 bg-walnut/40 backdrop-blur-sm" @click="reopenPromptOpen = false"></div>
                     <div class="bg-cream border border-line rounded-2xl p-6 shadow-lift max-w-md w-full relative z-10 space-y-4">
-                        <h3 class="font-display font-medium text-lg text-vellum">Request Employee Record Unlock</h3>
-                        <p class="text-xs text-vellum-muted">
-                            Unlocking frozen snapshots requires an authorized justification, which will be logged forensically to the audit log trail.
+                        <h3 class="font-display font-medium text-lg text-vellum">Reopen Payroll Record</h3>
+                        <p class="text-xs text-burgundy font-semibold">
+                            Warning: Reopening this record will remove the active payroll lock, invalidate existing approvals, and revoke any generated/published payslips.
                         </p>
+                        
+                        <div class="space-y-2 text-xs border border-line p-3 rounded-xl bg-surface/30">
+                            <p class="text-vellum"><strong>Employee Name:</strong> <span class="font-semibold text-walnut" x-text="selectedRecordToReopen ? selectedRecordToReopen.name : ''"></span></p>
+                            <p class="text-vellum"><strong>Payroll Cycle:</strong> <span class="font-semibold text-walnut" x-text="cycle.period"></span></p>
+                            <p class="text-vellum"><strong>Calculation Version:</strong> <span class="font-semibold text-walnut" x-text="selectedRecordToReopen ? 'v' + selectedRecordToReopen.calculation_version : ''"></span></p>
+                            <p class="text-vellum"><strong>Fingerprint:</strong> <span class="font-mono text-[10px] text-walnut" x-text="selectedRecordToReopen && selectedRecordToReopen.fingerprint ? selectedRecordToReopen.fingerprint : 'N/A'"></span></p>
+                        </div>
+                        
                         <div class="space-y-3">
-                            <label class="text-[10px] font-bold uppercase tracking-wide text-vellum-faint block">Reason for Overriding Lock</label>
-                            <textarea x-model="unlockReason" rows="3" required placeholder="Provide justification detail..."
+                            <label class="text-[10px] font-bold uppercase tracking-wide text-vellum-faint block">Mandatory Reopen Reason</label>
+                            <textarea x-model="reopenReason" rows="3" required placeholder="Provide justification reason for reopening (min 5 characters)..."
                                       class="w-full text-xs bg-cream border border-line rounded px-3 py-2 text-vellum outline-none"></textarea>
                         </div>
+                        
+                        <p class="text-[10.5px] text-vellum-muted leading-relaxed">
+                            Once reopened, the calculation will be rerun against current attendance/salary parameters. Both employee and administrator review will be required before this record can be locked again.
+                        </p>
+                        
                         <div class="flex justify-end gap-3 pt-2">
-                            <button type="button" @click="unlockPromptOpen = false" class="px-4 py-2 border border-hairline text-vellum rounded-xl text-xs">Cancel</button>
-                            <button type="button" @click="submitUnlockRecord()" class="px-4 py-2 bg-burgundy hover:bg-burgundy-dark text-cream font-bold uppercase tracking-wider rounded-xl text-xs">Execute Unlock</button>
+                            <button type="button" @click="reopenPromptOpen = false" class="px-4 py-2 border border-hairline text-vellum rounded-xl text-xs">Cancel</button>
+                            <button type="button" @click="submitReopenRecord()" class="px-4 py-2 bg-burgundy hover:bg-burgundy-dark text-cream font-bold uppercase tracking-wider rounded-xl text-xs">Execute Reopen</button>
                         </div>
                     </div>
                 </div>
@@ -1010,7 +1044,7 @@
                                 <label class="text-[10px] font-bold text-vellum uppercase tracking-wider block mb-1.5 font-mono">Select Cycle</label>
                                 <select name="report_cycle" @change="$el.form.submit()"
                                         class="w-full text-xs bg-cream border border-line rounded-xl px-3.5 py-2.5 outline-none focus:border-brass text-vellum font-semibold">
-                                    @foreach(['June 2026', 'July 2026', 'August 2026', 'September 2026'] as $p)
+                                    @foreach($allPeriods as $p)
                                         <option value="{{ $p }}" {{ $reportCycle === $p ? 'selected' : '' }}>{{ $p }}</option>
                                     @endforeach
                                 </select>
@@ -1063,7 +1097,7 @@
                                 ]" :key="cat.id">
                                     <button @click="selectedReport = cat.id"
                                             class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold transition"
-                                            :class="selectedReport === cat.id ? 'bg-brass text-walnut font-medium shadow-soft' : 'text-cream hover:bg-surface' "
+                                            :class="selectedReport === cat.id ? 'bg-brass text-walnut font-bold shadow-soft' : 'text-walnut/85 hover:bg-brass/10 hover:text-walnut' "
                                             x-text="cat.label"></button>
                                 </template>
                             </div>
@@ -1203,12 +1237,24 @@
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <template x-if="field.type === 'text'">
-                                                                <input type="text" :value="field.value"
+                                                                <input type="text" x-model="field.value"
                                                                        class="w-full text-xs bg-surface-raised border border-hairline rounded px-3 py-2 text-vellum focus:ring-1 focus:ring-brass focus:border-brass outline-none">
+                                                            </template>
+                                                            <template x-if="field.type === 'number'">
+                                                                <input type="number" :step="field.step || '1'" x-model.number="field.value"
+                                                                       class="w-full text-xs bg-surface-raised border border-hairline rounded px-3 py-2 text-vellum focus:ring-1 focus:ring-brass focus:border-brass outline-none">
+                                                            </template>
+                                                            <template x-if="field.type === 'select'">
+                                                                <select x-model="field.value"
+                                                                        class="w-full text-xs bg-surface-raised border border-hairline rounded px-3 py-2 text-vellum focus:ring-1 focus:ring-brass focus:border-brass outline-none font-semibold">
+                                                                    <template x-for="opt in field.options" :key="opt.value">
+                                                                        <option :value="opt.value" x-text="opt.label" :selected="opt.value == field.value"></option>
+                                                                    </template>
+                                                                </select>
                                                             </template>
                                                             <template x-if="field.type === 'toggle'">
                                                                 <div class="flex items-center">
-                                                                    <input type="checkbox" :checked="field.value"
+                                                                    <input type="checkbox" x-model="field.value"
                                                                            class="rounded border-hairline text-brass focus:ring-brass/30 bg-surface-raised w-4 h-4">
                                                                 </div>
                                                             </template>
@@ -1285,6 +1331,57 @@
                                             </div>
                                         </div>
                                     </form>
+
+                                    <!-- Actual Payroll Cycle Management Section for Cycle Tab -->
+                                    <template x-if="group.id === 'cycle'">
+                                        <div class="mt-8 border-t border-line pt-6 space-y-4">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <h5 class="font-display font-medium text-base text-vellum">Actual Payroll Cycle Instances</h5>
+                                                    <p class="text-xs text-vellum-faint mt-0.5">Lifecycle history of processed payroll periods.</p>
+                                                </div>
+                                                <button type="button" @click="openNextCyclePreviewModal()"
+                                                        class="px-4 py-2 bg-forest hover:bg-forest-dark text-cream text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-soft">
+                                                    Create / Open Next Cycle
+                                                </button>
+                                            </div>
+
+                                            <div class="border border-line rounded-xl overflow-hidden text-xs bg-cream">
+                                                <div class="p-3 bg-surface/50 border-b border-line font-mono text-[10px] uppercase font-bold text-vellum-faint grid grid-cols-12 gap-2">
+                                                    <span class="col-span-2">Cycle Name</span>
+                                                    <span class="col-span-2">Start Date</span>
+                                                    <span class="col-span-2">End Date</span>
+                                                    <span class="col-span-2">Payment Date</span>
+                                                    <span class="col-span-2 text-center">Status</span>
+                                                    <span class="col-span-1 text-center">Eligible</span>
+                                                    <span class="col-span-1 text-right">Locked</span>
+                                                </div>
+                                                <div class="divide-y divide-line/45">
+                                                    <template x-for="ci in cycleInstances" :key="ci.period">
+                                                        <div class="p-3 grid grid-cols-12 gap-2 items-center hover:bg-surface/10 transition"
+                                                             :class="ci.period === cycle.period ? 'bg-brass/5' : ''">
+                                                            <div class="col-span-2 font-bold text-vellum flex items-center gap-1.5">
+                                                                <span x-text="ci.period"></span>
+                                                                <template x-if="ci.period === cycle.period">
+                                                                    <span class="px-1.5 py-0.5 bg-forest/10 text-forest text-[9px] uppercase tracking-wide font-bold rounded">Active</span>
+                                                                </template>
+                                                            </div>
+                                                            <span class="col-span-2 font-mono text-vellum-muted" x-text="ci.start_date"></span>
+                                                            <span class="col-span-2 font-mono text-vellum-muted" x-text="ci.end_date"></span>
+                                                            <span class="col-span-2 font-mono text-vellum-muted" x-text="ci.payment_date"></span>
+                                                            <div class="col-span-2 text-center">
+                                                                <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded border"
+                                                                      :class="statusChip(ci.status)"
+                                                                      x-text="statusLabel(ci.status)"></span>
+                                                            </div>
+                                                            <span class="col-span-1 text-center font-mono" x-text="ci.eligible_count"></span>
+                                                            <span class="col-span-1 text-right font-mono" x-text="ci.locked_count + '/' + ci.record_count"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -1533,6 +1630,85 @@
             </div>
         </div>
 
+        <!-- Next Cycle Preview Modal -->
+        <div x-show="showNextCycleModal" class="fixed inset-0 overflow-hidden z-50 flex items-center justify-center" x-cloak>
+            <div class="absolute inset-0 bg-walnut/40 backdrop-blur-sm" @click="showNextCycleModal = false"></div>
+            <div class="bg-cream border border-line rounded-3xl p-6 shadow-lift max-w-lg w-full relative z-10 space-y-5">
+                <div class="flex justify-between items-center border-b border-line pb-3">
+                    <h3 class="font-display font-medium text-lg text-vellum">Create / Open Next Payroll Cycle</h3>
+                    <button @click="showNextCycleModal = false" class="text-2xl text-vellum-faint hover:text-vellum font-light">&times;</button>
+                </div>
+                
+                <template x-if="nextCyclePreview">
+                    <div class="space-y-4 text-xs">
+                        <div class="grid grid-cols-2 gap-4 bg-surface/40 p-4 rounded-xl border border-hairline/25">
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-vellum-faint block">Cycle Period</span>
+                                <span class="font-bold text-vellum mt-0.5 block font-mono text-sm" x-text="nextCyclePreview.period"></span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-vellum-faint block">Resolved Payment Date</span>
+                                <span class="font-bold text-vellum mt-0.5 block font-mono text-sm" x-text="nextCyclePreview.payment_date"></span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-vellum-faint block">Resolved Start Date</span>
+                                <span class="font-semibold text-vellum mt-0.5 block font-mono" x-text="nextCyclePreview.start_date"></span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-vellum-faint block">Resolved End Date</span>
+                                <span class="font-semibold text-vellum mt-0.5 block font-mono" x-text="nextCyclePreview.end_date"></span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border-b border-line/45 pb-1">
+                            <span class="font-bold text-vellum uppercase tracking-wide text-[10px]">Newly Entering Employees (<span x-text="nextCyclePreview.newly_entering.length"></span>)</span>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto divide-y divide-line/45 border border-line rounded-lg bg-surface/10 p-2">
+                            <template x-for="emp in nextCyclePreview.newly_entering" :key="emp.employee_id">
+                                <div class="py-1 flex justify-between">
+                                    <span class="font-semibold text-vellum" x-text="emp.name"></span>
+                                    <span class="font-mono text-vellum-muted" x-text="emp.employee_id + ' (Joined: ' + emp.joining_date + ')'"></span>
+                                </div>
+                            </template>
+                            <template x-if="nextCyclePreview.newly_entering.length === 0">
+                                <p class="text-vellum-muted italic py-1">None</p>
+                            </template>
+                        </div>
+
+                        <div class="flex items-center justify-between border-b border-line/45 pb-1">
+                            <span class="font-bold text-vellum uppercase tracking-wide text-[10px]">Excluded Employees (<span x-text="nextCyclePreview.excluded.length"></span>)</span>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto divide-y divide-line/45 border border-line rounded-lg bg-surface/10 p-2">
+                            <template x-for="emp in nextCyclePreview.excluded" :key="emp.employee_id">
+                                <div class="py-1 flex justify-between">
+                                    <span class="font-semibold text-vellum" x-text="emp.name"></span>
+                                    <span class="text-burgundy" x-text="emp.reason"></span>
+                                </div>
+                            </template>
+                            <template x-if="nextCyclePreview.excluded.length === 0">
+                                <p class="text-vellum-muted italic py-1">None</p>
+                            </template>
+                        </div>
+
+                        <div class="bg-forest/10 border border-forest/20 p-3 rounded-xl flex gap-2">
+                            <span class="text-forest">✓</span>
+                            <p class="text-[11px] text-forest/90 leading-normal">
+                                Opening this cycle will automatically instantiate payroll records for all <strong x-text="nextCyclePreview.eligible_count"></strong> eligible employees for <span x-text="nextCyclePreview.period"></span>.
+                            </p>
+                        </div>
+                    </div>
+                </template>
+                
+                <div class="flex justify-end gap-3 border-t border-line pt-4">
+                    <button type="button" @click="showNextCycleModal = false" class="px-4 py-2 border border-hairline text-vellum rounded-xl text-xs font-semibold">Cancel</button>
+                    <button type="button" @click="confirmCreateNextCycle()" 
+                            class="px-4 py-2 bg-forest hover:bg-forest-dark text-cream font-bold uppercase tracking-wider rounded-xl text-xs transition shadow-soft">
+                        Confirm & Open Next Cycle
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Alpine App Logic Script -->
@@ -1550,11 +1726,17 @@
                 selectedLedgerEmp: null,
                 ledgerOpen: {},
                 showLockModal: false,
+                showNextCycleModal: false,
+                nextCyclePreview: null,
+                cycleInstances: @json($cycleInstances),
                 cycleLocked: {{ $cycle->status === 'locked' ? 'true' : 'false' }},
                 toast: null,
                 unlockPromptOpen: false,
                 unlockReason: '',
                 selectedRecordToUnlock: null,
+                reopenPromptOpen: false,
+                reopenReason: '',
+                selectedRecordToReopen: null,
                 filters: { search: '', dept: '', status: '', sort: 'name', category: '', employeeReview: '', adminApproved: '', lockState: '' },
                 payslipFilters: { search: '', dept: '', status: '' },
                 auditFilters: { search: '', category: '' },
@@ -1754,44 +1936,6 @@
                     // Gross
                     rows.push({ label: 'Gross Salary', value: e.gross, emphasis: true });
 
-                    // Statutory Deductions: PF, ESI, PT, TDS
-                    if (e.pf > 0) {
-                        rows.push({
-                            label: 'Provident Fund (PF)',
-                            value: -e.pf,
-                            tone: 'oxblood',
-                            explain: 'Provident Fund deduction (12% of PF wage base, threshold ceiling ₹15,000 applies where configured).',
-                            calc: 'PF matching contribution'
-                        });
-                    }
-                    if (e.esi > 0) {
-                        rows.push({
-                            label: 'ESI Contribution',
-                            value: -e.esi,
-                            tone: 'oxblood',
-                            explain: 'Employee ESI deduction (0.75% of gross wages). Ceiling threshold ₹21,000.',
-                            calc: '0.75% of ₹' + e.gross.toLocaleString('en-IN')
-                        });
-                    }
-                    if (e.profTax > 0) {
-                        rows.push({
-                            label: 'Professional Tax',
-                            value: -e.profTax,
-                            tone: 'oxblood',
-                            explain: 'Professional Tax slab deduction for Uttarakhand state.',
-                            calc: 'Flat standard deduction'
-                        });
-                    }
-                    if (e.taxAmt > 0) {
-                        rows.push({
-                            label: 'Income Tax (TDS)',
-                            value: -e.taxAmt,
-                            tone: 'oxblood',
-                            explain: 'Tax Deducted at Source (TDS slab calculated dynamically).',
-                            calc: 'Slab rate deduction'
-                        });
-                    }
-
                     // Net
                     rows.push({ label: 'Net Salary', value: e.net, emphasis: true });
 
@@ -1985,6 +2129,75 @@
                     });
                 },
 
+                reopenRecordAdminPrompt(emp) {
+                    this.selectedRecordToReopen = emp;
+                    this.reopenReason = '';
+                    this.reopenPromptOpen = true;
+                },
+
+                submitReopenRecord() {
+                    if (!this.reopenReason || this.reopenReason.length < 5) {
+                        alert('Please enter a valid reason (min 5 characters) for reopening.');
+                        return;
+                    }
+                    this.reopenPromptOpen = false;
+                    this.toast = 'Reopening employee payroll record...';
+                    
+                    fetch(`/admin/payroll/records/${this.selectedRecordToReopen.record_id}/reopen`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            reason: this.reopenReason
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = 'Record reopened and recalculated successfully.';
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                resolveRecordStatus(emp) {
+                    if (emp.locked) {
+                        if (emp.payslip_status === 'published') {
+                            return { label: 'Payslip Available', class: 'bg-forest/15 text-forest border-forest/30' };
+                        } else if (emp.payslip_status === 'generated') {
+                            return { label: 'Payslip Generated (Pending Pub)', class: 'bg-brass/15 text-brass-dark border-brass/30' };
+                        } else {
+                            return { label: 'Locked / Finalised', class: 'bg-burgundy/15 text-burgundy border-burgundy/30' };
+                        }
+                    }
+                    
+                    if (emp.payslip_status === 'revoked') {
+                        return { label: 'Reopened', class: 'bg-cognac/15 text-cognac border-cognac/30' };
+                    }
+                    
+                    if (emp.employee_review_status === 'approved' && emp.admin_approved_at) {
+                        return { label: 'Ready to Lock', class: 'bg-forest/15 text-forest border-forest/30' };
+                    }
+                    
+                    if (emp.employee_review_status === 'approved' && !emp.admin_approved_at) {
+                        return { label: 'Awaiting Admin Approval', class: 'bg-brass/15 text-brass-dark border-brass/30' };
+                    }
+                    
+                    if (emp.employee_review_status === 'disputed') {
+                        return { label: 'Disputed', class: 'bg-burgundy/15 text-burgundy border-burgundy/30' };
+                    }
+                    
+                    if (emp.employee_review_status === 'stale') {
+                        return { label: 'Stale (Recalc Pending)', class: 'bg-cognac/15 text-cognac border-cognac/30' };
+                    }
+                    
+                    return { label: 'Awaiting Employee Review', class: 'bg-brass/10 text-brass-dark border-brass/20' };
+                },
+
                 resolveDisputeAdmin(id, status) {
                     const note = document.getElementById(`dispute-note-${id}`).value;
                     if (!note || note.length < 5) {
@@ -2105,22 +2318,15 @@
                     alpineData.previewing = true;
                     this.toast = 'Simulating policy updates on active records...';
 
-                    // Gather inputs for this group form
+                    // Gather inputs for this group form dynamically
                     const fields = {};
-                    if (groupId === 'lifecycle') {
-                        fields['probationDays'] = 90;
-                        fields['autoPromote'] = true;
-                        fields['probationLeaveBalance'] = 1.5;
-                        fields['probationPayrollCycle'] = 'probation';
-                    } else if (groupId === 'pf') {
-                        fields['employee_rate'] = 12.0;
-                        fields['applicable_above_wage_ceiling'] = true;
-                    } else if (groupId === 'esi') {
-                        fields['eligibility_ceiling'] = 21000;
-                        fields['employee_rate'] = 0.75;
-                    } else if (groupId === 'ptax') {
-                        fields['state'] = 'Uttarakhand';
-                        fields['monthly_professional_tax'] = 250;
+                    const group = this.settingsGroups.find(g => g.id === groupId);
+                    if (group && group.fields) {
+                        group.fields.forEach(f => {
+                            if (f.key) {
+                                fields[f.key] = f.value;
+                            }
+                        });
                     }
 
                     fetch('/admin/payroll/settings/preview', {
@@ -2152,20 +2358,13 @@
                     this.toast = 'Saving settings and force recalculating...';
                     
                     const fields = {};
-                    if (groupId === 'lifecycle') {
-                        fields['probationDays'] = 90;
-                        fields['autoPromote'] = true;
-                        fields['probationLeaveBalance'] = 1.5;
-                        fields['probationPayrollCycle'] = 'probation';
-                    } else if (groupId === 'pf') {
-                        fields['employee_rate'] = 12.0;
-                        fields['applicable_above_wage_ceiling'] = true;
-                    } else if (groupId === 'esi') {
-                        fields['eligibility_ceiling'] = 21000;
-                        fields['employee_rate'] = 0.75;
-                    } else if (groupId === 'ptax') {
-                        fields['state'] = 'Uttarakhand';
-                        fields['monthly_professional_tax'] = 250;
+                    const group = this.settingsGroups.find(g => g.id === groupId);
+                    if (group && group.fields) {
+                        group.fields.forEach(f => {
+                            if (f.key) {
+                                fields[f.key] = f.value;
+                            }
+                        });
                     }
 
                     fetch('/admin/payroll/settings/save-recalculate', {
@@ -2185,6 +2384,42 @@
                         if (data.success) {
                             this.toast = 'Settings saved & cycle recalculated successfully!';
                             setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                openNextCyclePreviewModal() {
+                    this.toast = 'Loading next cycle preview...';
+                    fetch('{{ route("admin.payroll.cycles.next-preview") }}')
+                    .then(r => r.json())
+                    .then(data => {
+                        this.toast = null;
+                        if (data.success) {
+                            this.nextCyclePreview = data;
+                            this.showNextCycleModal = true;
+                        } else {
+                            alert('Error loading preview: ' + data.message);
+                        }
+                    });
+                },
+
+                confirmCreateNextCycle() {
+                    this.showNextCycleModal = false;
+                    this.toast = 'Opening next payroll cycle...';
+                    fetch('{{ route("admin.payroll.cycles.create") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = data.message;
+                            setTimeout(() => { window.location.href = `/admin/payroll?period=${data.period}` }, 1200);
                         } else {
                             this.toast = 'Error: ' + data.message;
                         }

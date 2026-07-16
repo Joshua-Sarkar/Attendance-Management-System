@@ -23,7 +23,7 @@ class EmployeePayrollController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $period = $request->get('period', 'June 2026');
+        $period = $request->get('period', PayrollCycle::orderBy('start_date', 'desc')->value('period') ?: 'June 2026');
 
         $cycle = PayrollCycle::where('period', $period)->first();
         if (!$cycle) {
@@ -121,7 +121,7 @@ class EmployeePayrollController extends Controller
             }
         }
 
-        $allPeriods = ['June 2026', 'July 2026', 'August 2026', 'September 2026'];
+        $allPeriods = PayrollCycle::orderBy('start_date', 'desc')->pluck('period')->toArray() ?: ['June 2026'];
         
         $activeDisputes = $record ? $record->disputes()->orderBy('created_at', 'desc')->get() : collect();
 
@@ -179,8 +179,7 @@ class EmployeePayrollController extends Controller
             $pt = $metadata['prof_tax'] ?? 0.00;
             $explanation = "Salary computed for {$user->name}. Base: ₹{$record->base_salary}, Allowances: ₹{$record->allowances}. " .
                            "Overtime Pay: ₹{$record->overtime_pay} ({$record->overtime_hours} hrs worked). " .
-                           "Deductions: Attendance & Unpaid Leave: ₹" . ($record->attendance_deductions + $record->leave_deductions) . 
-                           ", PF: ₹{$pf}, ESI: ₹{$esi}, PT: ₹{$pt}, TDS Tax: ₹{$record->tax_deductions}. " .
+                           "Deductions: Attendance Deduction: ₹{$record->attendance_deductions}. " .
                            "Net Disbursement: ₹{$record->net_salary}.";
 
             $formattedRecord = [
@@ -198,7 +197,7 @@ class EmployeePayrollController extends Controller
                 'wfh' => $record->wfh_days,
                 'overtimeHours' => (float)$record->overtime_hours,
                 'bonuses' => (float)$record->bonuses,
-                'deductions' => (float)($record->attendance_deductions + $record->leave_deductions + $record->statutory_deductions + $record->tax_deductions),
+                'deductions' => (float)$record->attendance_deductions,
                 'gross' => (float)$record->gross_salary,
                 'net' => (float)$record->net_salary,
                 'status' => $record->status,

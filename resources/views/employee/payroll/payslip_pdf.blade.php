@@ -189,34 +189,34 @@
             <tbody>
                 <tr>
                     <td>Basic Salary</td>
-                    <td class="amount">₹{{ number_format($record->base_salary, 2) }}</td>
+                    <td class="amount">Rs. {{ number_format($record->base_salary, 2) }}</td>
                 </tr>
                 <tr>
                     <td>Allowances</td>
-                    <td class="amount">₹{{ number_format($record->allowances, 2) }}</td>
+                    <td class="amount">Rs. {{ number_format($record->allowances, 2) }}</td>
                 </tr>
                 @if($record->overtime_pay > 0)
                     <tr>
                         <td>Overtime Pay ({{ (float)$record->overtime_hours }} hrs)</td>
-                        <td class="amount">₹{{ number_format($record->overtime_pay, 2) }}</td>
+                        <td class="amount">Rs. {{ number_format($record->overtime_pay, 2) }}</td>
                     </tr>
                 @endif
                 @if($record->bonuses > 0)
                     <tr>
                         <td>Discretionary Adjustments / Bonuses</td>
-                        <td class="amount">₹{{ number_format($record->bonuses, 2) }}</td>
+                        <td class="amount">Rs. {{ number_format($record->bonuses, 2) }}</td>
                     </tr>
                 @endif
                 <!-- Empty rows for spacing balance -->
                 @for($i = 0; $i < 2; $i++)
                     <tr>
                         <td style="color: transparent;">Spacer</td>
-                        <td class="amount" style="color: transparent;">₹0.00</td>
+                        <td class="amount" style="color: transparent;">Rs. 0.00</td>
                     </tr>
                 @endfor
                 <tr class="total-row">
                     <td>Gross Earnings</td>
-                    <td class="amount">₹{{ number_format($record->gross_salary, 2) }}</td>
+                    <td class="amount">Rs. {{ number_format($record->gross_salary, 2) }}</td>
                 </tr>
             </tbody>
         </table>
@@ -229,35 +229,20 @@
                 </tr>
             </thead>
             <tbody>
-                @php
-                    $attendanceDeds = $record->attendance_deductions + $record->leave_deductions;
-                    $pf = $metadata['pf'] ?? 0.00;
-                    $esi = $metadata['esi'] ?? 0.00;
-                    $pt = $metadata['prof_tax'] ?? 0.00;
-                @endphp
                 <tr>
-                    <td>Attendance / Leave Deductions</td>
-                    <td class="amount">₹{{ number_format($attendanceDeds, 2) }}</td>
+                    <td>Attendance Deduction</td>
+                    <td class="amount">Rs. {{ number_format($record->attendance_deductions, 2) }}</td>
                 </tr>
-                <tr>
-                    <td>TDS Tax (5% standard)</td>
-                    <td class="amount">₹{{ number_format($record->tax_deductions, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Provident Fund (PF)</td>
-                    <td class="amount">₹{{ number_format($pf, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Employee State Insurance (ESI)</td>
-                    <td class="amount">₹{{ number_format($esi, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Professional Tax (PT)</td>
-                    <td class="amount">₹{{ number_format($pt, 2) }}</td>
-                </tr>
+                <!-- Spacer rows to align heights -->
+                @for($i = 0; $i < 4; $i++)
+                    <tr>
+                        <td style="color: transparent;">Spacer</td>
+                        <td class="amount" style="color: transparent;">Rs. 0.00</td>
+                    </tr>
+                @endfor
                 <tr class="total-row">
                     <td>Total Deductions</td>
-                    <td class="amount">₹{{ number_format($record->attendance_deductions + $record->leave_deductions + $record->statutory_deductions + $record->tax_deductions, 2) }}</td>
+                    <td class="amount">Rs. {{ number_format($record->attendance_deductions, 2) }}</td>
                 </tr>
             </tbody>
         </table>
@@ -270,7 +255,7 @@
             <tr>
                 <td>
                     <span class="label">Net Disbursement Amount</span><br>
-                    <span class="net-amount">₹{{ number_format($record->net_salary, 2) }}</span>
+                    <span class="net-amount">Rs. {{ number_format($record->net_salary, 2) }}</span>
                 </td>
                 <td style="text-align: right; vertical-align: bottom;">
                     <div style="font-size: 11px; font-weight: bold; color: #1E3D30; text-transform: uppercase;">Disbursed & Closed</div>
