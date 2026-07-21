@@ -1040,23 +1040,24 @@ class EmployeeImportService
                         $payrollEnabledVal = $this->getRowVal($row, $canonicalMap, 'payroll_enabled');
 
                         $baseSalary = ($baseSalaryVal !== null && trim((string)$baseSalaryVal) !== '') ? $this->matchingService->parseNumeric($baseSalaryVal) : null;
-                        $effectiveDate = ($effectiveDateVal !== null && trim((string)$effectiveDateVal) !== '') ? $this->matchingService->parseDate($effectiveDateVal) : null;
-                        $payrollEnabled = ($payrollEnabledVal !== null && trim((string)$payrollEnabledVal) !== '') ? $this->parseBoolean($payrollEnabledVal) : false;
+                        $effectiveDate = ($effectiveDateVal !== null && trim((string)$effectiveDateVal) !== '') ? $this->matchingService->parseDate($effectiveDateVal) : ($user->joining_date ? $user->joining_date->format('Y-m-d') : null);
+                        $payrollEnabled = ($payrollEnabledVal !== null && trim((string)$payrollEnabledVal) !== '') ? $this->parseBoolean($payrollEnabledVal) : true;
 
                         if ($baseSalary !== null || $effectiveDate !== null) {
+                            $resolvedEffective = $effectiveDate ?? ($user->joining_date ? $user->joining_date->format('Y-m-d') : now()->format('Y-m-d'));
                             $payrollProfile->update([
-                                'base_salary' => $baseSalary,
-                                'salary_effective_date' => $effectiveDate,
+                                'base_salary' => $baseSalary ?? $payrollProfile->base_salary,
+                                'salary_effective_date' => $resolvedEffective,
                                 'payroll_enabled' => $payrollEnabled,
                                 'last_imported_at' => now(),
                                 'imported_by_id' => $runByUserId,
                                 'import_source' => 'Imported',
                             ]);
 
-                            if ($baseSalary !== null && $effectiveDate !== null) {
+                            if ($baseSalary !== null) {
                                 $payrollProfile->recordSalaryRevision(
                                     $baseSalary,
-                                    $effectiveDate,
+                                    $resolvedEffective,
                                     'Salary setup during import',
                                     $runByUserId,
                                     'Imported'
@@ -1202,23 +1203,24 @@ class EmployeeImportService
                     $payrollEnabledVal = $this->getRowVal($row, $canonicalMap, 'payroll_enabled');
 
                     $baseSalary = ($baseSalaryVal !== null && trim((string)$baseSalaryVal) !== '') ? $this->matchingService->parseNumeric($baseSalaryVal) : null;
-                    $effectiveDate = ($effectiveDateVal !== null && trim((string)$effectiveDateVal) !== '') ? $this->matchingService->parseDate($effectiveDateVal) : null;
-                    $payrollEnabled = ($payrollEnabledVal !== null && trim((string)$payrollEnabledVal) !== '') ? $this->parseBoolean($payrollEnabledVal) : false;
+                    $effectiveDate = ($effectiveDateVal !== null && trim((string)$effectiveDateVal) !== '') ? $this->matchingService->parseDate($effectiveDateVal) : ($user->joining_date ? $user->joining_date->format('Y-m-d') : null);
+                    $payrollEnabled = ($payrollEnabledVal !== null && trim((string)$payrollEnabledVal) !== '') ? $this->parseBoolean($payrollEnabledVal) : true;
 
                     if ($baseSalary !== null || $effectiveDate !== null) {
+                        $resolvedEffective = $effectiveDate ?? ($user->joining_date ? $user->joining_date->format('Y-m-d') : now()->format('Y-m-d'));
                         $payrollProfile->update([
-                            'base_salary' => $baseSalary,
-                            'salary_effective_date' => $effectiveDate,
+                            'base_salary' => $baseSalary ?? $payrollProfile->base_salary,
+                            'salary_effective_date' => $resolvedEffective,
                             'payroll_enabled' => $payrollEnabled,
                             'last_imported_at' => now(),
                             'imported_by_id' => $runByUserId,
                             'import_source' => 'Imported',
                         ]);
 
-                        if ($baseSalary !== null && $effectiveDate !== null) {
+                        if ($baseSalary !== null) {
                             $payrollProfile->recordSalaryRevision(
                                 $baseSalary,
-                                $effectiveDate,
+                                $resolvedEffective,
                                 'Salary setup during import',
                                 $runByUserId,
                                 'Imported'

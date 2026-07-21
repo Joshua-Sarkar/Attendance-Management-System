@@ -254,36 +254,43 @@ class RepairPayrollBalancesCommand extends Command
         $users = User::where('role', '!=', 'admin')->get();
 
         foreach ($users as $user) {
+            $effectiveDate = $user->joining_date ? $user->joining_date->format('Y-m-d') : '2026-06-01';
+
             $profile = PayrollProfile::firstOrCreate(
                 ['user_id' => $user->id],
                 [
                     'base_salary' => 30000.00,
-                    'salary_effective_date' => $user->joining_date ? $user->joining_date->format('Y-m-d') : '2026-06-01',
+                    'salary_effective_date' => $effectiveDate,
                     'payroll_enabled' => true,
                     'import_source' => 'Business Rule Sync',
                 ]
             );
 
-            if (!$profile->payroll_enabled) {
-                $effectiveDate = $user->joining_date ? $user->joining_date->format('Y-m-d') : ($profile->salary_effective_date ? $profile->salary_effective_date->format('Y-m-d') : '2026-06-01');
-                
+            $needsUpdate = !$profile->payroll_enabled;
+
+            // Check if profile effective date is in the future relative to joining date
+            if ($profile->salary_effective_date && $user->joining_date && $profile->salary_effective_date->gt($user->joining_date->startOfDay()) && $profile->salaryHistories()->count() <= 1) {
+                $needsUpdate = true;
+            }
+
+            if ($needsUpdate) {
                 $profile->update([
                     'payroll_enabled' => true,
                     'base_salary' => $profile->base_salary ?: 30000.00,
                     'salary_effective_date' => $effectiveDate,
                 ]);
-
-                if ($profile->salaryHistories()->count() === 0) {
-                    $profile->recordSalaryRevision(
-                        (float)$profile->base_salary,
-                        $effectiveDate,
-                        'Initial salary placement',
-                        null,
-                        'Business Rule Sync'
-                    );
-                }
-
                 $count++;
+            }
+
+            // Ensure initial SalaryHistory record exists for historical calculations
+            if ($profile->salaryHistories()->count() === 0 && $profile->base_salary) {
+                $profile->recordSalaryRevision(
+                    (float)$profile->base_salary,
+                    $effectiveDate,
+                    'Initial salary placement',
+                    null,
+                    'Business Rule Sync'
+                );
             }
         }
 
