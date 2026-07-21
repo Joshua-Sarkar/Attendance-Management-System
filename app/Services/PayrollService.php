@@ -1179,14 +1179,43 @@ class PayrollService
 
         $newFingerprint = self::computeFingerprint($user, $startDate, $endDate, $calc, $states);
 
+        $version = $record->calculation_version ?: 1;
+        $employeeReviewStatus = $record->employee_review_status ?: 'pending';
+        $employeeApprovedAt = $record->employee_approved_at;
+        $adminApprovedAt = $record->admin_approved_at;
+        $adminApprovedById = $record->admin_approved_by_id;
+        $historicalApprovals = $record->calculation_metadata['historical_approvals'] ?? [];
+
+        $correctionsSum = PayrollCorrection::where('payroll_cycle_id', $cycle->id)
+            ->where('user_id', $user->id)
+            ->where('approval_status', 'approved')
+            ->sum('financial_delta');
+
+        $finalNet = max(0.00, $calc['net_salary'] + $correctionsSum);
+        $fingerprintInputs = self::getFingerprintInputs($user, $startDate, $endDate);
+
         if ($record->fingerprint !== $newFingerprint) {
-            $version = $record->calculation_version ?: 1;
             $version++;
-            
             $employeeReviewStatus = 'stale';
             $employeeApprovedAt = null;
             $adminApprovedAt = null;
             $adminApprovedById = null;
+
+            if ($record->employee_review_status === 'approved') {
+                $historicalApprovals[] = [
+                    'type' => 'employee',
+                    'version' => $record->calculation_version,
+                    'approved_at' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
+                ];
+            }
+            if ($record->admin_approved_at !== null) {
+                $historicalApprovals[] = [
+                    'type' => 'admin',
+                    'version' => $record->calculation_version,
+                    'approved_at' => $record->admin_approved_at->toDateTimeString(),
+                    'approved_by_id' => $record->admin_approved_by_id,
+                ];
+            }
 
             // Log recalculation and reasons why it became stale
             $oldInputs = $record->calculation_metadata['fingerprint_inputs'] ?? null;
@@ -1208,78 +1237,51 @@ class PayrollService
                 $newFingerprint,
                 "Automatic recalculation on stale fingerprint inputs"
             );
-
-            $correctionsSum = PayrollCorrection::where('payroll_cycle_id', $cycle->id)
-                ->where('user_id', $user->id)
-                ->where('approval_status', 'approved')
-                ->sum('financial_delta');
-
-            $finalNet = max(0.00, $calc['net_salary'] + $correctionsSum);
-            $fingerprintInputs = self::getFingerprintInputs($user, $startDate, $endDate);
-
-            // Preserve historical approvals if they existed
-            $historicalApprovals = $record->calculation_metadata['historical_approvals'] ?? [];
-            if ($record->employee_review_status === 'approved') {
-                $historicalApprovals[] = [
-                    'type' => 'employee',
-                    'version' => $record->calculation_version,
-                    'approved_at' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
-                ];
-            }
-            if ($record->admin_approved_at !== null) {
-                $historicalApprovals[] = [
-                    'type' => 'admin',
-                    'version' => $record->calculation_version,
-                    'approved_at' => $record->admin_approved_at->toDateTimeString(),
-                    'approved_by_id' => $record->admin_approved_by_id,
-                ];
-            }
-
-            $record->update([
-                'base_salary' => $calc['base_salary'],
-                'gross_salary' => $calc['gross_salary'],
-                'net_salary' => $finalNet,
-                'attendance_deductions' => $calc['attendance_deductions'],
-                'leave_deductions' => $calc['leave_deductions'],
-                'statutory_deductions' => $calc['statutory_deductions'],
-                'tax_deductions' => $calc['tax_deductions'],
-                'overtime_hours' => $calc['overtime_hours'],
-                'overtime_pay' => $calc['overtime_pay'],
-                'bonuses' => $calc['bonuses'] + $correctionsSum, 
-                'allowances' => $calc['allowances'],
-                'working_days' => $calc['working_days'],
-                'present_days' => $calc['present_days'],
-                'absent_days' => $calc['absent_days'],
-                'leave_days' => $calc['leave_days'],
-                'unpaid_leave_days' => $calc['unpaid_leave_days'],
-                'birthday_leave_days' => $calc['birthday_leave_days'],
-                'half_days' => $calc['half_days'],
-                'late_days' => $calc['late_days'],
-                'wfh_days' => $calc['wfh_days'],
-                'calculation_version' => $version,
-                'fingerprint' => $newFingerprint,
-                'employee_review_status' => $employeeReviewStatus,
-                'employee_approved_at' => $employeeApprovedAt,
-                'admin_approved_at' => $adminApprovedAt,
-                'admin_approved_by_id' => $adminApprovedById,
-                'calculation_metadata' => [
-                    'pf' => $calc['pf'],
-                    'esi' => $calc['esi'],
-                    'prof_tax' => $calc['prof_tax'],
-                    'cycle_type' => $calc['cycle_type'],
-                    'daily_breakdown' => $calc['daily_breakdown'],
-                    'daily_rate' => $calc['daily_rate'],
-                    'hourly_rate' => $calc['hourly_rate'],
-                    'calendar_days' => $calc['calendar_days'],
-                    'fingerprint_inputs' => $fingerprintInputs,
-                    'historical_approvals' => $historicalApprovals,
-                ],
-            ]);
-
-            // Re-detect exceptions
-            PayrollException::where('payroll_record_id', $record->id)->delete();
-            self::detectAndCreateExceptions($record, $calc);
         }
+
+        $record->update([
+            'base_salary' => $calc['base_salary'],
+            'gross_salary' => $calc['gross_salary'],
+            'net_salary' => $finalNet,
+            'attendance_deductions' => $calc['attendance_deductions'],
+            'leave_deductions' => $calc['leave_deductions'],
+            'statutory_deductions' => $calc['statutory_deductions'],
+            'tax_deductions' => $calc['tax_deductions'],
+            'overtime_hours' => $calc['overtime_hours'],
+            'overtime_pay' => $calc['overtime_pay'],
+            'bonuses' => $calc['bonuses'] + $correctionsSum,
+            'allowances' => $calc['allowances'],
+            'working_days' => $calc['working_days'],
+            'present_days' => $calc['present_days'],
+            'absent_days' => $calc['absent_days'],
+            'leave_days' => $calc['leave_days'],
+            'unpaid_leave_days' => $calc['unpaid_leave_days'],
+            'birthday_leave_days' => $calc['birthday_leave_days'],
+            'half_days' => $calc['half_days'],
+            'late_days' => $calc['late_days'],
+            'wfh_days' => $calc['wfh_days'],
+            'calculation_version' => $version,
+            'fingerprint' => $newFingerprint,
+            'employee_review_status' => $employeeReviewStatus,
+            'employee_approved_at' => $employeeApprovedAt,
+            'admin_approved_at' => $adminApprovedAt,
+            'admin_approved_by_id' => $adminApprovedById,
+            'calculation_metadata' => [
+                'pf' => $calc['pf'],
+                'esi' => $calc['esi'],
+                'prof_tax' => $calc['prof_tax'],
+                'cycle_type' => $calc['cycle_type'],
+                'daily_breakdown' => $calc['daily_breakdown'],
+                'daily_rate' => $calc['daily_rate'],
+                'hourly_rate' => $calc['hourly_rate'],
+                'calendar_days' => $calc['calendar_days'],
+                'fingerprint_inputs' => $fingerprintInputs,
+                'historical_approvals' => $historicalApprovals,
+            ],
+        ]);
+
+        PayrollException::where('payroll_record_id', $record->id)->delete();
+        self::detectAndCreateExceptions($record, $calc);
     }
 
     /**
