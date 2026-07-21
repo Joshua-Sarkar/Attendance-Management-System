@@ -24,6 +24,24 @@ class User extends Authenticatable
                     $lb->saveQuietly();
                 }
             }
+
+            if ($user->wasChanged('joining_date') && $user->joining_date) {
+                $profile = $user->payrollProfile;
+                if ($profile) {
+                    $histories = $profile->salaryHistories;
+                    if ($histories->count() <= 1) {
+                        $newDate = $user->joining_date;
+                        $profile->update([
+                            'salary_effective_date' => $newDate,
+                        ]);
+                        if ($histories->count() === 1) {
+                            $histories->first()->update([
+                                'salary_effective_date' => $newDate,
+                            ]);
+                        }
+                    }
+                }
+            }
         });
     }
 
