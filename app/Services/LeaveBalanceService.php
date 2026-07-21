@@ -632,8 +632,8 @@ class LeaveBalanceService
 
             $user->payrollProfile()->create([
                 'base_salary' => null,
-                'salary_effective_date' => null,
-                'payroll_enabled' => false,
+                'salary_effective_date' => $user->joining_date ? $user->joining_date->format('Y-m-d') : null,
+                'payroll_enabled' => true,
                 'import_source' => 'Manual',
             ]);
 
