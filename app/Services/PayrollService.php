@@ -257,7 +257,32 @@ class PayrollService
         // Calculate Gross Salary (without overtime)
         $grossSalary = 0.00;
         if (!$hasMissingSalary) {
-            $grossSalary = $proratedBaseSalary + $allowances + $bonuses;
+            // Apply proration only for genuine partial-cycle periods (joined/separated mid-cycle or initial_partial type).
+            $isPartial = false;
+            
+            $joiningDate = $user->joining_date ? Carbon::parse($user->joining_date)->startOfDay() : null;
+            if ($joiningDate && $joiningDate->gt($startDate)) {
+                $isPartial = true;
+            }
+            
+            $profile = $user->employeeProfile;
+            $separationDate = null;
+            if ($profile) {
+                $separationDate = $profile->separation_date ?? $profile->last_working_day;
+            }
+            if ($separationDate) {
+                $separationDate = Carbon::parse($separationDate)->startOfDay();
+                if ($separationDate->lt($endDate)) {
+                    $isPartial = true;
+                }
+            }
+
+            if (($cycleInfo['type'] ?? '') === 'initial_partial') {
+                $isPartial = true;
+            }
+
+            $effectiveBaseSalary = $isPartial ? $proratedBaseSalary : $baseSalaryToRecord;
+            $grossSalary = $effectiveBaseSalary + $allowances + $bonuses;
         }
 
         // Statutory Deductions (Removed/Zeroed out for simplified model)
