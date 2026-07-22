@@ -191,14 +191,9 @@ class PayrollController extends Controller
                 })->toArray();
 
             // Set system explanation text
-            $pf = $metadata['pf'] ?? 0.00;
-            $esi = $metadata['esi'] ?? 0.00;
-            $pt = $metadata['prof_tax'] ?? 0.00;
-            
             $explanation = "Salary computed for {$user->name}. Base: ₹{$r->base_salary}, Allowances: ₹{$r->allowances}. " .
                            "Overtime Pay: ₹{$r->overtime_pay} ({$r->overtime_hours} hrs worked). " .
-                           "Deductions applied: Attendance & Unpaid Leave Deductions: ₹" . ($r->attendance_deductions + $r->leave_deductions) . 
-                           ", PF: ₹{$pf}, ESI: ₹{$esi}, PT: ₹{$pt}, TDS Tax: ₹{$r->tax_deductions}. " .
+                           "Total Attendance Deductions: ₹{$r->attendance_deductions}. " .
                            "Net Disbursement: ₹{$r->net_salary}.";
 
             // Determine correction status
@@ -240,23 +235,23 @@ class PayrollController extends Controller
                 'wfh' => $r->wfh_days,
                 'overtimeHours' => (float)$r->overtime_hours,
                 'bonuses' => (float)$r->bonuses,
-                'deductions' => (float)($r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions),
+                'deductions' => (float)$r->attendance_deductions,
                 'gross' => (float)$r->gross_salary,
                 'net' => (float)$r->net_salary,
                 'status' => $r->status,
                 'correctionReason' => $correctionReason,
                 'baseSalary' => (float)$r->base_salary,
                 'allowances' => (float)$r->allowances,
-                'taxAmt' => (float)$r->tax_deductions,
-                'pf' => (float)$pf,
-                'esi' => (float)$esi,
-                'profTax' => (float)$pt,
+                'taxAmt' => 0.00,
+                'pf' => 0.00,
+                'esi' => 0.00,
+                'profTax' => 0.00,
                 'dailyRate' => (float)($metadata['daily_rate'] ?? 0.00),
                 'hourlyRate' => (float)($metadata['hourly_rate'] ?? 0.00),
                 'calendarDays' => (int)($metadata['calendar_days'] ?? 30),
                 'attendanceDeductions' => (float)$r->attendance_deductions,
-                'leaveDeductions' => (float)$r->leave_deductions,
-                'statutoryDeductions' => (float)$r->statutory_deductions,
+                'leaveDeductions' => 0.00,
+                'statutoryDeductions' => 0.00,
                 'overtimePay' => (float)$r->overtime_pay,
                 'correctionStatus' => $correctionStatus,
                 'locked' => (bool)$r->locked,
@@ -279,6 +274,7 @@ class PayrollController extends Controller
                 'payslip_status' => $r->payslip_status ?? 'pending',
                 'payslip_generated_at' => $r->payslip_generated_at ? $r->payslip_generated_at->format('d M, g:i A') : null,
                 'payslip_published_at' => $r->payslip_published_at ? $r->payslip_published_at->format('d M, g:i A') : null,
+                'deductionBreakdown' => PayrollService::getAttendanceDeductionBreakdown($r),
                 'disputes' => $r->disputes->map(function($d) {
                     return [
                         'id' => $d->id,
@@ -462,8 +458,8 @@ class PayrollController extends Controller
             $sumOT = (float) $rSubset->sum('overtime_hours');
             $avgAtt = $rSubset->count() > 0 ? round($rSubset->avg(fn($rec) => ($rec->present_days / ($rec->working_days ?: 26)) * 100)) : 0;
             
-            // Employer cost: gross + 12% PF matching
-            $employerCost = $sumGross + ($rSubset->sum('base_salary') * 0.12);
+            // Employer cost is gross salary
+            $employerCost = $sumGross;
 
             $label = substr($d->name, 0, 4);
             $deptPayroll[] = ['label' => $label, 'value' => $sumNet];
@@ -679,6 +675,8 @@ class PayrollController extends Controller
             ['label' => 'Average Overtime', 'value' => $avgOTGlobal . 'h', 'sub' => 'Per employee this cycle'],
         ];
 
+        $lockReadiness = PayrollService::checkLockReadiness($cycle);
+
         return view('admin.payroll.index', [
             'cycle' => $cycle,
             'period' => $period,
@@ -690,6 +688,7 @@ class PayrollController extends Controller
             'reports' => $reports,
             'kpis' => $kpis,
             'pipeline' => $pipeline,
+            'lockReadiness' => $lockReadiness,
             'allPeriods' => PayrollCycle::orderBy('start_date', 'desc')->pluck('period')->toArray() ?: ['June 2026'],
             'cycleInstances' => $cycleInstances,
             'activeTab' => $activeTab,
@@ -707,8 +706,13 @@ class PayrollController extends Controller
     public function process(Request $request)
     {
         $period = $request->input('period', 'June 2026');
-        $actor = auth()->user();
+        $cycle = PayrollCycle::where('period', $period)->first();
 
+        if ($cycle && $cycle->status === 'locked') {
+            return back()->with('error', "Cannot recalculate payroll cycle {$period}. The cycle is locked and immutable.");
+        }
+
+        $actor = auth()->user();
         PayrollService::processCycle($period, $actor);
 
         return redirect()->route('admin.payroll.index', ['period' => $period])
@@ -724,13 +728,17 @@ class PayrollController extends Controller
         $cycle = PayrollCycle::where('period', $period)->firstOrFail();
         $actor = auth()->user();
 
-        $success = PayrollService::lockCycle($cycle, $actor);
+        $result = PayrollService::lockCycle($cycle, $actor);
 
-        if (!$success) {
-            return back()->with('error', 'Cannot lock payroll. There are unresolved critical exceptions.');
+        if ($request->wantsJson()) {
+            return response()->json($result);
         }
 
-        return back()->with('success', "Payroll cycle {$period} locked successfully.");
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
+        }
+
+        return back()->with('success', $result['message']);
     }
 
     /**
@@ -881,13 +889,14 @@ class PayrollController extends Controller
         
         $headers2 = [
             'Employee ID', 'Name', 'Eligible Days', 'Present Days', 'Absent Days', 
-            'Leave Days', 'Overtime Hours', 'Overtime Pay', 'PF', 'ESI', 'Professional Tax', 'TDS'
+            'Leave Days', 'Overtime Hours', 'Overtime Pay', 'Half Days', 'Unpaid Leave Days', 'Late Penalties', 'Override Adjustments', 'Manual Adjustments', 'Total Deductions'
         ];
         $sheet2->fromArray($headers2, NULL, 'A1');
         
         $rowIdx = 2;
         foreach ($records as $r) {
             $user = $r->user;
+            $breakdown = PayrollService::getAttendanceDeductionBreakdown($r);
             $sheet2->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
                 $user->name,
@@ -897,10 +906,12 @@ class PayrollController extends Controller
                 (float)$r->leave_days,
                 (float)$r->overtime_hours,
                 (float)$r->overtime_pay,
-                (float)$r->statutory_deductions,
-                (float)($r->calculation_metadata['esi'] ?? 0.00),
-                (float)($r->calculation_metadata['pt'] ?? 0.00),
-                (float)$r->tax_deductions
+                (float)$breakdown['half_days']['amount'],
+                (float)$breakdown['unpaid_leaves']['amount'],
+                (float)$breakdown['late_penalties']['amount'],
+                (float)$breakdown['override_adjustments']['amount'],
+                (float)$breakdown['manual_adjustments']['amount'],
+                (float)$r->attendance_deductions
             ], NULL, 'A' . $rowIdx);
             $rowIdx++;
         }

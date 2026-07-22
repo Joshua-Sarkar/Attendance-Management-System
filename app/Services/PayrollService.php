@@ -659,44 +659,250 @@ class PayrollService
     }
 
     /**
-     * Lock the entire payroll cycle to prevent any modifications.
+     * Derive the canonical cycle status based on the state of its records and exceptions.
      */
-    public static function lockCycle(PayrollCycle $cycle, User $actor): bool
+    public static function deriveCycleStatus(PayrollCycle $cycle): string
     {
-        $lockPolicy = PayrollSetting::getValue('lockrules');
-        $excludeUnresolved = filter_var($lockPolicy['exclude_unresolved_from_lock'] ?? true, FILTER_VALIDATE_BOOLEAN);
-
-        if ($excludeUnresolved) {
-            $hasUnresolved = PayrollException::where('payroll_cycle_id', $cycle->id)
-                ->where('resolved', false)
-                ->where('severity', 'Critical')
-                ->exists();
-
-            if ($hasUnresolved) {
-                return false; 
-            }
+        if ($cycle->status === 'locked') {
+            return 'locked';
         }
 
+        if ($cycle->status === 'under_review') {
+            return 'under_review';
+        }
+
+        $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)->get();
+        if ($records->isEmpty()) {
+            return 'draft';
+        }
+
+        $hasCriticalExceptions = PayrollException::where('payroll_cycle_id', $cycle->id)
+            ->where('severity', 'Critical')
+            ->where('resolved', false)
+            ->exists();
+
+        if ($hasCriticalExceptions) {
+            return 'corrections_pending';
+        }
+
+        $allApproved = $records->every(function ($r) {
+            return $r->employee_review_status === 'approved';
+        });
+
+        if ($allApproved) {
+            return 'ready_to_lock';
+        }
+
+        return 'generated';
+    }
+
+    /**
+     * Synchronize and persist cycle status.
+     */
+    public static function syncCycleStatus(PayrollCycle $cycle): string
+    {
+        $derived = self::deriveCycleStatus($cycle);
+        if ($cycle->status !== $derived && $cycle->status !== 'locked') {
+            $cycle->update(['status' => $derived]);
+        }
+        return $cycle->status;
+    }
+
+    /**
+     * Evaluate detailed lock readiness checklist for a cycle.
+     */
+    public static function checkLockReadiness(PayrollCycle $cycle): array
+    {
+        $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)->get();
+        $totalCount = $records->count();
+        $approvedCount = $records->where('employee_review_status', 'approved')->count();
+        $pendingCount = $records->where('employee_review_status', 'pending')->count();
+        $disputedCount = $records->where('employee_review_status', 'disputed')->count();
+
+        $recordIds = $records->pluck('id')->toArray();
+        $openDisputesCount = empty($recordIds) ? 0 : PayrollDispute::whereIn('payroll_record_id', $recordIds)
+            ->where('status', 'open')
+            ->count();
+
+        $criticalExceptionsCount = PayrollException::where('payroll_cycle_id', $cycle->id)
+            ->where('resolved', false)
+            ->where('severity', 'Critical')
+            ->count();
+
+        $blockingReasons = [];
+        $warnings = [];
+
+        if ($cycle->status === 'locked') {
+            $blockingReasons[] = "Payroll cycle {$cycle->period} is already locked.";
+        }
+
+        if ($totalCount === 0) {
+            $blockingReasons[] = "No payroll records exist for period {$cycle->period}. Run calculation first.";
+        }
+
+        if ($criticalExceptionsCount > 0) {
+            $blockingReasons[] = "{$criticalExceptionsCount} unresolved critical exception(s) must be resolved before locking.";
+        }
+
+        if ($openDisputesCount > 0) {
+            $blockingReasons[] = "{$openDisputesCount} open employee dispute(s) must be resolved or closed before locking.";
+        }
+
+        if ($pendingCount > 0 || $disputedCount > 0) {
+            $warnings[] = "{$pendingCount} pending review(s) and {$disputedCount} disputed record(s) outstanding. Admin lock will override employee sign-offs.";
+        }
+
+        $canLock = empty($blockingReasons);
+        $derivedStatus = self::deriveCycleStatus($cycle);
+
+        return [
+            'can_lock' => $canLock,
+            'derived_status' => $derivedStatus,
+            'total_records' => $totalCount,
+            'approved_records' => $approvedCount,
+            'pending_reviews' => $pendingCount,
+            'disputed_records' => $disputedCount,
+            'open_disputes' => $openDisputesCount,
+            'critical_exceptions' => $criticalExceptionsCount,
+            'blocking_reasons' => $blockingReasons,
+            'warnings' => $warnings,
+            'approval_percentage' => $totalCount > 0 ? round(($approvedCount / $totalCount) * 100) : 0,
+        ];
+    }
+
+    /**
+     * Lock the entire payroll cycle to prevent any modifications and release payslips.
+     */
+    public static function lockCycle(PayrollCycle $cycle, User $actor, array $options = []): array
+    {
+        $readiness = self::checkLockReadiness($cycle);
+
+        if (!$readiness['can_lock']) {
+            self::syncCycleStatus($cycle);
+            return [
+                'success' => false,
+                'message' => implode(' ', $readiness['blocking_reasons']),
+                'readiness' => $readiness,
+            ];
+        }
+
+        $previousState = $cycle->status;
+
         DB::transaction(function () use ($cycle, $actor) {
+            $now = now();
+
             $cycle->update([
                 'status' => 'locked',
-                'locked_at' => now(),
+                'locked_at' => $now,
                 'locked_by_id' => $actor->id,
             ]);
 
-            PayrollRecord::where('payroll_cycle_id', $cycle->id)->update([
-                'locked' => true,
-            ]);
+            $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)->get();
+
+            foreach ($records as $record) {
+                $snapshot = $record->locked_snapshot ?: self::buildSnapshotForRecord($record, $actor);
+
+                $record->update([
+                    'locked' => true,
+                    'locked_at' => $record->locked_at ?: $now,
+                    'locked_by_id' => $record->locked_by_id ?: $actor->id,
+                    'admin_approved_at' => $record->admin_approved_at ?: $now,
+                    'admin_approved_by_id' => $record->admin_approved_by_id ?: $actor->id,
+                    'status' => 'locked',
+                    'locked_snapshot' => $snapshot,
+                    'payslip_status' => 'published',
+                    'payslip_generated_at' => $record->payslip_generated_at ?: $now,
+                    'payslip_published_at' => $now,
+                ]);
+            }
         });
 
         PayrollAuditLog::record(
             null,
             $actor->id,
-            "Locked payroll cycle: {$cycle->period}",
-            "Locks"
+            "Locked payroll cycle {$cycle->period} and published all payslips.",
+            "Locks",
+            $previousState,
+            "locked"
         );
 
-        return true;
+        return [
+            'success' => true,
+            'message' => "Payroll cycle {$cycle->period} locked successfully and payslips released.",
+            'readiness' => self::checkLockReadiness($cycle),
+        ];
+    }
+
+    /**
+     * Compile a comprehensive frozen snapshot for a payroll record.
+     */
+    public static function buildSnapshotForRecord(PayrollRecord $record, User $actor): array
+    {
+        $user = $record->user;
+        $profile = $user->employeeProfile;
+        $metadata = $record->calculation_metadata ?? [];
+
+        return [
+            'employee' => [
+                'name' => $user->name,
+                'employee_id' => $user->employee_id ?? 'EMP-' . $user->id,
+                'email' => $user->email,
+                'designation' => $profile->designation ?? 'Employee',
+                'department' => $user->department->name ?? 'Unassigned',
+                'joining_date' => $user->joining_date ? $user->joining_date->format('Y-m-d') : null,
+                'employment_category' => $profile->employee_category ?? 'Permanent',
+            ],
+            'bank_details' => [
+                'bank_name' => $profile->bank_name ?? '—',
+                'account_holder_name' => $profile->account_holder_name ?? $user->name,
+                'account_no' => $profile->account_no ?? '—',
+                'ifsc_code' => $profile->ifsc_code ?? '—',
+            ],
+            'period' => [
+                'period' => $record->payrollCycle->period,
+                'start_date' => $record->payrollCycle->start_date ? $record->payrollCycle->start_date->format('Y-m-d') : null,
+                'end_date' => $record->payrollCycle->end_date ? $record->payrollCycle->end_date->format('Y-m-d') : null,
+            ],
+            'basis' => [
+                'base_salary' => (float)$record->base_salary,
+                'allowances' => (float)$record->allowances,
+                'daily_rate' => (float)($metadata['daily_rate'] ?? round($record->base_salary / 30, 2)),
+                'hourly_rate' => (float)($metadata['hourly_rate'] ?? round($record->base_salary / 240, 2)),
+                'working_days' => $record->working_days,
+                'present_days' => (float)$record->present_days,
+                'absent_days' => (float)$record->absent_days,
+                'leave_days' => (float)$record->leave_days,
+                'unpaid_leave_days' => (float)$record->unpaid_leave_days,
+                'birthday_leave_days' => (float)$record->birthday_leave_days,
+                'half_days' => $record->half_days,
+                'late_days' => $record->late_days,
+                'wfh_days' => $record->wfh_days,
+                'overtime_hours' => (float)$record->overtime_hours,
+            ],
+            'earnings' => [
+                'base_pay' => (float)($record->gross_salary - $record->allowances - $record->overtime_pay - $record->bonuses),
+                'allowances' => (float)$record->allowances,
+                'overtime_pay' => (float)$record->overtime_pay,
+                'bonuses' => (float)$record->bonuses,
+            ],
+            'deductions' => [
+                'attendance_deductions' => (float)$record->attendance_deductions,
+                'leave_deductions' => (float)$record->leave_deductions,
+                'pf' => (float)($metadata['pf'] ?? 0.00),
+                'esi' => (float)($metadata['esi'] ?? 0.00),
+                'prof_tax' => (float)($metadata['prof_tax'] ?? 0.00),
+                'tax_deductions' => (float)$record->tax_deductions,
+            ],
+            'net_salary' => (float)$record->net_salary,
+            'gross_salary' => (float)$record->gross_salary,
+            'calculation_version' => $record->calculation_version,
+            'fingerprint' => $record->fingerprint,
+            'daily_breakdown' => $metadata['daily_breakdown'] ?? [],
+            'employee_approved_at' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
+            'admin_approved_at' => $record->admin_approved_at ? $record->admin_approved_at->toDateTimeString() : null,
+            'locked_at' => now()->toDateTimeString(),
+            'locked_by' => $actor->name,
+        ];
     }
 
     /**
@@ -725,6 +931,75 @@ class PayrollService
             "under_review",
             $reason
         );
+
+        self::syncCycleStatus($cycle);
+    }
+
+    /**
+     * Employee sign-off / approval of their payroll record.
+     */
+    public static function approveEmployeeRecord(PayrollRecord $record, User $actor): bool
+    {
+        if ($record->locked || $record->payrollCycle->status === 'locked') {
+            return false;
+        }
+
+        $prevState = $record->employee_review_status;
+
+        $record->update([
+            'employee_review_status' => 'approved',
+            'employee_approved_at' => now(),
+        ]);
+
+        PayrollAuditLog::record(
+            $record->user_id,
+            $actor->id,
+            "Employee approved payroll calculation v{$record->calculation_version}",
+            "Payroll Review",
+            $prevState,
+            "approved",
+            "Employee self-service sign-off"
+        );
+
+        self::syncCycleStatus($record->payrollCycle);
+        return true;
+    }
+
+    /**
+     * Employee dispute submission for their payroll record.
+     */
+    public static function disputeEmployeeRecord(PayrollRecord $record, User $actor, array $disputeData): PayrollDispute
+    {
+        if ($record->locked || $record->payrollCycle->status === 'locked') {
+            throw new \Exception("Cannot raise a dispute on a locked payroll record.");
+        }
+
+        $dispute = PayrollDispute::create([
+            'payroll_record_id' => $record->id,
+            'user_id' => $actor->id,
+            'category' => $disputeData['category'],
+            'affected_date' => $disputeData['affected_date'] ?? null,
+            'description' => $disputeData['description'],
+            'expected_correction' => $disputeData['expected_correction'],
+            'status' => 'open',
+        ]);
+
+        $record->update([
+            'employee_review_status' => 'disputed',
+        ]);
+
+        PayrollAuditLog::record(
+            $record->user_id,
+            $actor->id,
+            "Employee raised dispute: {$disputeData['category']}",
+            "Payroll Review",
+            "pending",
+            "disputed",
+            $disputeData['description']
+        );
+
+        self::syncCycleStatus($record->payrollCycle);
+        return $dispute;
     }
 
     /**
@@ -1135,8 +1410,9 @@ class PayrollService
                 'locked_by_id' => $actor->id,
                 'status' => 'locked',
                 'locked_snapshot' => $snapshot,
-                'payslip_status' => 'generated',
+                'payslip_status' => 'published',
                 'payslip_generated_at' => now(),
+                'payslip_published_at' => now(),
             ]);
 
             PayrollAuditLog::record(
@@ -1363,5 +1639,156 @@ class PayrollService
             // Recalculate against current canonical data
             self::recalculateRecord($record, $actor);
         });
+    }
+
+    /**
+     * Resolve granular attendance deductions breakdown with itemized dates for payslips & reports.
+     */
+    public static function getAttendanceDeductionBreakdown(PayrollRecord $record): array
+    {
+        $metadata = $record->calculation_metadata ?? [];
+        $dailyBreakdown = $metadata['daily_breakdown'] ?? [];
+        $calendarDays = (int) ($metadata['calendar_days'] ?? 30);
+        $dailyRate = (float) ($metadata['daily_rate'] ?? ($record->base_salary > 0 ? round($record->base_salary / max($calendarDays, 1), 2) : 0.00));
+
+        $halfDaysCount = 0;
+        $halfDayDates = [];
+        $halfDaysAmount = 0.00;
+
+        $unpaidCount = 0;
+        $unpaidDates = [];
+        $unpaidAmount = 0.00;
+
+        $lateCount = 0;
+        $lateDates = [];
+        $lateAmount = 0.00;
+
+        $overrideCount = 0;
+        $overrideDates = [];
+        $overrideAmount = 0.00;
+
+        $manualCount = 0;
+        $manualDates = [];
+        $manualAmount = 0.00;
+
+        $dateBreakdownItems = [];
+
+        foreach ($dailyBreakdown as $dateStr => $dayData) {
+            $status = $dayData['status'] ?? '';
+            $deducted = (float) ($dayData['deducted_amount'] ?? 0.00);
+            $isOverride = (bool) ($dayData['is_override'] ?? false);
+            $formattedDate = \Carbon\Carbon::parse($dateStr)->format('d M Y');
+
+            if (in_array($status, ['half', 'hd_upr', 'hd_upa', 'hdp'])) {
+                $halfDaysCount++;
+                $halfDayDates[] = $formattedDate;
+                $amt = $deducted > 0 ? $deducted : round($dailyRate * 0.5, 2);
+                $halfDaysAmount += $amt;
+                $dateBreakdownItems[] = [
+                    'date' => $formattedDate,
+                    'raw_date' => $dateStr,
+                    'type' => 'Half Day',
+                    'reason' => $isOverride ? 'Manual Override (Half Day)' : 'Half Day Worked',
+                    'amount' => $amt,
+                ];
+            } elseif (in_array($status, ['upa', 'absent', 'upr'])) {
+                $unpaidCount++;
+                $unpaidDates[] = $formattedDate;
+                $amt = $deducted > 0 ? $deducted : round($dailyRate, 2);
+                $unpaidAmount += $amt;
+                $typeLabel = $status === 'upa' ? 'Unpaid Leave' : 'Unexcused Absence';
+                $dateBreakdownItems[] = [
+                    'date' => $formattedDate,
+                    'raw_date' => $dateStr,
+                    'type' => $typeLabel,
+                    'reason' => $isOverride ? 'Manual Override (' . $typeLabel . ')' : 'Absence / Unpaid Leave',
+                    'amount' => $amt,
+                ];
+            } elseif ($status === 'late' && $deducted > 0) {
+                $lateCount++;
+                $lateDates[] = $formattedDate;
+                $lateAmount += $deducted;
+                $dateBreakdownItems[] = [
+                    'date' => $formattedDate,
+                    'raw_date' => $dateStr,
+                    'type' => 'Late Penalty',
+                    'reason' => 'Late Arrival Penalty',
+                    'amount' => $deducted,
+                ];
+            } elseif ($isOverride && $deducted > 0) {
+                $overrideCount++;
+                $overrideDates[] = $formattedDate;
+                $overrideAmount += $deducted;
+                $dateBreakdownItems[] = [
+                    'date' => $formattedDate,
+                    'raw_date' => $dateStr,
+                    'type' => 'Override Adjustment',
+                    'reason' => $dayData['notes'] ?? 'Attendance Override',
+                    'amount' => $deducted,
+                ];
+            }
+        }
+
+        // Check if total calculated breakdown differs from stored attendance_deductions
+        $totalFromBreakdown = $halfDaysAmount + $unpaidAmount + $lateAmount + $overrideAmount;
+        $totalStoredDeductions = (float) $record->attendance_deductions;
+
+        if ($totalStoredDeductions > $totalFromBreakdown && $totalStoredDeductions > 0) {
+            $diff = round($totalStoredDeductions - $totalFromBreakdown, 2);
+            $manualCount = 1;
+            $manualAmount = $diff;
+            $manualDates[] = 'Cycle Adjustment';
+            $dateBreakdownItems[] = [
+                'date' => 'Cycle Adjustment',
+                'raw_date' => '',
+                'type' => 'Manual Adjustment',
+                'reason' => $record->correction_reason ?? 'Payroll Adjustment',
+                'amount' => $diff,
+            ];
+        }
+
+        $halfDayRate = round($dailyRate * 0.5, 2);
+        $unpaidRate = round($dailyRate, 2);
+
+        return [
+            'daily_rate' => $dailyRate,
+            'half_days' => [
+                'label' => 'Half Days',
+                'quantity' => $halfDaysCount ?: (int) $record->half_days,
+                'rate' => $halfDayRate,
+                'amount' => round($halfDaysAmount, 2),
+                'dates' => $halfDayDates,
+            ],
+            'unpaid_leaves' => [
+                'label' => 'Unpaid Leave Days',
+                'quantity' => $unpaidCount ?: (int) ($record->unpaid_leave_days + $record->absent_days),
+                'rate' => $unpaidRate,
+                'amount' => round($unpaidAmount, 2),
+                'dates' => $unpaidDates,
+            ],
+            'late_penalties' => [
+                'label' => 'Late Penalties',
+                'quantity' => $lateCount ?: (int) $record->late_days,
+                'rate' => $lateCount > 0 ? round($lateAmount / max($lateCount, 1), 2) : 0.00,
+                'amount' => round($lateAmount, 2),
+                'dates' => $lateDates,
+            ],
+            'override_adjustments' => [
+                'label' => 'Override Adjustments',
+                'quantity' => $overrideCount,
+                'rate' => $overrideCount > 0 ? round($overrideAmount / max($overrideCount, 1), 2) : 0.00,
+                'amount' => round($overrideAmount, 2),
+                'dates' => $overrideDates,
+            ],
+            'manual_adjustments' => [
+                'label' => 'Manual Payroll Adjustments',
+                'quantity' => $manualCount,
+                'rate' => $manualAmount,
+                'amount' => round($manualAmount, 2),
+                'dates' => $manualDates,
+            ],
+            'total_deductions' => $totalStoredDeductions,
+            'itemized_dates' => $dateBreakdownItems,
+        ];
     }
 }

@@ -551,10 +551,10 @@ class PayrollExportService
 
         $headers = [
             'Employee ID', 'Employee Name', 'Department', 'Designation', 'Category', 
-            'Base Salary', 'Effective Date', 'Allowances', 'PF Option', 'ESI Option', 'PT Option'
+            'Base Salary', 'Effective Date', 'Allowances'
         ];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:K7');
+        self::applyHeaderStyles($sheet, 'A7:H7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
@@ -571,9 +571,6 @@ class PayrollExportService
                 (float)$r->base_salary,
                 $pp && $pp->salary_effective_date ? $pp->salary_effective_date->format('Y-m-d') : '—',
                 (float)$r->allowances,
-                '12% Mapped',
-                '0.75% Mapped',
-                'Flat Slab'
             ], null, 'A' . $rowIdx);
 
             $sheet->getStyle('F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
@@ -581,8 +578,8 @@ class PayrollExportService
             $rowIdx++;
         }
 
-        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'K');
-        $sheet->setAutoFilter('A7:K7');
+        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'H');
+        $sheet->setAutoFilter('A7:H7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
     }
@@ -792,9 +789,9 @@ class PayrollExportService
         $sheet->setTitle('Department Expenditures');
         self::applyTitleBlock($sheet, 'Department Payroll Cost Report', $rangeLabel);
 
-        $headers = ['Department', 'Headcount', 'Total Base Salary', 'Total Gross Salary', 'Employer PF Matching (12%)', 'Total Cost to Employer', 'Net Disbursement'];
+        $headers = ['Department', 'Headcount', 'Total Base Salary', 'Total Gross Salary', 'Total Cost to Employer', 'Net Disbursement'];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:G7');
+        self::applyHeaderStyles($sheet, 'A7:F7');
 
         $depts = Department::all();
         $rowIdx = 8;
@@ -803,7 +800,6 @@ class PayrollExportService
             $count = $rSubset->count();
             $base = (float)$rSubset->sum('base_salary');
             $gross = (float)$rSubset->sum('gross_salary');
-            $pfMatch = 0.00;
             $cost = $gross;
             $net = (float)$rSubset->sum('net_salary');
 
@@ -812,16 +808,15 @@ class PayrollExportService
                 $count,
                 $base,
                 $gross,
-                $pfMatch,
                 $cost,
                 $net
             ], null, 'A' . $rowIdx);
-            $sheet->getStyle('C'.$rowIdx.':G'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('C'.$rowIdx.':F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
-        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'G');
-        $sheet->setAutoFilter('A7:G7');
+        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'F');
+        $sheet->setAutoFilter('A7:F7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
     }

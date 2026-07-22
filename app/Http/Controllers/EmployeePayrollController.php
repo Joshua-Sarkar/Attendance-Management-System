@@ -210,19 +210,20 @@ class EmployeePayrollController extends Controller
                 'hourlyRate' => (float)($metadata['hourly_rate'] ?? round($record->base_salary / 240, 2)),
                 'calendarDays' => (int)($metadata['calendar_days'] ?? 30),
                 'allowances' => (float)$record->allowances,
-                'taxAmt' => (float)$record->tax_deductions,
-                'pf' => (float)$pf,
-                'esi' => (float)$esi,
-                'profTax' => (float)$pt,
+                'taxAmt' => 0.00,
+                'pf' => 0.00,
+                'esi' => 0.00,
+                'profTax' => 0.00,
                 'calculation_version' => $record->calculation_version,
                 'attendanceSnapshot' => $attendanceSnapshot,
                 'leaveHistory' => $leaves,
                 'systemExplanation' => $explanation,
                 'payslip_status' => $record->payslip_status,
                 'attendanceDeductions' => (float)$record->attendance_deductions,
-                'leaveDeductions' => (float)$record->leave_deductions,
+                'leaveDeductions' => 0.00,
                 'birthdayLeave' => (float)$record->birthday_leave_days,
                 'overtimePay' => (float)$record->overtime_pay,
+                'deductionBreakdown' => PayrollService::getAttendanceDeductionBreakdown($record),
             ];
         }
 
@@ -250,25 +251,15 @@ class EmployeePayrollController extends Controller
         }
 
         if ($record->locked) {
-            return back()->with('error', 'Cannot approve. Payroll is locked.');
+            return back()->with('error', 'Cannot approve locked payroll.');
         }
 
-        $record->update([
-            'employee_review_status' => 'approved',
-            'employee_approved_at' => now(),
-        ]);
-
-        PayrollAuditLog::record(
-            $record->user_id,
-            Auth::id(),
-            "Employee approved calculation version {$record->calculation_version}",
-            "Payroll Correction",
-            null,
-            null,
-            "Employee self-service approval"
-        );
-
-        return back()->with('success', 'Payroll record approved successfully.');
+        try {
+            PayrollService::approveEmployeeRecord($record, Auth::user());
+            return back()->with('success', 'Payroll statement confirmed & approved successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     /**
@@ -278,9 +269,9 @@ class EmployeePayrollController extends Controller
     {
         $request->validate([
             'record_id' => 'required|exists:payroll_records,id',
-            'category' => 'required|in:Attendance,Leave,Salary,Deduction,Other',
-            'description' => 'required|string|min:5',
-            'expected_correction' => 'required|string|min:5',
+            'category' => 'required|string',
+            'description' => 'required|string|min:10',
+            'expected_correction' => 'nullable|string',
             'affected_date' => 'nullable|date',
         ]);
 
@@ -293,31 +284,12 @@ class EmployeePayrollController extends Controller
             return back()->with('error', 'Cannot dispute. Payroll is locked.');
         }
 
-        PayrollDispute::create([
-            'payroll_record_id' => $record->id,
-            'user_id' => Auth::id(),
-            'category' => $request->input('category'),
-            'affected_date' => $request->input('affected_date'),
-            'description' => $request->input('description'),
-            'expected_correction' => $request->input('expected_correction'),
-            'status' => 'open',
-        ]);
-
-        $record->update([
-            'employee_review_status' => 'disputed',
-        ]);
-
-        PayrollAuditLog::record(
-            $record->user_id,
-            Auth::id(),
-            "Employee disputed calculation version {$record->calculation_version} (Category: {$request->input('category')})",
-            "Payroll Correction",
-            null,
-            null,
-            $request->input('description')
-        );
-
-        return back()->with('success', 'Dispute raised successfully. HR/Admin will review it.');
+        try {
+            PayrollService::disputeEmployeeRecord($record, Auth::user(), $request->all());
+            return back()->with('success', 'Dispute raised successfully. HR/Admin will review it.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     /**
@@ -337,7 +309,7 @@ class EmployeePayrollController extends Controller
             abort(400, 'Payslip is not available yet. Payroll cycle is not locked.');
         }
 
-        if (Auth::user()->role !== 'admin' && $record->payslip_status !== 'published') {
+        if (Auth::user()->role !== 'admin' && !in_array($record->payslip_status, ['published', 'generated'])) {
             abort(403, 'Payslip is not published yet.');
         }
 
@@ -356,6 +328,7 @@ class EmployeePayrollController extends Controller
             'cycle' => $cycle,
             'metadata' => $metadata,
             'netInWords' => $netInWords,
+            'deductionBreakdown' => PayrollService::getAttendanceDeductionBreakdown($record),
         ])->render();
 
         $options = new Options();
@@ -372,8 +345,9 @@ class EmployeePayrollController extends Controller
             'payslip_status' => 'published', // ensure published if admin downloads it
         ]);
 
-        return $dompdf->stream("Payslip_{$user->name}_{$cycle->period}.pdf", [
-            "Attachment" => true
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"Payslip_{$user->name}_{$cycle->period}.pdf\"",
         ]);
     }
 }

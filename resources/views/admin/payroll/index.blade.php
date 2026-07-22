@@ -646,6 +646,78 @@
 
                 <!-- ================= 6. PAYROLL LOCK ================= -->
                 <div x-show="activeTab === 'lock'" x-cloak class="fade-in space-y-6">
+                    
+                    <!-- Lock Readiness Checklist & Action Banner -->
+                    <div class="panel bg-cream border border-line p-6 rounded-2xl shadow-card space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line pb-4">
+                            <div>
+                                <div class="flex items-center gap-2.5">
+                                    <h3 class="font-display font-medium text-xl text-vellum">Payroll Cycle Locking Control</h3>
+                                    <span class="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border"
+                                          :class="cycle.status === 'locked' ? 'bg-burgundy/10 text-burgundy border-burgundy/20' : (lockReadiness.derived_status === 'ready_to_lock' ? 'bg-forest/10 text-forest border-forest/20' : 'bg-brass/10 text-brass-dark border-brass/25')"
+                                          x-text="cycle.status === 'locked' ? 'LOCKED & FINALISED' : (lockReadiness.derived_status === 'ready_to_lock' ? 'READY TO LOCK' : 'IN PROGRESS')"></span>
+                                </div>
+                                <p class="text-xs text-vellum-muted mt-1">Review approval readiness metrics and execute transactional lock for <span class="font-bold text-walnut" x-text="cycle.period"></span>.</p>
+                            </div>
+                            
+                            <div class="shrink-0">
+                                <template x-if="cycle.status !== 'locked'">
+                                    <button @click="lockCycleAdmin()"
+                                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-burgundy hover:bg-burgundy-dark text-cream text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-soft">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                        </svg>
+                                        Lock Payroll Cycle
+                                    </button>
+                                </template>
+                                <template x-if="cycle.status === 'locked'">
+                                    <span class="inline-flex items-center gap-2 px-4 py-2 bg-forest/10 border border-forest/20 text-forest text-xs font-bold font-mono uppercase tracking-wider rounded-xl">
+                                        ✓ Cycle Sealed & Locked
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Readiness Metrics Checklist -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                            <div class="p-3 bg-surface/50 border border-line rounded-xl">
+                                <span class="block text-[9.5px] font-mono font-bold uppercase text-vellum-faint">Employee Reviews</span>
+                                <span class="font-mono font-bold text-walnut mt-0.5 block" x-text="lockReadiness.approved_records + ' / ' + lockReadiness.total_records + ' (' + lockReadiness.approval_percentage + '%)'"></span>
+                            </div>
+                            <div class="p-3 bg-surface/50 border border-line rounded-xl">
+                                <span class="block text-[9.5px] font-mono font-bold uppercase text-vellum-faint">Pending Reviews</span>
+                                <span class="font-mono font-bold mt-0.5 block" :class="lockReadiness.pending_reviews > 0 ? 'text-brass-dark' : 'text-forest'" x-text="lockReadiness.pending_reviews + ' Employee(s)'"></span>
+                            </div>
+                            <div class="p-3 bg-surface/50 border border-line rounded-xl">
+                                <span class="block text-[9.5px] font-mono font-bold uppercase text-vellum-faint">Open Disputes</span>
+                                <span class="font-mono font-bold mt-0.5 block" :class="lockReadiness.open_disputes > 0 ? 'text-burgundy' : 'text-forest'" x-text="lockReadiness.open_disputes + ' Open'"></span>
+                            </div>
+                            <div class="p-3 bg-surface/50 border border-line rounded-xl">
+                                <span class="block text-[9.5px] font-mono font-bold uppercase text-vellum-faint">Critical Exceptions</span>
+                                <span class="font-mono font-bold mt-0.5 block" :class="lockReadiness.critical_exceptions > 0 ? 'text-burgundy' : 'text-forest'" x-text="lockReadiness.critical_exceptions + ' Unresolved'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Warnings / Blockers Notice -->
+                        <template x-if="lockReadiness.blocking_reasons && lockReadiness.blocking_reasons.length > 0">
+                            <div class="p-3 bg-burgundy/10 border border-burgundy/20 rounded-xl text-xs text-burgundy space-y-1">
+                                <p class="font-bold flex items-center gap-1.5"><span>⚠</span> <span>Locking Blocked:</span></p>
+                                <template x-for="reason in lockReadiness.blocking_reasons" :key="reason">
+                                    <p class="text-[11px] font-mono" x-text="'• ' + reason"></p>
+                                </template>
+                            </div>
+                        </template>
+
+                        <template x-if="lockReadiness.warnings && lockReadiness.warnings.length > 0 && (!lockReadiness.blocking_reasons || lockReadiness.blocking_reasons.length === 0)">
+                            <div class="p-3 bg-brass/10 border border-brass/25 rounded-xl text-xs text-brass-dark space-y-1">
+                                <p class="font-bold flex items-center gap-1.5"><span>ℹ</span> <span>Lock Checklist Notice:</span></p>
+                                <template x-for="warn in lockReadiness.warnings" :key="warn">
+                                    <p class="text-[11px]" x-text="'• ' + warn"></p>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
                     <div class="panel bg-cream border border-line shadow-card p-6 rounded-2xl space-y-4">
                         <div class="flex items-center justify-between border-b border-line pb-4">
                             <div class="flex items-center gap-3">
@@ -930,14 +1002,49 @@
                                                 <div class="flex justify-between" x-show="payslipEmp.bonuses > 0"><span>Adjustment / Bonus</span><span class="num font-semibold text-vellum text-forest" x-text="'₹' + payslipEmp.bonuses.toLocaleString('en-IN')"></span></div>
                                             </div>
                                         </div>
-                                        <div class="space-y-2">
-                                            <h5 class="font-mono text-[10px] uppercase font-bold text-burgundy border-b border-burgundy/25 pb-1">Deductions</h5>
-                                            <div class="space-y-1.5">
-                                                <div class="flex justify-between" x-show="payslipEmp.unpaidLeave > 0"><span>Leave Deductions</span><span class="num font-semibold text-burgundy" x-text="'–₹' + (payslipEmp.unpaidLeave * Math.round(payslipEmp.baseSalary/30)).toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Tax (TDS)</span><span class="num font-semibold text-burgundy" x-text="'–₹' + payslipEmp.taxAmt.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Provident Fund (PF)</span><span class="num font-semibold text-burgundy" x-text="'–₹' + payslipEmp.pf.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>ESI</span><span class="num font-semibold text-burgundy" x-text="'–₹' + payslipEmp.esi.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Professional Tax</span><span class="num font-semibold text-burgundy" x-text="'–₹' + payslipEmp.profTax.toLocaleString('en-IN')"></span></div>
+                                        <div class="space-y-2" x-if="payslipEmp">
+                                            <h5 class="font-mono text-[10px] uppercase font-bold text-burgundy border-b border-burgundy/25 pb-1">Attendance Deductions</h5>
+                                            <div class="space-y-1.5" x-if="payslipEmp.deductionBreakdown">
+                                                <div class="flex justify-between" x-show="payslipEmp.deductionBreakdown.half_days.quantity > 0">
+                                                    <span x-text="'Half Days (' + payslipEmp.deductionBreakdown.half_days.quantity + 'd)'"></span>
+                                                    <span class="num font-semibold text-burgundy" x-text="'-₹' + payslipEmp.deductionBreakdown.half_days.amount.toLocaleString('en-IN')"></span>
+                                                </div>
+                                                <div class="flex justify-between" x-show="payslipEmp.deductionBreakdown.unpaid_leaves.quantity > 0">
+                                                    <span x-text="'Unpaid Leave (' + payslipEmp.deductionBreakdown.unpaid_leaves.quantity + 'd)'"></span>
+                                                    <span class="num font-semibold text-burgundy" x-text="'-₹' + payslipEmp.deductionBreakdown.unpaid_leaves.amount.toLocaleString('en-IN')"></span>
+                                                </div>
+                                                <div class="flex justify-between" x-show="payslipEmp.deductionBreakdown.late_penalties.quantity > 0">
+                                                    <span x-text="'Late Penalties (' + payslipEmp.deductionBreakdown.late_penalties.quantity + ')'"></span>
+                                                    <span class="num font-semibold text-burgundy" x-text="'-₹' + payslipEmp.deductionBreakdown.late_penalties.amount.toLocaleString('en-IN')"></span>
+                                                </div>
+                                                <div class="flex justify-between" x-show="payslipEmp.deductionBreakdown.override_adjustments.quantity > 0">
+                                                    <span x-text="'Override Adjustments (' + payslipEmp.deductionBreakdown.override_adjustments.quantity + ')'"></span>
+                                                    <span class="num font-semibold text-burgundy" x-text="'-₹' + payslipEmp.deductionBreakdown.override_adjustments.amount.toLocaleString('en-IN')"></span>
+                                                </div>
+                                                <div class="flex justify-between" x-show="payslipEmp.deductionBreakdown.manual_adjustments.amount > 0">
+                                                    <span>Manual Adjustments</span>
+                                                    <span class="num font-semibold text-burgundy" x-text="'-₹' + payslipEmp.deductionBreakdown.manual_adjustments.amount.toLocaleString('en-IN')"></span>
+                                                </div>
+                                                <div class="flex justify-between pt-1 border-t border-burgundy/20 font-bold">
+                                                    <span>Total Attendance Deductions</span>
+                                                    <span class="num font-bold text-burgundy" x-text="'-₹' + payslipEmp.deductions.toLocaleString('en-IN')"></span>
+                                                </div>
+
+                                                <!-- Date log in Admin Payslip View -->
+                                                <template x-if="payslipEmp.deductionBreakdown.itemized_dates.length > 0">
+                                                    <div class="pt-2">
+                                                        <p class="text-[9px] uppercase font-bold text-vellum-faint font-mono">Deduction Dates:</p>
+                                                        <div class="max-h-20 overflow-y-auto space-y-1 mt-1 pr-1">
+                                                            <template x-for="item in payslipEmp.deductionBreakdown.itemized_dates" :key="item.date + item.type">
+                                                                <div class="flex justify-between text-[10px] text-vellum-muted bg-surface/40 px-2 py-0.5 rounded">
+                                                                    <span class="font-mono" x-text="item.date"></span>
+                                                                    <span x-text="item.type"></span>
+                                                                    <span class="font-mono font-bold text-burgundy" x-text="'-₹' + item.amount.toLocaleString('en-IN')"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
                                             </div>
                                         </div>
                                     </div>
@@ -1458,19 +1565,52 @@
                                             </div>
                                         </div>
 
-                                        <!-- Deductions Card -->
-                                        <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3">
-                                            <h5 class="font-mono text-[10px] uppercase font-bold text-burgundy border-b border-burgundy/25 pb-1">Deductions Component</h5>
-                                            <div class="space-y-2">
-                                                <div class="flex justify-between"><span>Attendance Deductions</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.attendanceDeductions.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Leave Deductions</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.leaveDeductions.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Provident Fund (PF)</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.pf.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>ESI</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.esi.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Professional Tax</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.profTax.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Tax (TDS)</span><span class="num font-semibold text-burgundy" x-text="'–₹' + selectedEmployee.taxAmt.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between border-t border-line/45 pt-1.5 font-bold"><span>Total Deductions</span><span class="num text-burgundy" x-text="'–₹' + selectedEmployee.deductions.toLocaleString('en-IN')"></span></div>
-                                            </div>
-                                        </div>
+                                        <!-- Attendance Deductions Card -->
+                                         <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3" x-if="selectedEmployee">
+                                             <h5 class="font-mono text-[10px] uppercase font-bold text-burgundy border-b border-burgundy/25 pb-1">Attendance Deductions</h5>
+                                             <div class="space-y-2" x-if="selectedEmployee.deductionBreakdown">
+                                                 <div class="flex justify-between" x-show="selectedEmployee.deductionBreakdown.half_days.quantity > 0">
+                                                     <span x-text="'Half Days (' + selectedEmployee.deductionBreakdown.half_days.quantity + 'd)'"></span>
+                                                     <span class="num font-semibold text-burgundy" x-text="'-₹' + selectedEmployee.deductionBreakdown.half_days.amount.toLocaleString('en-IN')"></span>
+                                                 </div>
+                                                 <div class="flex justify-between" x-show="selectedEmployee.deductionBreakdown.unpaid_leaves.quantity > 0">
+                                                     <span x-text="'Unpaid Leave (' + selectedEmployee.deductionBreakdown.unpaid_leaves.quantity + 'd)'"></span>
+                                                     <span class="num font-semibold text-burgundy" x-text="'-₹' + selectedEmployee.deductionBreakdown.unpaid_leaves.amount.toLocaleString('en-IN')"></span>
+                                                 </div>
+                                                 <div class="flex justify-between" x-show="selectedEmployee.deductionBreakdown.late_penalties.quantity > 0">
+                                                     <span x-text="'Late Penalties (' + selectedEmployee.deductionBreakdown.late_penalties.quantity + ')'"></span>
+                                                     <span class="num font-semibold text-burgundy" x-text="'-₹' + selectedEmployee.deductionBreakdown.late_penalties.amount.toLocaleString('en-IN')"></span>
+                                                 </div>
+                                                 <div class="flex justify-between" x-show="selectedEmployee.deductionBreakdown.override_adjustments.quantity > 0">
+                                                     <span x-text="'Override Adjustments (' + selectedEmployee.deductionBreakdown.override_adjustments.quantity + ')'"></span>
+                                                     <span class="num font-semibold text-burgundy" x-text="'-₹' + selectedEmployee.deductionBreakdown.override_adjustments.amount.toLocaleString('en-IN')"></span>
+                                                 </div>
+                                                 <div class="flex justify-between" x-show="selectedEmployee.deductionBreakdown.manual_adjustments.amount > 0">
+                                                     <span>Manual Adjustments</span>
+                                                     <span class="num font-semibold text-burgundy" x-text="'-₹' + selectedEmployee.deductionBreakdown.manual_adjustments.amount.toLocaleString('en-IN')"></span>
+                                                 </div>
+                                                 <div class="flex justify-between border-t border-line/45 pt-1.5 font-bold text-burgundy">
+                                                     <span>Total Attendance Deductions</span>
+                                                     <span class="num font-bold" x-text="'-₹' + selectedEmployee.deductions.toLocaleString('en-IN')"></span>
+                                                 </div>
+
+                                                 <!-- Date log -->
+                                                 <template x-if="selectedEmployee.deductionBreakdown.itemized_dates.length > 0">
+                                                     <div class="pt-2 border-t border-line/35">
+                                                         <p class="text-[9px] uppercase font-bold text-vellum-faint font-mono">Deduction Dates:</p>
+                                                         <div class="max-h-24 overflow-y-auto space-y-1 mt-1 pr-1">
+                                                             <template x-for="item in selectedEmployee.deductionBreakdown.itemized_dates" :key="item.date + item.type">
+                                                                 <div class="flex justify-between text-[10px] text-vellum-muted bg-surface/40 px-2 py-0.5 rounded">
+                                                                     <span class="font-mono font-semibold" x-text="item.date"></span>
+                                                                     <span x-text="item.type"></span>
+                                                                     <span class="font-mono font-bold text-burgundy" x-text="'-₹' + item.amount.toLocaleString('en-IN')"></span>
+                                                                 </div>
+                                                             </template>
+                                                         </div>
+                                                     </div>
+                                                 </template>
+                                             </div>
+                                         </div>
                                     </div>
 
                                     <!-- Summary Rates & States -->
@@ -1757,8 +1897,9 @@
                 cycle: { 
                     period: '{{ $cycle->period }}', 
                     status: '{{ $cycle->status }}', 
-                    statusLabel: '{{ $cycle->status === "locked" ? "Disbursement Ready" : ($cycle->status === "corrections_pending" ? "Corrections Pending" : "Processing") }}' 
+                    statusLabel: '{{ $cycle->status === "locked" ? "Disbursement Ready" : ($cycle->status === "ready_to_lock" ? "Ready to Lock" : ($cycle->status === "corrections_pending" ? "Corrections Pending" : "Processing")) }}' 
                 },
+                lockReadiness: @json($lockReadiness),
 
                 pipeline: @json($pipeline),
 
@@ -1814,8 +1955,8 @@
                         attendance_export: 'Employee-day level attendance evidence for the selected date range. Includes shifts, check-in/out times, late minutes, overrides, and leaves.',
                         monthly_attendance: 'Aggregates employee regularity: present days, absent days, leave counts, overtime hours, punctuality and absenteeism rates.',
                         leave_report: 'A detailed breakdown of leaves: types, opening balances, leaves taken, approval states, and payroll impacts.',
-                        deduction_report: 'Lists all detailed deduction components separately: Attendance, Unpaid Leave, PF, ESI, Professional Tax, TDS, and other statutory/manual deductions.',
-                        salary_report: 'Contains the canonical salary structures, base salaries, allowances, and statutory settings effective during the period.',
+                        deduction_report: 'Lists all detailed deduction components separately: Half Days, Unpaid Leaves, Late Penalties, Override Adjustments, and Manual Adjustments.',
+                        salary_report: 'Contains the canonical salary structures, base salaries, allowances, and adjustments effective during the period.',
                         payroll_reconciliation: 'The comprehensive redundancy report with enough raw data (identity, period, salary basis, attendance basis, earnings, deductions, approvals, locks) to manually reconstruct payroll.',
                         employee_payroll_detail: 'Exposes employee-by-employee detailed line items for earnings and deductions.',
                         department_payroll: 'Summarizes payroll expenditures and cost comparison across departments.',
@@ -2069,6 +2210,33 @@
                             this.toast = data.message;
                             setTimeout(() => { window.location.reload() }, 1000);
                         } else {
+                            this.toast = 'Error: ' + data.message;
+                        }
+                    });
+                },
+
+                lockCycleAdmin() {
+                    if (!confirm(`Are you sure you want to lock payroll cycle ${this.cycle.period}? This will seal all records and publish signed payslips.`)) {
+                        return;
+                    }
+                    this.toast = 'Executing transactional cycle lock...';
+                    fetch('/admin/payroll/lock', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            period: this.cycle.period
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.toast = data.message;
+                            setTimeout(() => { window.location.reload() }, 1000);
+                        } else {
+                            alert('Lock Failed: ' + data.message);
                             this.toast = 'Error: ' + data.message;
                         }
                     });

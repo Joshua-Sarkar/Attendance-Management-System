@@ -1178,6 +1178,12 @@
                 pct: s.total ? Math.round((s.present + s.late + s.wfh) / s.total * 100) : 0,
                 pending: s.pending
             })).sort((a, b) => b.headcount - a.headcount);
+
+            if (!rows.length) {
+                host.innerHTML = '<div class="mtile-empty">No managers found for the selected filter range.</div>';
+                return;
+            }
+
             host.innerHTML = `<table class="mtable">
                 <thead><tr><th>Manager</th><th>Team</th><th>Attendance</th><th>Pending</th></tr></thead>
                 <tbody>${rows.map(r => {
@@ -1196,12 +1202,22 @@
                 buckets.push({ label: 'W' + (buckets.length + 1), cost: hrs * 380 });
             }
             const max = Math.max(...buckets.map(b => b.cost), 1);
+            if (!buckets.length || M.payrollCost <= 0) {
+                host.innerHTML = '<div class="mtile-empty">Insufficient logged hours to model cost.</div>';
+                return;
+            }
+
             host.innerHTML = `
                 <div style="font-family:'Fraunces',serif; font-size:24px; font-weight:500; margin-bottom:10px;">₹${Math.round(M.payrollCost).toLocaleString('en-IN')}</div>
                 <div style="display:flex; align-items:flex-end; gap:6px; height:78px;">
-                    ${buckets.map(b => `<div title="${b.label}: ₹${Math.round(b.cost).toLocaleString('en-IN')}" style="flex:1; height:${Math.max(4, (b.cost / max * 78))}px; background:linear-gradient(180deg,#C9A227,var(--gold)); border-radius:4px 4px 0 0;"></div>`).join('')}
+                    ${buckets.map(b => `<div class="cost-bar" data-label="${b.label}" data-cost="${Math.round(b.cost).toLocaleString('en-IN')}" style="flex:1; height:${Math.max(4, (b.cost / max * 78))}px; background:linear-gradient(180deg,#C9A227,var(--gold)); border-radius:4px 4px 0 0; cursor:pointer;"></div>`).join('')}
                 </div>
                 <div class="mtile-foot"><span>Modeled at ₹380/hr blended rate</span><span>${buckets.length} week${buckets.length === 1 ? '' : 's'}</span></div>`;
+
+            host.querySelectorAll('.cost-bar').forEach(bar => {
+                bar.addEventListener('mousemove', e => showTip(e, `<div class="tt-title">${bar.dataset.label} Cost</div><div class="tt-row"><span>Est. Payroll</span><b>₹${bar.dataset.cost}</b></div>`));
+                bar.addEventListener('mouseleave', hideTip);
+            });
         }
 
         /* ---------------- bento registry ---------------- */

@@ -151,4 +151,41 @@ class TargetedPayrollSyncIntegrationTest extends TestCase
         $words = NumberToWordsFormatter::convert(12138);
         $this->assertStringContainsString('TWELVE THOUSAND ONE HUNDRED THIRTY-EIGHT', strtoupper($words));
     }
+
+    /** @test */
+    public function attendance_deduction_breakdown_returns_granular_quantities_rates_and_dates()
+    {
+        PayrollService::processCycle('June 2026', $this->admin);
+        $record = PayrollRecord::where('user_id', $this->employee->id)->first();
+        $this->assertNotNull($record);
+
+        // Add daily breakdown with half day and unpaid leave entries
+        $meta = $record->calculation_metadata ?? [];
+        $meta['daily_rate'] = 2000.00;
+        $meta['daily_breakdown'] = [
+            '2026-06-10' => ['status' => 'half', 'deducted_amount' => 1000.00, 'is_override' => true, 'notes' => 'Half Day Override'],
+            '2026-06-18' => ['status' => 'upa', 'deducted_amount' => 2000.00, 'is_override' => false, 'notes' => 'Unpaid Leave'],
+        ];
+        $record->update([
+            'calculation_metadata' => $meta,
+            'half_days' => 1,
+            'unpaid_leave_days' => 1,
+            'attendance_deductions' => 3000.00,
+        ]);
+
+        $breakdown = PayrollService::getAttendanceDeductionBreakdown($record->refresh());
+
+        $this->assertEquals(3000.00, $breakdown['total_deductions']);
+        $this->assertEquals(1, $breakdown['half_days']['quantity']);
+        $this->assertEquals(1000.00, $breakdown['half_days']['rate']);
+        $this->assertEquals(1000.00, $breakdown['half_days']['amount']);
+        $this->assertContains('10 Jun 2026', $breakdown['half_days']['dates']);
+
+        $this->assertEquals(1, $breakdown['unpaid_leaves']['quantity']);
+        $this->assertEquals(2000.00, $breakdown['unpaid_leaves']['rate']);
+        $this->assertEquals(2000.00, $breakdown['unpaid_leaves']['amount']);
+        $this->assertContains('18 Jun 2026', $breakdown['unpaid_leaves']['dates']);
+
+        $this->assertCount(2, $breakdown['itemized_dates']);
+    }
 }
