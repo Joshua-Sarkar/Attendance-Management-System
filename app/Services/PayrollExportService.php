@@ -72,8 +72,7 @@ class PayrollExportService
                 self::generateDepartmentPayroll($spreadsheet, $records, $rangeLabel);
                 break;
             case 'overtime_report':
-                self::generateOvertimeReport($spreadsheet, $records, $rangeLabel);
-                break;
+                throw new \InvalidArgumentException("Overtime Report is disabled (overtime is not supported).");
             case 'disbursement_register':
                 self::generateDisbursementRegister($spreadsheet, $records, $rangeLabel);
                 break;
@@ -148,15 +147,15 @@ class PayrollExportService
         $sheet->setTitle('Payroll Summary');
         self::applyTitleBlock($sheet, 'Payroll Summary Report', $rangeLabel);
 
-        $headers = ['Employee ID', 'Employee Name', 'Department', 'Designation', 'Base Salary', 'Gross Salary', 'Total Deductions', 'Net Salary', 'Lock Status'];
+        $headers = ['Employee ID', 'Employee Name', 'Department', 'Designation', 'Base Salary', 'Attendance Deductions', 'Net Salary', 'Lock Status'];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:I7');
+        self::applyHeaderStyles($sheet, 'A7:H7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
             $p = $user->employeeProfile;
-            $deductions = $r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions;
+            $deductions = $r->attendance_deductions;
 
             $sheet->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
@@ -164,13 +163,12 @@ class PayrollExportService
                 $user->department->name ?? 'Unassigned',
                 $p->designation ?? 'Employee',
                 (float)$r->base_salary,
-                (float)$r->gross_salary,
                 (float)$deductions,
                 (float)$r->net_salary,
                 $r->locked ? 'Locked' : 'Unlocked'
             ], null, 'A' . $rowIdx);
 
-            $sheet->getStyle('E'.$rowIdx.':H'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('E'.$rowIdx.':G'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
@@ -179,12 +177,11 @@ class PayrollExportService
         $sheet->setCellValue('E' . $rowIdx, "=SUM(E8:E" . ($rowIdx - 1) . ")");
         $sheet->setCellValue('F' . $rowIdx, "=SUM(F8:F" . ($rowIdx - 1) . ")");
         $sheet->setCellValue('G' . $rowIdx, "=SUM(G8:G" . ($rowIdx - 1) . ")");
-        $sheet->setCellValue('H' . $rowIdx, "=SUM(H8:H" . ($rowIdx - 1) . ")");
-        $sheet->getStyle('A'.$rowIdx.':I'.$rowIdx)->getFont()->setBold(true);
-        $sheet->getStyle('E'.$rowIdx.':H'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+        $sheet->getStyle('A'.$rowIdx.':H'.$rowIdx)->getFont()->setBold(true);
+        $sheet->getStyle('E'.$rowIdx.':G'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
 
-        self::applyTableBorders($sheet, 7, $rowIdx, 'I');
-        $sheet->setAutoFilter('A7:I7');
+        self::applyTableBorders($sheet, 7, $rowIdx, 'H');
+        $sheet->setAutoFilter('A7:H7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
     }
@@ -497,49 +494,42 @@ class PayrollExportService
         $sheet = $spreadsheet->createSheet();
         $sheet->setTitle('Deductions Breakdown');
         self::applyTitleBlock($sheet, 'Detailed Deduction Report', $rangeLabel);
-
         $headers = [
-            'Employee ID', 'Employee Name', 'Department', 'Base Salary', 'Gross Salary', 
-            'Attendance Deduction', 'Other Deductions', 'Total Deductions', 'Net Salary'
+            'Employee ID', 'Employee Name', 'Department', 'Base Salary', 
+            'Attendance Deduction', 'Net Salary'
         ];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:I7');
+        self::applyHeaderStyles($sheet, 'A7:F7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
-            $other = (float)($r->calculation_metadata['other_deductions'] ?? 0.00);
-
-            $totalDed = $r->attendance_deductions + $other;
 
             $sheet->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
                 $user->name,
                 $user->department->name ?? 'Unassigned',
                 (float)$r->base_salary,
-                (float)$r->gross_salary,
                 (float)$r->attendance_deductions,
-                $other,
-                (float)$totalDed,
                 (float)$r->net_salary
             ], null, 'A' . $rowIdx);
 
-            $sheet->getStyle('D'.$rowIdx.':I'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('D'.$rowIdx.':F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
         // Totals Row
         $sheet->setCellValue('A' . $rowIdx, 'TOTAL');
-        for ($col = 'D'; $col <= 'I'; $col++) {
+        for ($col = 'D'; $col <= 'F'; $col++) {
             $sheet->setCellValue($col . $rowIdx, "=SUM({$col}8:{$col}" . ($rowIdx - 1) . ")");
         }
-        $sheet->getStyle('A'.$rowIdx.':I'.$rowIdx)->getFont()->setBold(true);
-        $sheet->getStyle('D'.$rowIdx.':I'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+        $sheet->getStyle('A'.$rowIdx.':F'.$rowIdx)->getFont()->setBold(true);
+        $sheet->getStyle('D'.$rowIdx.':F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
 
-        self::applyTableBorders($sheet, 7, $rowIdx, 'I');
-        $sheet->setAutoFilter('A7:N7');
+        self::applyTableBorders($sheet, 7, $rowIdx, 'F');
+        $sheet->setAutoFilter('A7:F7');
         $sheet->freezePane('A8');
-        self::autofit($sheet);
+        self::autofit($sheet);      self::autofit($sheet);
     }
 
     // 6. Salary Report
@@ -592,15 +582,15 @@ class PayrollExportService
         $sheet1->setTitle('Payroll Summary');
         self::applyTitleBlock($sheet1, 'Payroll Summary (Reconciliation)', $rangeLabel);
 
-        $headers1 = ['Employee ID', 'Employee Name', 'Department', 'Designation', 'Base Salary', 'Gross Salary', 'Total Deductions', 'Net Salary', 'Lock Status'];
+        $headers1 = ['Employee ID', 'Employee Name', 'Department', 'Designation', 'Base Salary', 'Attendance Deductions', 'Net Salary', 'Lock Status'];
         $sheet1->fromArray($headers1, null, 'A7');
-        self::applyHeaderStyles($sheet1, 'A7:I7');
+        self::applyHeaderStyles($sheet1, 'A7:H7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
             $p = $user->employeeProfile;
-            $deductions = $r->attendance_deductions + $r->leave_deductions + $r->statutory_deductions + $r->tax_deductions;
+            $deductions = $r->attendance_deductions;
 
             $sheet1->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
@@ -608,16 +598,15 @@ class PayrollExportService
                 $user->department->name ?? 'Unassigned',
                 $p->designation ?? 'Employee',
                 (float)$r->base_salary,
-                (float)$r->gross_salary,
                 (float)$deductions,
                 (float)$r->net_salary,
                 $r->locked ? 'Locked' : 'Unlocked'
             ], null, 'A' . $rowIdx);
-            $sheet1->getStyle('E'.$rowIdx.':H'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet1->getStyle('E'.$rowIdx.':G'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
-        self::applyTableBorders($sheet1, 7, $rowIdx - 1, 'I');
-        $sheet1->setAutoFilter('A7:I7');
+        self::applyTableBorders($sheet1, 7, $rowIdx - 1, 'H');
+        $sheet1->setAutoFilter('A7:H7');
         $sheet1->freezePane('A8');
         self::autofit($sheet1);
 
@@ -626,9 +615,9 @@ class PayrollExportService
         $sheet2->setTitle('Attendance Basis');
         self::applyTitleBlock($sheet2, 'Attendance Basis Details', $rangeLabel);
 
-        $headers2 = ['Employee ID', 'Employee Name', 'Working Days', 'Present Days', 'Absent Days', 'Late Days', 'Half Days', 'Leave Days', 'WFH Days', 'Overtime Hours'];
+        $headers2 = ['Employee ID', 'Employee Name', 'Working Days', 'Present Days', 'Absent Days', 'Late Days', 'Half Days', 'Leave Days', 'WFH Days'];
         $sheet2->fromArray($headers2, null, 'A7');
-        self::applyHeaderStyles($sheet2, 'A7:J7');
+        self::applyHeaderStyles($sheet2, 'A7:I7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
@@ -636,19 +625,18 @@ class PayrollExportService
             $sheet2->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
                 $user->name,
-                (int)$r->working_days,
+                30,
                 (float)$r->present_days,
                 (float)$r->absent_days,
                 (int)$r->late_days,
                 (int)$r->half_days,
                 (float)$r->leave_days,
-                (int)$r->wfh_days,
-                (float)$r->overtime_hours
+                (int)$r->wfh_days
             ], null, 'A' . $rowIdx);
             $rowIdx++;
         }
-        self::applyTableBorders($sheet2, 7, $rowIdx - 1, 'J');
-        $sheet2->setAutoFilter('A7:J7');
+        self::applyTableBorders($sheet2, 7, $rowIdx - 1, 'I');
+        $sheet2->setAutoFilter('A7:I7');
         $sheet2->freezePane('A8');
         self::autofit($sheet2);
 
@@ -681,30 +669,28 @@ class PayrollExportService
         // Sheet 4: Deduction Detail
         $sheet4 = $spreadsheet->createSheet();
         $sheet4->setTitle('Deduction Detail');
-        self::applyTitleBlock($sheet4, 'Earnings & Deductions Reconciliation', $rangeLabel);
+        self::applyTitleBlock($sheet4, 'Base Salary & Deductions Reconciliation', $rangeLabel);
 
-        $headers4 = ['Employee ID', 'Employee Name', 'Gross Salary', 'Attendance Ded', 'Total Deductions', 'Net Salary'];
+        $headers4 = ['Employee ID', 'Employee Name', 'Base Salary', 'Attendance Ded', 'Net Salary'];
         $sheet4->fromArray($headers4, null, 'A7');
-        self::applyHeaderStyles($sheet4, 'A7:F7');
+        self::applyHeaderStyles($sheet4, 'A7:E7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
-            $totalDed = $r->attendance_deductions;
 
             $sheet4->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
                 $user->name,
-                (float)$r->gross_salary,
+                (float)$r->base_salary,
                 (float)$r->attendance_deductions,
-                (float)$totalDed,
                 (float)$r->net_salary
             ], null, 'A' . $rowIdx);
-            $sheet4->getStyle('C'.$rowIdx.':F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet4->getStyle('C'.$rowIdx.':E'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
-        self::applyTableBorders($sheet4, 7, $rowIdx - 1, 'F');
-        $sheet4->setAutoFilter('A7:K7');
+        self::applyTableBorders($sheet4, 7, $rowIdx - 1, 'E');
+        $sheet4->setAutoFilter('A7:E7');
         $sheet4->freezePane('A8');
         self::autofit($sheet4);
 
@@ -748,16 +734,15 @@ class PayrollExportService
 
         $headers = [
             'Employee ID', 'Employee Name', 'Department', 'Designation', 'Base Salary', 
-            'Allowances', 'Overtime Pay', 'Gross Salary', 'Attendance Ded', 'Total Deductions', 'Net Salary'
+            'Attendance Deduction', 'Net Salary'
         ];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:K7');
+        self::applyHeaderStyles($sheet, 'A7:G7');
 
         $rowIdx = 8;
         foreach ($records as $r) {
             $user = $r->user;
             $p = $user->employeeProfile;
-            $totalDed = $r->attendance_deductions;
 
             $sheet->fromArray([
                 $user->employee_id ?? 'EMP-' . $user->id,
@@ -765,19 +750,15 @@ class PayrollExportService
                 $user->department->name ?? 'Unassigned',
                 $p->designation ?? 'Employee',
                 (float)$r->base_salary,
-                (float)$r->allowances,
-                (float)$r->overtime_pay,
-                (float)$r->gross_salary,
                 (float)$r->attendance_deductions,
-                (float)$totalDed,
                 (float)$r->net_salary
             ], null, 'A' . $rowIdx);
-            $sheet->getStyle('E'.$rowIdx.':K'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('E'.$rowIdx.':G'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
-        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'K');
-        $sheet->setAutoFilter('A7:P7');
+        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'G');
+        $sheet->setAutoFilter('A7:G7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
     }
@@ -789,9 +770,9 @@ class PayrollExportService
         $sheet->setTitle('Department Expenditures');
         self::applyTitleBlock($sheet, 'Department Payroll Cost Report', $rangeLabel);
 
-        $headers = ['Department', 'Headcount', 'Total Base Salary', 'Total Gross Salary', 'Total Cost to Employer', 'Net Disbursement'];
+        $headers = ['Department', 'Headcount', 'Total Base Salary', 'Net Disbursement'];
         $sheet->fromArray($headers, null, 'A7');
-        self::applyHeaderStyles($sheet, 'A7:F7');
+        self::applyHeaderStyles($sheet, 'A7:D7');
 
         $depts = Department::all();
         $rowIdx = 8;
@@ -799,24 +780,20 @@ class PayrollExportService
             $rSubset = $records->filter(fn($rec) => $rec->user && $rec->user->department_id === $d->id);
             $count = $rSubset->count();
             $base = (float)$rSubset->sum('base_salary');
-            $gross = (float)$rSubset->sum('gross_salary');
-            $cost = $gross;
             $net = (float)$rSubset->sum('net_salary');
 
             $sheet->fromArray([
                 $d->name,
                 $count,
                 $base,
-                $gross,
-                $cost,
                 $net
             ], null, 'A' . $rowIdx);
-            $sheet->getStyle('C'.$rowIdx.':F'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
+            $sheet->getStyle('C'.$rowIdx.':D'.$rowIdx)->getNumberFormat()->setFormatCode('₹#,##0.00');
             $rowIdx++;
         }
 
-        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'F');
-        $sheet->setAutoFilter('A7:F7');
+        self::applyTableBorders($sheet, 7, $rowIdx - 1, 'D');
+        $sheet->setAutoFilter('A7:D7');
         $sheet->freezePane('A8');
         self::autofit($sheet);
     }

@@ -188,17 +188,18 @@ class EmployeePayrollController extends Controller
                 'name' => $user->name,
                 'dept' => $user->department->name ?? 'Unassigned',
                 'designation' => $user->employeeProfile->designation ?? 'Employee',
-                'workingDays' => $record->working_days,
+                'workingDays' => 30,
                 'present' => (float)$record->present_days,
                 'late' => $record->late_days,
                 'halfDay' => $record->half_days,
                 'paidLeave' => (float)$record->leave_days,
                 'unpaidLeave' => (float)$record->unpaid_leave_days,
                 'wfh' => $record->wfh_days,
-                'overtimeHours' => (float)$record->overtime_hours,
+                'paidDays' => min(30.0, max(0.0, (float)$record->present_days + (float)$record->leave_days - (float)$record->unpaid_leave_days)),
+                'overtimeHours' => 0.00,
                 'bonuses' => (float)$record->bonuses,
                 'deductions' => (float)$record->attendance_deductions,
-                'gross' => (float)$record->gross_salary,
+                'gross' => (float)$record->base_salary,
                 'net' => (float)$record->net_salary,
                 'status' => $record->status,
                 'employee_review_status' => $record->employee_review_status,
@@ -208,8 +209,8 @@ class EmployeePayrollController extends Controller
                 'baseSalary' => (float)$record->base_salary,
                 'dailyRate' => (float)($metadata['daily_rate'] ?? round($record->base_salary / 30, 2)),
                 'hourlyRate' => (float)($metadata['hourly_rate'] ?? round($record->base_salary / 240, 2)),
-                'calendarDays' => (int)($metadata['calendar_days'] ?? 30),
-                'allowances' => (float)$record->allowances,
+                'calendarDays' => 30,
+                'allowances' => 0.00,
                 'taxAmt' => 0.00,
                 'pf' => 0.00,
                 'esi' => 0.00,
@@ -222,7 +223,7 @@ class EmployeePayrollController extends Controller
                 'attendanceDeductions' => (float)$record->attendance_deductions,
                 'leaveDeductions' => 0.00,
                 'birthdayLeave' => (float)$record->birthday_leave_days,
-                'overtimePay' => (float)$record->overtime_pay,
+                'overtimePay' => 0.00,
                 'deductionBreakdown' => PayrollService::getAttendanceDeductionBreakdown($record),
             ];
         }
@@ -321,6 +322,9 @@ class EmployeePayrollController extends Controller
         // Convert net salary to words using robust fallback-guarded Indian numbering format
         $netInWords = \App\Services\NumberToWordsFormatter::convert($record->net_salary);
 
+        // Fetch leave balances for the Leave Summary section of payslip
+        $leaveBalance = \App\Models\LeaveBalance::where('user_id', $user->id)->first();
+
         $html = view('employee.payroll.payslip_pdf', [
             'record' => $record,
             'user' => $user,
@@ -328,6 +332,7 @@ class EmployeePayrollController extends Controller
             'cycle' => $cycle,
             'metadata' => $metadata,
             'netInWords' => $netInWords,
+            'leaveBalance' => $leaveBalance,
             'deductionBreakdown' => PayrollService::getAttendanceDeductionBreakdown($record),
         ])->render();
 

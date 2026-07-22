@@ -243,24 +243,21 @@ class PayrollService
             $baseSalaryToRecord = self::resolveBaseSalaryForDate($user, $endDate) ?? 0.00;
         }
 
-        // Cap Overtime hours
-        $totalOvertimeHours = min($totalOvertimeHours, $otCap);
+        // Overtime is completely removed from the business model
+        $totalOvertimeHours = 0.00;
+        $overtimePay = 0.00;
         
-        // Calculate Overtime Pay
         $lastDaySalary = self::resolveBaseSalaryForDate($user, $endDate) ?? 0.00;
         $lastDayDaysInMonth = $endDate->daysInMonth;
-        // BRS §6: Daily Salary = Monthly Salary / Calendar Days in the month. 
-        // Overtime Hourly rate is daily rate / 8.
         $hourlyRate = $lastDaySalary / ($lastDayDaysInMonth * 8);
-        $overtimePay = round($hourlyRate * $totalOvertimeHours * $otMultiplier, 2);
 
         // Fetch bonuses from database adjustments (corrections/bonuses)
         $bonuses = 0.00;
 
-        // Calculate Gross Salary
+        // Calculate Gross Salary (without overtime)
         $grossSalary = 0.00;
         if (!$hasMissingSalary) {
-            $grossSalary = $proratedBaseSalary + $allowances + $overtimePay + $bonuses;
+            $grossSalary = $proratedBaseSalary + $allowances + $bonuses;
         }
 
         // Statutory Deductions (Removed/Zeroed out for simplified model)
@@ -311,7 +308,7 @@ class PayrollService
             'end_date' => $endDate->format('Y-m-d'),
             'daily_rate' => round($lastDaySalary / ($lastDayDaysInMonth ?: 30), 2),
             'hourly_rate' => round($lastDaySalary / (($lastDayDaysInMonth ?: 30) * 8), 2),
-            'calendar_days' => $lastDayDaysInMonth ?: 30,
+            'calendar_days' => 30,
         ];
     }
 

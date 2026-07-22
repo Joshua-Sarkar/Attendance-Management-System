@@ -136,7 +136,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/payroll/reports', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.reports');
         Route::get('/admin/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'index'])->name('admin.payroll.settings');
         Route::post('/admin/payroll/process', [\App\Http\Controllers\PayrollController::class, 'process'])->name('admin.payroll.process');
-        Route::post('/admin/payroll/lock', [\App\Http\Controllers\PayrollController::class, 'lock'])->name('admin.payroll.lock');
+        Route::post('/admin/payroll/lock', [\App\Http\Controllers\PayrollController::class, 'lock'])->name('admin.payroll.lock.submit');
         Route::post('/admin/payroll/unlock', [\App\Http\Controllers\PayrollController::class, 'unlock'])->name('admin.payroll.unlock');
         Route::post('/admin/payroll/corrections', [\App\Http\Controllers\PayrollController::class, 'correctionStore'])->name('admin.payroll.corrections.store');
         Route::post('/admin/payroll/corrections/{id}/approve', [\App\Http\Controllers\PayrollController::class, 'correctionApprove'])->name('admin.payroll.corrections.approve');

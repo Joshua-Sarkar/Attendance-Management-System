@@ -226,33 +226,34 @@ class PayrollController extends Controller
                 'designation' => $profile->designation ?? 'Employee',
                 'joiningDate' => $joiningDate ? $joiningDate->format('Y-m-d') : null,
                 'employment_category' => $employmentCategory,
-                'workingDays' => $r->working_days,
+                'workingDays' => 30,
                 'present' => (float)$r->present_days,
                 'late' => $r->late_days,
                 'halfDay' => $r->half_days,
                 'paidLeave' => (float)$r->leave_days,
                 'unpaidLeave' => (float)$r->unpaid_leave_days,
                 'wfh' => $r->wfh_days,
-                'overtimeHours' => (float)$r->overtime_hours,
-                'bonuses' => (float)$r->bonuses,
+                'paidDays' => min(30.0, max(0.0, (float)$r->present_days + (float)$r->leave_days - (float)$r->unpaid_leave_days)),
+                'overtimeHours' => 0.00,
+                'bonuses' => 0.00,
                 'deductions' => (float)$r->attendance_deductions,
-                'gross' => (float)$r->gross_salary,
+                'gross' => (float)$r->base_salary,
                 'net' => (float)$r->net_salary,
                 'status' => $r->status,
                 'correctionReason' => $correctionReason,
                 'baseSalary' => (float)$r->base_salary,
-                'allowances' => (float)$r->allowances,
+                'allowances' => 0.00,
                 'taxAmt' => 0.00,
                 'pf' => 0.00,
                 'esi' => 0.00,
                 'profTax' => 0.00,
                 'dailyRate' => (float)($metadata['daily_rate'] ?? 0.00),
                 'hourlyRate' => (float)($metadata['hourly_rate'] ?? 0.00),
-                'calendarDays' => (int)($metadata['calendar_days'] ?? 30),
+                'calendarDays' => 30,
                 'attendanceDeductions' => (float)$r->attendance_deductions,
                 'leaveDeductions' => 0.00,
                 'statutoryDeductions' => 0.00,
-                'overtimePay' => (float)$r->overtime_pay,
+                'overtimePay' => 0.00,
                 'correctionStatus' => $correctionStatus,
                 'locked' => (bool)$r->locked,
                 'locked_at' => $r->locked_at ? $r->locked_at->format('d M, g:i A') : null,
@@ -653,12 +654,11 @@ class PayrollController extends Controller
         ];
 
         // 8. General KPIs for Dashboard
-        $grossSum = $records->sum('gross_salary');
+        $baseSum = $records->sum('base_salary');
         $netSum = $records->sum('net_salary');
-        $dedSum = $records->sum(fn($rec) => $rec->gross_salary - $rec->net_salary);
+        $dedSum = $records->sum('attendance_deductions');
         $avgNet = $records->count() > 0 ? round($records->avg('net_salary')) : 0;
-        $avgAttGlobal = $records->count() > 0 ? round($records->avg(fn($rec) => ($rec->present_days / ($rec->working_days ?: 26)) * 100)) : 90;
-        $avgOTGlobal = $records->count() > 0 ? round($records->avg('overtime_hours'), 1) : 0;
+        $avgAttGlobal = $records->count() > 0 ? round($records->avg(fn($rec) => ($rec->present_days / 30) * 100)) : 90;
 
         $kpis = [
             ['label' => 'Total Employees', 'value' => (string)$records->count(), 'sub' => 'Active this cycle'],
@@ -667,12 +667,11 @@ class PayrollController extends Controller
             ['label' => 'Locked', 'value' => (string)$records->where('status', 'locked')->count(), 'sub' => 'Finalized records'],
             ['label' => 'Exceptions', 'value' => (string)$exceptionsFlat->where('resolved', false)->count(), 'sub' => 'Flagged records', 'tone' => 'oxblood'],
             ['label' => 'Payroll Completion', 'value' => ($records->count() > 0 ? round(($records->whereIn('status', ['approved', 'locked'])->count() / $records->count()) * 100) : 0) . '%', 'sub' => 'Of cycle processed'],
-            ['label' => 'Gross Payroll', 'value' => '₹' . round($grossSum / 100000, 1) . 'L', 'sub' => 'Before deductions'],
+            ['label' => 'Base Payroll', 'value' => '₹' . round($baseSum / 100000, 1) . 'L', 'sub' => 'Total Base Salary'],
             ['label' => 'Net Payroll', 'value' => '₹' . round($netSum / 100000, 1) . 'L', 'sub' => 'After all deductions', 'tone' => 'forest'],
             ['label' => 'Deductions', 'value' => '₹' . round($dedSum / 100000, 1) . 'L', 'sub' => 'Attendance Deductions', 'tone' => 'oxblood'],
             ['label' => 'Average Salary', 'value' => '₹' . number_format($avgNet), 'sub' => 'Net, per employee'],
             ['label' => 'Average Attendance', 'value' => $avgAttGlobal . '%', 'sub' => 'Across all departments'],
-            ['label' => 'Average Overtime', 'value' => $avgOTGlobal . 'h', 'sub' => 'Per employee this cycle'],
         ];
 
         $lockReadiness = PayrollService::checkLockReadiness($cycle);

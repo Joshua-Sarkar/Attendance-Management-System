@@ -135,21 +135,17 @@
                             </div>
 
                             <!-- Summary Pills Bar -->
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-line/60 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-line/60 text-xs">
                                 <div class="bg-surface/50 border border-line p-3 rounded-2xl">
                                     <span class="block text-[9.5px] font-mono uppercase font-bold text-vellum-faint">Base Salary</span>
                                     <span class="font-mono font-bold text-walnut text-sm mt-0.5 block" x-text="'₹' + record.baseSalary.toLocaleString('en-IN')"></span>
-                                </div>
-                                <div class="bg-surface/50 border border-line p-3 rounded-2xl">
-                                    <span class="block text-[9.5px] font-mono uppercase font-bold text-vellum-faint">Gross Earnings</span>
-                                    <span class="font-mono font-bold text-forest text-sm mt-0.5 block" x-text="'₹' + record.gross.toLocaleString('en-IN')"></span>
                                 </div>
                                 <div class="bg-surface/50 border border-line p-3 rounded-2xl">
                                     <span class="block text-[9.5px] font-mono uppercase font-bold text-vellum-faint">Total Deductions</span>
                                     <span class="font-mono font-bold text-burgundy text-sm mt-0.5 block" x-text="'-₹' + record.deductions.toLocaleString('en-IN')"></span>
                                 </div>
                                 <div class="bg-surface/50 border border-line p-3 rounded-2xl">
-                                    <span class="block text-[9.5px] font-mono uppercase font-bold text-vellum-faint">Calculation Version</span>
+                                    <span class="block text-[9.5px] font-mono uppercase font-bold text-vellum-faint">Statement Version</span>
                                     <span class="font-mono font-bold text-brass-dark text-sm mt-0.5 block" x-text="'v' + record.calculation_version"></span>
                                 </div>
                             </div>
@@ -191,7 +187,7 @@
                                         <span class="text-forest text-[11px] font-bold">✓ Generated</span>
                                     </div>
                                     <p class="text-xs font-bold text-walnut">Payroll Calculation</p>
-                                    <p class="text-[10px] text-vellum-muted">Base salary, overtime, and deductions mapped.</p>
+                                    <p class="text-[10px] text-vellum-muted">Base salary and attendance deductions mapped.</p>
                                 </div>
 
                                 <!-- Stage 3 -->
@@ -304,12 +300,12 @@
                         <!-- ================= 4. EARNINGS & DEDUCTIONS BREAKDOWN ================= -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
-                            <!-- EARNINGS BREAKDOWN CARD -->
+                            <!-- SALARY SUMMARY CARD -->
                             <div class="panel bg-cream border border-line p-6 rounded-3xl shadow-soft flex flex-col justify-between space-y-5">
                                 <div>
                                     <div class="flex justify-between items-center border-b border-line pb-3">
-                                        <h3 class="font-display font-bold text-base text-walnut">Earnings Breakdown</h3>
-                                        <span class="text-[10px] font-mono font-bold text-forest uppercase tracking-wider bg-forest/10 px-2.5 py-0.5 rounded">Addition Components</span>
+                                        <h3 class="font-display font-bold text-base text-walnut">Salary Summary</h3>
+                                        <span class="text-[10px] font-mono font-bold text-forest uppercase tracking-wider bg-forest/10 px-2.5 py-0.5 rounded">Statement Overview</span>
                                     </div>
                                     <div class="mt-4 space-y-3 text-xs">
                                         <div class="flex justify-between items-center py-1 border-b border-line/40">
@@ -321,30 +317,16 @@
                                         </div>
                                         <div class="flex justify-between items-center py-1 border-b border-line/40">
                                             <div>
-                                                <span class="text-vellum-muted font-semibold block">Standard Allowances</span>
-                                                <span class="text-[10px] text-vellum-faint">HRA, Special, and Transport allowances</span>
+                                                <span class="text-vellum-muted font-semibold block">Attendance Deductions</span>
+                                                <span class="text-[10px] text-vellum-faint">Deductions resolved from attendance ledger</span>
                                             </div>
-                                            <span class="font-mono font-bold text-walnut text-sm" x-text="'₹' + record.allowances.toLocaleString('en-IN')"></span>
-                                        </div>
-                                        <div class="flex justify-between items-center py-1 border-b border-line/40">
-                                            <div>
-                                                <span class="text-vellum-muted font-semibold block">Overtime Pay</span>
-                                                <span class="text-[10px] text-vellum-faint" x-text="record.overtimeHours + ' OT hour(s) worked @ 1.5x hourly rate'"></span>
-                                            </div>
-                                            <span class="font-mono font-bold text-forest text-sm" x-text="record.overtimePay > 0 ? '+₹' + record.overtimePay.toLocaleString('en-IN') : '₹0.00'"></span>
-                                        </div>
-                                        <div class="flex justify-between items-center py-1 border-b border-line/40">
-                                            <div>
-                                                <span class="text-vellum-muted font-semibold block">Bonuses & Adjustments</span>
-                                                <span class="text-[10px] text-vellum-faint">Approved corrections or discretionary bonuses</span>
-                                            </div>
-                                            <span class="font-mono font-bold text-forest text-sm" x-text="record.bonuses > 0 ? '+₹' + record.bonuses.toLocaleString('en-IN') : '₹0.00'"></span>
+                                            <span class="font-mono font-bold text-burgundy text-sm" x-text="'-₹' + record.deductions.toLocaleString('en-IN')"></span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="pt-3 border-t border-line/70 flex justify-between items-center font-bold text-walnut text-sm">
-                                    <span>TOTAL GROSS EARNINGS</span>
-                                    <span class="font-mono text-forest text-base" x-text="'₹' + record.gross.toLocaleString('en-IN')"></span>
+                                    <span>NET DISBURSEMENT</span>
+                                    <span class="font-mono text-forest text-base" x-text="'₹' + record.net.toLocaleString('en-IN')"></span>
                                 </div>
                             </div>
 
@@ -435,7 +417,7 @@
                                 <p class="text-[11px] text-vellum-muted">Summary of shift counts and attendance metrics resolved by the engine for this cycle.</p>
                             </div>
                             
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+                             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
                                 <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">Working Days</span>
                                     <span class="block font-mono text-lg font-bold text-walnut" x-text="record.workingDays + ' Days'"></span>
@@ -455,10 +437,6 @@
                                 <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">WFH Days</span>
                                     <span class="block font-mono text-lg font-bold text-forest" x-text="record.wfh + ' Day(s)'"></span>
-                                </div>
-                                <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
-                                    <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">Overtime Hours</span>
-                                    <span class="block font-mono text-lg font-bold text-forest" x-text="record.overtimeHours + ' Hrs'"></span>
                                 </div>
                             </div>
 

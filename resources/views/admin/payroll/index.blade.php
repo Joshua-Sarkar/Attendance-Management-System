@@ -264,7 +264,7 @@
                             <div class="w-full md:w-auto">
                                 <select x-model="filters.sort" class="w-full text-xs bg-cream border border-line rounded-lg px-3 py-2 focus:border-brass focus:ring-1 focus:ring-brass/40 outline-none font-mono">
                                     <option value="name">Sort: Name (A-Z)</option>
-                                    <option value="gross">Sort: Gross (High-Low)</option>
+                                    <option value="baseSalary">Sort: Base Salary (High-Low)</option>
                                     <option value="net">Sort: Net (High-Low)</option>
                                 </select>
                             </div>
@@ -319,7 +319,6 @@
                                         <th class="py-3.5 px-4 text-center" title="Paid Equivalent Days / Eligible Working Days">Paid / Eligible Days</th>
                                         <th class="py-3.5 px-4 text-right">Deductions</th>
                                         <th class="py-3.5 px-4 text-right">Base Salary</th>
-                                        <th class="py-3.5 px-4 text-right">Gross Salary</th>
                                         <th class="py-3.5 px-4 text-right">Net Disbursement</th>
                                         <th class="py-3.5 px-4 text-center">Status</th>
                                         <th class="py-3.5 px-5 text-right">Action</th>
@@ -335,10 +334,9 @@
                                                     <p class="text-[11px] text-vellum-faint uppercase tracking-wide" x-text="emp.id + ' · ' + emp.designation"></p>
                                                 </div>
                                             </td>
-                                            <td class="py-3.5 px-4 text-center num" x-text="emp.present + '/' + emp.workingDays"></td>
+                                            <td class="py-3.5 px-4 text-center num" x-text="emp.paidDays + '/30'"></td>
                                             <td class="py-3.5 px-4 text-right num text-burgundy font-semibold" x-text="'₹' + emp.deductions.toLocaleString('en-IN')"></td>
                                             <td class="py-3.5 px-4 text-right num font-semibold" x-text="'₹' + emp.baseSalary.toLocaleString('en-IN')"></td>
-                                            <td class="py-3.5 px-4 text-right num" x-text="'₹' + emp.gross.toLocaleString('en-IN')"></td>
                                             <td class="py-3.5 px-4 text-right num text-forest font-bold" x-text="'₹' + emp.net.toLocaleString('en-IN')"></td>
                                             <td class="py-3.5 px-4 text-center">
                                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium"
@@ -994,12 +992,9 @@
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs">
                                         <div class="space-y-2">
-                                            <h5 class="font-mono text-[10px] uppercase font-bold text-brass border-b border-brass/25 pb-1">Earnings</h5>
+                                            <h5 class="font-mono text-[10px] uppercase font-bold text-brass border-b border-brass/25 pb-1">Base Salary</h5>
                                             <div class="space-y-1.5">
                                                 <div class="flex justify-between"><span>Base Salary</span><span class="num font-semibold text-vellum" x-text="'₹' + payslipEmp.baseSalary.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Allowances</span><span class="num font-semibold text-vellum" x-text="'₹' + payslipEmp.allowances.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between" x-show="payslipEmp.overtimeHours > 0"><span>Overtime Pay</span><span class="num font-semibold text-vellum text-forest" x-text="'₹' + (payslipEmp.overtimeHours * Math.round(payslipEmp.baseSalary/240)).toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between" x-show="payslipEmp.bonuses > 0"><span>Adjustment / Bonus</span><span class="num font-semibold text-vellum text-forest" x-text="'₹' + payslipEmp.bonuses.toLocaleString('en-IN')"></span></div>
                                             </div>
                                         </div>
                                         <div class="space-y-2" x-if="payslipEmp">
@@ -1199,7 +1194,6 @@
                                     { id: 'payroll_reconciliation', label: 'Payroll Reconciliation' },
                                     { id: 'employee_payroll_detail', label: 'Employee Payroll Detail' },
                                     { id: 'department_payroll', label: 'Department Payroll' },
-                                    { id: 'overtime_report', label: 'Overtime Report' },
                                     { id: 'disbursement_register', label: 'Disbursement Register' }
                                 ]" :key="cat.id">
                                     <button @click="selectedReport = cat.id"
@@ -1403,14 +1397,10 @@
                                         <div class="flex flex-col gap-4 pt-4 border-t border-line" x-data="{ previewData: null, previewing: false }">
                                             <div x-show="previewData" class="p-4 bg-brass-light/20 border border-brass/30 rounded-xl text-xs space-y-2" x-cloak>
                                                 <h5 class="font-bold text-brass uppercase">Simulation Impact Summary</h5>
-                                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
                                                         <span class="text-[9px] uppercase font-bold text-vellum-faint block">Affected Employees</span>
                                                         <span class="font-semibold text-vellum mt-0.5 block" x-text="previewData ? previewData.affected_records + ' employee(s)' : ''"></span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="text-[9px] uppercase font-bold text-vellum-faint block">Gross Delta Sum</span>
-                                                        <span class="font-semibold text-vellum mt-0.5 block font-mono" x-text="previewData ? (previewData.gross_delta >= 0 ? '+' : '') + '₹' + previewData.gross_delta.toLocaleString('en-IN') : ''"></span>
                                                     </div>
                                                     <div>
                                                         <span class="text-[9px] uppercase font-bold text-vellum-faint block">Net Delta Sum</span>
@@ -1553,17 +1543,13 @@
 
                                     <!-- Earnings & Deductions Hierarchy Grid -->
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                                        <!-- Earnings Card -->
-                                        <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3">
-                                            <h5 class="font-mono text-[10px] uppercase font-bold text-brass border-b border-brass/25 pb-1">Earnings Component</h5>
-                                            <div class="space-y-2">
-                                                <div class="flex justify-between"><span>Base Salary</span><span class="num font-semibold text-vellum" x-text="'₹' + selectedEmployee.baseSalary.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Allowances</span><span class="num font-semibold text-vellum" x-text="'₹' + selectedEmployee.allowances.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Overtime Pay</span><span class="num font-semibold text-forest" x-text="'₹' + selectedEmployee.overtimePay.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between"><span>Manual Adjustments</span><span class="num font-semibold text-forest" x-text="'₹' + selectedEmployee.bonuses.toLocaleString('en-IN')"></span></div>
-                                                <div class="flex justify-between border-t border-line/45 pt-1.5 font-bold"><span>Gross Salary</span><span class="num text-vellum" x-text="'₹' + selectedEmployee.gross.toLocaleString('en-IN')"></span></div>
-                                            </div>
-                                        </div>
+                                         <!-- Earnings Card -->
+                                         <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3">
+                                             <h5 class="font-mono text-[10px] uppercase font-bold text-brass border-b border-brass/25 pb-1">Base Salary Component</h5>
+                                             <div class="space-y-2">
+                                                 <div class="flex justify-between"><span>Base Salary</span><span class="num font-semibold text-vellum" x-text="'₹' + selectedEmployee.baseSalary.toLocaleString('en-IN')"></span></div>
+                                             </div>
+                                         </div>
 
                                         <!-- Attendance Deductions Card -->
                                          <div class="border border-line rounded-xl p-4 bg-surface/20 space-y-3" x-if="selectedEmployee">
@@ -1626,12 +1612,12 @@
                                                 <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="'₹' + selectedEmployee.hourlyRate.toLocaleString('en-IN')"></span>
                                             </div>
                                             <div>
-                                                <span class="text-[9px] text-vellum-muted block font-sans">Calendar Days</span>
-                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="selectedEmployee.calendarDays + ' days'"></span>
+                                                <span class="text-[9px] text-vellum-muted block font-sans">Payroll Cycle Days</span>
+                                                <span class="font-mono font-bold text-vellum mt-0.5 block">30 days</span>
                                             </div>
                                             <div>
-                                                <span class="text-[9px] text-vellum-muted block font-sans">Eligible Working Days</span>
-                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="selectedEmployee.workingDays + ' days'"></span>
+                                                <span class="text-[9px] text-vellum-muted block font-sans">Paid / Eligible Days</span>
+                                                <span class="font-mono font-bold text-vellum mt-0.5 block" x-text="selectedEmployee.paidDays + ' / 30'"></span>
                                             </div>
                                         </div>
                                     </div>
@@ -1944,23 +1930,21 @@
                         payroll_reconciliation: 'Payroll Reconciliation Export (Redundancy)',
                         employee_payroll_detail: 'Employee Payroll Detail Report',
                         department_payroll: 'Department Payroll Cost Report',
-                        overtime_report: 'Overtime Report',
                         disbursement_register: 'Disbursement Register & Payslip Status',
                     };
                     return titles[this.selectedReport] || 'Report';
                 },
                 getReportDescription() {
                     const descs = {
-                        payroll_summary: 'A high-level summary of gross salaries, total deductions, and net disbursements for all employees.',
+                        payroll_summary: 'A high-level summary of base salaries, total deductions, and net disbursements for all employees.',
                         attendance_export: 'Employee-day level attendance evidence for the selected date range. Includes shifts, check-in/out times, late minutes, overrides, and leaves.',
-                        monthly_attendance: 'Aggregates employee regularity: present days, absent days, leave counts, overtime hours, punctuality and absenteeism rates.',
+                        monthly_attendance: 'Aggregates employee regularity: present days, absent days, leave counts, punctuality and absenteeism rates.',
                         leave_report: 'A detailed breakdown of leaves: types, opening balances, leaves taken, approval states, and payroll impacts.',
                         deduction_report: 'Lists all detailed deduction components separately: Half Days, Unpaid Leaves, Late Penalties, Override Adjustments, and Manual Adjustments.',
-                        salary_report: 'Contains the canonical salary structures, base salaries, allowances, and adjustments effective during the period.',
-                        payroll_reconciliation: 'The comprehensive redundancy report with enough raw data (identity, period, salary basis, attendance basis, earnings, deductions, approvals, locks) to manually reconstruct payroll.',
+                        salary_report: 'Contains the canonical salary structures and base salaries effective during the period.',
+                        payroll_reconciliation: 'The comprehensive redundancy report with enough raw data (identity, period, salary basis, attendance basis, deductions, approvals, locks) to manually reconstruct payroll.',
                         employee_payroll_detail: 'Exposes employee-by-employee detailed line items for earnings and deductions.',
                         department_payroll: 'Summarizes payroll expenditures and cost comparison across departments.',
-                        overtime_report: 'Detailed overtime breakdown: hours worked, hourly rates, multipliers, and calculated overtime pay.',
                         disbursement_register: 'Tracks bank disbursement parameters: account details, IFSC, net salaries, approval timestamps, and lock status.',
                     };
                     return descs[this.selectedReport] || '';
@@ -1980,7 +1964,7 @@
                     return item ? item.label : '';
                 },
 
-                attPct(e) { return e ? Math.round((e.present / e.workingDays) * 100) : 0 },
+                attPct(e) { return e ? Math.round((e.paidDays / 30) * 100) : 0 },
 
                 get filteredEmployees() {
                     let list = this.employees.filter(e => {
@@ -1995,7 +1979,7 @@
                         return matchesSearch && matchesDept && matchesStatus && matchesCategory && matchesEmployeeReview && matchesAdminApproved && matchesLockState;
                     });
                     if (this.filters.sort === 'net') list = list.slice().sort((a, b) => b.net - a.net);
-                    if (this.filters.sort === 'gross') list = list.slice().sort((a, b) => b.gross - a.gross);
+                    if (this.filters.sort === 'baseSalary') list = list.slice().sort((a, b) => b.baseSalary - a.baseSalary);
                     if (this.filters.sort === 'name') list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
                     if (this.filters.sort === 'attendance') list = list.slice().sort((a, b) => this.attPct(b) - this.attPct(a));
                     return list;
@@ -2026,13 +2010,11 @@
                 ledgerFormulaRows(e) {
                     if (!e) return [];
                     const p = this.policies;
-                    const dailyRate = Math.round(e.baseSalary / e.calendarDays);
+                    const dailyRate = Math.round(e.baseSalary / 30);
                     
                     const rows = [
                         { label: 'Base Salary', value: e.baseSalary, explain: 'Authoritative fixed monthly base salary.', calc: 'Base = ₹' + e.baseSalary.toLocaleString('en-IN'), auditRef: 'STRUCT-' + e.id },
-                        { label: 'Allowances', value: e.allowances, explain: 'Retrieved structural standard allowances.', calc: 'Allowances = ₹' + e.allowances.toLocaleString('en-IN') },
-                        { label: 'Daily Rate (Segment)', value: dailyRate, explain: 'Derived daily rate = Monthly Base / ' + e.calendarDays + ' calendar days.', calc: 'Daily = ₹' + dailyRate.toLocaleString('en-IN') },
-                        { label: 'Hourly Shift Rate', value: e.hourlyRate, explain: 'Derived basic hourly shift rate.', calc: 'Hourly = ₹' + e.hourlyRate.toLocaleString('en-IN') }
+                        { label: 'Daily Rate (Segment)', value: dailyRate, explain: 'Derived daily rate = Monthly Base / 30 cycle days.', calc: 'Daily = ₹' + dailyRate.toLocaleString('en-IN') }
                     ];
 
                     // Dynamically listing each individual attendance / leave deduction date
@@ -2051,31 +2033,6 @@
                             }
                         });
                     }
-
-                    // Overtime
-                    if (e.overtimeHours > 0) {
-                        rows.push({
-                            label: 'Overtime Pay',
-                            value: e.overtimePay,
-                            tone: 'forest',
-                            explain: e.overtimeHours + ' overtime hour(s) worked.',
-                            calc: e.overtimeHours + ' hrs × ₹' + e.hourlyRate.toLocaleString('en-IN') + ' × multiplier'
-                        });
-                    }
-
-                    // Bonuses / Corrections
-                    if (e.bonuses > 0) {
-                        rows.push({
-                            label: 'Discretionary Adjustment',
-                            value: e.bonuses,
-                            tone: 'forest',
-                            explain: 'Approved administrative adjustment delta.',
-                            calc: 'Manual override correction'
-                        });
-                    }
-
-                    // Gross
-                    rows.push({ label: 'Gross Salary', value: e.gross, emphasis: true });
 
                     // Net
                     rows.push({ label: 'Net Salary', value: e.net, emphasis: true });
