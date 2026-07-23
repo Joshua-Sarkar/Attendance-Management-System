@@ -962,8 +962,20 @@ class PayrollService
      */
     public static function approveEmployeeRecord(PayrollRecord $record, User $actor): bool
     {
-        if ($record->locked || $record->payrollCycle->status === 'locked') {
-            return false;
+        $cycleLocked = $record->payrollCycle->status === 'locked';
+        $recordLocked = (bool)$record->locked;
+
+        if ($cycleLocked) {
+            // A locked payroll cycle remains immutable except for records explicitly reopened by an admin
+            // Reopened records are unlocked ($recordLocked === false) under a locked cycle
+            if ($recordLocked) {
+                return false;
+            }
+        } else {
+            // If the cycle is not locked, we preserve protection for locked records
+            if ($recordLocked) {
+                return false;
+            }
         }
 
         $prevState = $record->employee_review_status;
@@ -992,8 +1004,20 @@ class PayrollService
      */
     public static function disputeEmployeeRecord(PayrollRecord $record, User $actor, array $disputeData): PayrollDispute
     {
-        if ($record->locked || $record->payrollCycle->status === 'locked') {
-            throw new \Exception("Cannot raise a dispute on a locked payroll record.");
+        $cycleLocked = $record->payrollCycle->status === 'locked';
+        $recordLocked = (bool)$record->locked;
+
+        if ($cycleLocked) {
+            // A locked payroll cycle remains immutable except for records explicitly reopened by an admin
+            // Reopened records are unlocked ($recordLocked === false) under a locked cycle
+            if ($recordLocked) {
+                throw new \Exception("Cannot raise a dispute on a locked payroll record.");
+            }
+        } else {
+            // If the cycle is not locked, we preserve protection for locked records
+            if ($recordLocked) {
+                throw new \Exception("Cannot raise a dispute on a locked payroll record.");
+            }
         }
 
         $dispute = PayrollDispute::create([

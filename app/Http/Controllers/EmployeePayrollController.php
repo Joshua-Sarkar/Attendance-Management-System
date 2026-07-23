@@ -258,7 +258,10 @@ class EmployeePayrollController extends Controller
         }
 
         try {
-            PayrollService::approveEmployeeRecord($record, Auth::user());
+            $approved = PayrollService::approveEmployeeRecord($record, Auth::user());
+            if (!$approved) {
+                return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Failed to approve payroll statement. Record may be locked.');
+            }
             return redirect()->route('employee.payroll.index', ['period' => $period])->with('success', 'Payroll statement confirmed & approved successfully.');
         } catch (\Exception $e) {
             return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', $e->getMessage());
