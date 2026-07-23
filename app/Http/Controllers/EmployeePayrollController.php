@@ -242,6 +242,14 @@ class EmployeePayrollController extends Controller
      */
     public function approve(Request $request)
     {
+        $requestId = bin2hex(random_bytes(8));
+        PayrollService::$currentRequestId = $requestId;
+        $req = '[' . $requestId . '] ';
+
+        \Log::channel('single')->info("{$req}EmployeePayrollController::approve entry.", [
+            'payload' => $request->all(),
+        ]);
+
         $request->validate([
             'record_id' => 'required|exists:payroll_records,id',
         ]);
@@ -249,22 +257,69 @@ class EmployeePayrollController extends Controller
         $record = PayrollRecord::findOrFail($request->input('record_id'));
         $period = $record->payrollCycle->period;
 
-        if ($record->user_id !== Auth::id()) {
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Unauthorized access.');
+        $rawComparisonResult = $record->user_id !== Auth::id();
+        $castComparisonResult = (int)$record->user_id !== (int)Auth::id();
+
+        \Log::channel('single')->info("{$req}EmployeePayrollController::approve Auth Check Instrument:", [
+            'record_user_id' => $record->user_id,
+            'record_user_id_type' => gettype($record->user_id),
+            'auth_id' => Auth::id(),
+            'auth_id_type' => gettype(Auth::id()),
+            'raw_comparison_fails' => $rawComparisonResult,
+            'cast_comparison_fails' => $castComparisonResult,
+        ]);
+
+        if ((int)$record->user_id !== (int)Auth::id()) {
+            \Log::channel('single')->warning("{$req}EmployeePayrollController::approve: Redirecting - Unauthorized access. Type mismatch or wrong user.", [
+                'record_user_id' => $record->user_id,
+                'auth_id' => Auth::id(),
+            ]);
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['error' => 'Unauthorized access.'];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         }
 
         if ($record->locked) {
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Cannot approve locked payroll.');
+            \Log::channel('single')->warning("{$req}EmployeePayrollController::approve: Redirecting - Cannot approve locked payroll.", [
+                'locked_attribute' => $record->locked,
+            ]);
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['error' => 'Cannot approve locked payroll.'];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         }
 
         try {
             $approved = PayrollService::approveEmployeeRecord($record, Auth::user());
+            \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Service returned.", [
+                'approved' => $approved
+            ]);
+            PayrollService::$currentRequestId = null;
             if (!$approved) {
-                return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Failed to approve payroll statement. Record may be locked.');
+                \Log::channel('single')->warning("{$req}EmployeePayrollController::approve: Redirecting back with error (service returned false).");
+                $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+                $flashMessage = ['error' => 'Failed to approve payroll statement. Record may be locked.'];
+                \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+                return redirect($redirectTarget)->with($flashMessage);
             }
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('success', 'Payroll statement confirmed & approved successfully.');
+            \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Redirecting back with success.");
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['success' => 'Payroll statement confirmed & approved successfully.'];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         } catch (\Exception $e) {
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', $e->getMessage());
+            \Log::channel('single')->error("{$req}EmployeePayrollController::approve Exception:", [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['error' => $e->getMessage()];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::approve: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         }
     }
 
@@ -273,6 +328,14 @@ class EmployeePayrollController extends Controller
      */
     public function dispute(Request $request)
     {
+        $requestId = bin2hex(random_bytes(8));
+        PayrollService::$currentRequestId = $requestId;
+        $req = '[' . $requestId . '] ';
+
+        \Log::channel('single')->info("{$req}EmployeePayrollController::dispute entry.", [
+            'payload' => $request->all(),
+        ]);
+
         $request->validate([
             'record_id' => 'required|exists:payroll_records,id',
             'category' => 'required|string',
@@ -284,19 +347,59 @@ class EmployeePayrollController extends Controller
         $record = PayrollRecord::findOrFail($request->input('record_id'));
         $period = $record->payrollCycle->period;
 
-        if ($record->user_id !== Auth::id()) {
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Unauthorized access.');
+        $rawComparisonResult = $record->user_id !== Auth::id();
+        $castComparisonResult = (int)$record->user_id !== (int)Auth::id();
+
+        \Log::channel('single')->info("{$req}EmployeePayrollController::dispute Auth Check Instrument:", [
+            'record_user_id' => $record->user_id,
+            'record_user_id_type' => gettype($record->user_id),
+            'auth_id' => Auth::id(),
+            'auth_id_type' => gettype(Auth::id()),
+            'raw_comparison_fails' => $rawComparisonResult,
+            'cast_comparison_fails' => $castComparisonResult,
+        ]);
+
+        if ((int)$record->user_id !== (int)Auth::id()) {
+            \Log::channel('single')->warning("{$req}EmployeePayrollController::dispute: Redirecting - Unauthorized access. Type mismatch or wrong user.", [
+                'record_user_id' => $record->user_id,
+                'auth_id' => Auth::id(),
+            ]);
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['error' => 'Unauthorized access.'];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::dispute: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         }
 
         if ($record->locked) {
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Cannot dispute. Payroll is locked.');
+            \Log::channel('single')->warning("{$req}EmployeePayrollController::dispute: Redirecting - Cannot dispute locked payroll.", [
+                'locked_attribute' => $record->locked,
+            ]);
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['error' => 'Cannot dispute. Payroll is locked.'];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::dispute: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         }
 
         try {
             PayrollService::disputeEmployeeRecord($record, Auth::user(), $request->all());
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('success', 'Dispute raised successfully. HR/Admin will review it.');
+            \Log::channel('single')->info("{$req}EmployeePayrollController::dispute: Service executed successfully.");
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['success' => 'Dispute raised successfully. HR/Admin will review it.'];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::dispute: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         } catch (\Exception $e) {
-            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', $e->getMessage());
+            \Log::channel('single')->error("{$req}EmployeePayrollController::dispute Exception:", [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            PayrollService::$currentRequestId = null;
+            $redirectTarget = route('employee.payroll.index', ['period' => $period]);
+            $flashMessage = ['error' => $e->getMessage()];
+            \Log::channel('single')->info("{$req}EmployeePayrollController::dispute: Redirecting to {$redirectTarget} with message: " . json_encode($flashMessage));
+            return redirect($redirectTarget)->with($flashMessage);
         }
     }
 
@@ -308,7 +411,7 @@ class EmployeePayrollController extends Controller
         $record = PayrollRecord::with(['user.department', 'user.employeeProfile', 'payrollCycle'])->findOrFail($id);
         
         // Authorization check: Employee can only see their own payslips
-        if (Auth::user()->role !== 'admin' && $record->user_id !== Auth::id()) {
+        if (Auth::user()->role !== 'admin' && (int)$record->user_id !== (int)Auth::id()) {
             abort(403, 'Unauthorized access.');
         }
 

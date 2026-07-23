@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class PayrollService
 {
+    public static $currentRequestId = null;
     /**
      * Calculate monthly payroll details for an employee.
      * Consumes finalized attendance and leave states.
@@ -962,27 +963,49 @@ class PayrollService
      */
     public static function approveEmployeeRecord(PayrollRecord $record, User $actor): bool
     {
+        $req = self::$currentRequestId ? '[' . self::$currentRequestId . '] ' : '';
         $cycleLocked = $record->payrollCycle->status === 'locked';
         $recordLocked = (bool)$record->locked;
+
+        \Log::channel('single')->info("{$req}PayrollService::approveEmployeeRecord Trace:", [
+            'record_id' => $record->id,
+            'user_id' => $record->user_id,
+            'actor_id' => $actor->id,
+            'cycle_status' => $record->payrollCycle->status,
+            'record_locked_attribute' => $record->locked,
+            'cycleLocked_resolved' => $cycleLocked,
+            'recordLocked_resolved' => $recordLocked,
+            'employee_review_status_before' => $record->employee_review_status,
+        ]);
 
         if ($cycleLocked) {
             // A locked payroll cycle remains immutable except for records explicitly reopened by an admin
             // Reopened records are unlocked ($recordLocked === false) under a locked cycle
             if ($recordLocked) {
+                \Log::channel('single')->info("{$req}PayrollService::approveEmployeeRecord: Blocked because cycle is locked and record is locked.");
                 return false;
             }
         } else {
             // If the cycle is not locked, we preserve protection for locked records
             if ($recordLocked) {
+                \Log::channel('single')->info("{$req}PayrollService::approveEmployeeRecord: Blocked because record is locked under open cycle.");
                 return false;
             }
         }
 
         $prevState = $record->employee_review_status;
 
-        $record->update([
+        $updated = $record->update([
             'employee_review_status' => 'approved',
             'employee_approved_at' => now(),
+        ]);
+
+        $record->refresh();
+
+        \Log::channel('single')->info("{$req}PayrollService::approveEmployeeRecord: Update executed.", [
+            'update_returned_status' => $updated,
+            'employee_review_status_after_refresh' => $record->employee_review_status,
+            'employee_approved_at_after_refresh' => $record->employee_approved_at ? $record->employee_approved_at->toDateTimeString() : null,
         ]);
 
         PayrollAuditLog::record(
@@ -1004,18 +1027,31 @@ class PayrollService
      */
     public static function disputeEmployeeRecord(PayrollRecord $record, User $actor, array $disputeData): PayrollDispute
     {
+        $req = self::$currentRequestId ? '[' . self::$currentRequestId . '] ' : '';
         $cycleLocked = $record->payrollCycle->status === 'locked';
         $recordLocked = (bool)$record->locked;
+
+        \Log::channel('single')->info("{$req}PayrollService::disputeEmployeeRecord Trace:", [
+            'record_id' => $record->id,
+            'user_id' => $record->user_id,
+            'actor_id' => $actor->id,
+            'cycle_status' => $record->payrollCycle->status,
+            'record_locked_attribute' => $record->locked,
+            'cycleLocked_resolved' => $cycleLocked,
+            'recordLocked_resolved' => $recordLocked,
+        ]);
 
         if ($cycleLocked) {
             // A locked payroll cycle remains immutable except for records explicitly reopened by an admin
             // Reopened records are unlocked ($recordLocked === false) under a locked cycle
             if ($recordLocked) {
+                \Log::channel('single')->info("{$req}PayrollService::disputeEmployeeRecord: Blocked because cycle is locked and record is locked.");
                 throw new \Exception("Cannot raise a dispute on a locked payroll record.");
             }
         } else {
             // If the cycle is not locked, we preserve protection for locked records
             if ($recordLocked) {
+                \Log::channel('single')->info("{$req}PayrollService::disputeEmployeeRecord: Blocked because record is locked under open cycle.");
                 throw new \Exception("Cannot raise a dispute on a locked payroll record.");
             }
         }
@@ -1030,8 +1066,16 @@ class PayrollService
             'status' => 'open',
         ]);
 
-        $record->update([
+        $updated = $record->update([
             'employee_review_status' => 'disputed',
+        ]);
+
+        $record->refresh();
+
+        \Log::channel('single')->info("{$req}PayrollService::disputeEmployeeRecord: Update executed.", [
+            'dispute_id' => $dispute->id,
+            'update_returned_status' => $updated,
+            'employee_review_status_after_refresh' => $record->employee_review_status,
         ]);
 
         PayrollAuditLog::record(

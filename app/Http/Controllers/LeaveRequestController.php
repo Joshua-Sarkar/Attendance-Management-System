@@ -164,14 +164,14 @@ class LeaveRequestController extends Controller
         $user = Auth::user();
 
         // Access Control checks
-        if ($user->role === 'employee' && $leaveRequest->user_id !== $user->id) {
+        if ($user->role === 'employee' && (int)$leaveRequest->user_id !== (int)$user->id) {
             abort(403, 'Unauthorized access.');
         }
 
         if ($user->role === 'manager') {
             // Managers can view their own requests OR requests of employees assigned to them
-            $isOwn = $leaveRequest->user_id === $user->id;
-            $isAssigned = $leaveRequest->user->role === 'employee' && $leaveRequest->user->manager_id === $user->id;
+            $isOwn = (int)$leaveRequest->user_id === (int)$user->id;
+            $isAssigned = $leaveRequest->user->role === 'employee' && (int)$leaveRequest->user->manager_id === (int)$user->id;
             if (!$isOwn && !$isAssigned) {
                 abort(403, 'Unauthorized access.');
             }
@@ -190,7 +190,7 @@ class LeaveRequestController extends Controller
         $user = Auth::user();
 
         // Only the owner can cancel their request
-        if ($leaveRequest->user_id !== $user->id) {
+        if ((int)$leaveRequest->user_id !== (int)$user->id) {
             abort(403, 'You cannot cancel someone else\'s leave request.');
         }
 
