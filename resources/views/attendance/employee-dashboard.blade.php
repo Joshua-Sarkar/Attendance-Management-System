@@ -95,13 +95,14 @@
                                 <div>
                                     <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider block mb-1">Status</span>
                                     <div>
-                                        <span class="tag {{ $today_attendance->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border
-                                            @if($today_attendance->status === 'present') bg-forest-bg text-forest border-transparent
-                                            @elseif($today_attendance->status === 'late') bg-cognac-bg text-cognac border-transparent
-                                            @elseif($today_attendance->status === 'on_leave' || $today_attendance->status === 'leave') bg-slate-bg text-slate border-transparent
-                                            @elseif($today_attendance->status === 'wfh') bg-forest-bg text-forest border-transparent
-                                            @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                            {{ str_replace('_', ' ', $today_attendance->status) }}
+                                        @php
+                                            $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($today_attendance->status);
+                                            $details = \App\Services\AttendanceStateRegistry::getStates()[$displayStatus] ?? null;
+                                            $style = $details ? "background-color: {$details['bg_color']}; color: {$details['text_color']}; border-color: transparent;" : "";
+                                            $label = \App\Services\AttendanceStateRegistry::getLabel($today_attendance->status);
+                                        @endphp
+                                        <span class="tag {{ $today_attendance->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border" style="{{ $style }}">
+                                            {{ $label }}
                                         </span>
                                     </div>
                                 </div>
@@ -208,12 +209,13 @@
                             $desc = 'No check-in recorded';
                         }
                     @endphp
+                    @php
+                        $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($record->status);
+                        $details = \App\Services\AttendanceStateRegistry::getStates()[$displayStatus] ?? null;
+                        $dotColor = $details ? $details['dot_color'] : "#DC3545";
+                    @endphp
                     <div class="ledger-row grid grid-cols-[24px_110px_1fr_120px] items-center py-4 px-2 border-b border-hairline last:border-none hover:bg-brass/[0.04] transition duration-150">
-                        <span class="seal-indicator {{ $record->status }} w-2 h-2 rounded-full 
-                            @if($record->status === 'present' || $record->status === 'wfh') bg-forest
-                            @elseif($record->status === 'late') bg-cognac
-                            @elseif($record->status === 'on_leave' || $record->status === 'leave') bg-slate
-                            @else bg-burgundy @endif"></span>
+                        <span class="seal-indicator {{ $record->status }} w-2 h-2 rounded-full" style="background-color: {{ $dotColor }};"></span>
                         <span class="row-time font-mono text-[13px] text-vellum">{{ $dateStr }}</span>
                         <div class="row-identity flex flex-col gap-0.5">
                             <span class="row-name text-[14.0px] font-semibold text-vellum">
@@ -226,13 +228,12 @@
                             <span class="row-desc text-[12px] text-vellum-muted">{{ $desc }}</span>
                         </div>
                         <div class="text-right">
-                            <span class="tag {{ $record->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border
-                                @if($record->status === 'present') bg-forest-bg text-forest border-transparent
-                                @elseif($record->status === 'late') bg-cognac-bg text-cognac border-transparent
-                                @elseif($record->status === 'on_leave' || $record->status === 'leave') bg-slate-bg text-slate border-transparent
-                                @elseif($record->status === 'wfh') bg-forest-bg text-forest border-transparent
-                                @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                @if($record->status === 'on_leave') Leave @else {{ str_replace('_', ' ', $record->status) }} @endif
+                            @php
+                                $style = $details ? "background-color: {$details['bg_color']}; color: {$details['text_color']}; border-color: transparent;" : "";
+                                $label = \App\Services\AttendanceStateRegistry::getLabel($record->status);
+                            @endphp
+                            <span class="tag {{ $record->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border" style="{{ $style }}">
+                                {{ $label }}
                             </span>
                         </div>
                     </div>

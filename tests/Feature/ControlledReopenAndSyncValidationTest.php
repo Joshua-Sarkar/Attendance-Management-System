@@ -108,7 +108,7 @@ class ControlledReopenAndSyncValidationTest extends TestCase
         $this->assertEquals('Correcting unpaid absence mismatch', $history['reason']);
         $this->assertEquals(1, $history['old_version']);
         $this->assertEquals($this->admin->id, $history['reopened_by_id']);
-        $this->assertEquals('generated', $history['old_payslip_status']);
+        $this->assertEquals('published', $history['old_payslip_status']);
     }
 
     /** @test */

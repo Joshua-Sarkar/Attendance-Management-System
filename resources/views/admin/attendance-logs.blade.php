@@ -876,14 +876,14 @@
 
                                                     <!-- Final Status -->
                                                     <td class="py-2 px-4">
-                                                        <span class="tag {{ $item->status }} text-[9.5px] font-mono uppercase px-2 py-0.5 rounded border
-                                                            @if($item->status === 'present') bg-forest-bg text-forest border-transparent
-                                                            @elseif($item->status === 'late' || $item->status === 'half_day') bg-cognac-bg text-cognac border-transparent
-                                                            @elseif($item->status === 'on_leave' || $item->status === 'leave' || $item->status === 'paid_leave' || $item->status === 'unpaid_leave') bg-slate-bg text-slate border-transparent
-                                                            @elseif($item->status === 'wfh') bg-forest-bg text-forest border-transparent
-                                                            @elseif($item->status === 'weekly_off') bg-transparent text-vellum-muted border-hairline-strong
-                                                            @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                                            @if($item->status === 'on_leave') Leave @elseif($item->status === 'paid_leave') Planned Leave (Paid) @elseif($item->status === 'unpaid_leave') Unplanned Leave (Unpaid) @elseif($item->status === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $item->status) }} @endif
+                                                        @php
+                                                            $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($item->status);
+                                                            $details = \App\Services\AttendanceStateRegistry::getStates()[$displayStatus] ?? null;
+                                                            $style = $details ? "background-color: {$details['bg_color']}; color: {$details['text_color']}; border-color: transparent;" : "";
+                                                            $label = \App\Services\AttendanceStateRegistry::getLabel($item->status);
+                                                        @endphp
+                                                        <span class="tag {{ $item->status }} text-[9.5px] font-mono uppercase px-2 py-0.5 rounded border" style="{{ $style }}">
+                                                            {{ $label }}
                                                         </span>
                                                     </td>
 

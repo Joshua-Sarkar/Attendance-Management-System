@@ -111,13 +111,14 @@
                             <div>
                                 <span class="text-xs font-semibold text-vellum-faint uppercase tracking-wider block mb-1">Status</span>
                                 <div>
-                                    <span class="tag {{ $today_attendance->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border
-                                        @if($today_attendance->status === 'present') bg-forest-bg text-forest border-transparent
-                                        @elseif($today_attendance->status === 'late' || $today_attendance->status === 'half_day') bg-cognac-bg text-cognac border-transparent
-                                        @elseif($today_attendance->status === 'on_leave' || $today_attendance->status === 'leave' || $today_attendance->status === 'paid_leave' || $today_attendance->status === 'unpaid_leave') bg-slate-bg text-slate border-transparent
-                                        @elseif($today_attendance->status === 'wfh') bg-forest-bg text-forest border-transparent
-                                        @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                                        @if($today_attendance->status === 'on_leave') Leave @elseif($today_attendance->status === 'paid_leave') Paid Leave @elseif($today_attendance->status === 'unpaid_leave') Unpaid Leave @else {{ str_replace('_', ' ', $today_attendance->status) }} @endif
+                                    @php
+                                        $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($today_attendance->status);
+                                        $details = \App\Services\AttendanceStateRegistry::getStates()[$displayStatus] ?? null;
+                                        $style = $details ? "background-color: {$details['bg_color']}; color: {$details['text_color']}; border-color: transparent;" : "";
+                                        $label = \App\Services\AttendanceStateRegistry::getLabel($today_attendance->status);
+                                    @endphp
+                                    <span class="tag {{ $today_attendance->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-1 rounded border" style="{{ $style }}">
+                                        {{ $label }}
                                     </span>
                                 </div>
                             </div>

@@ -228,7 +228,7 @@ class AttendanceService
             $attendance = new Attendance([
                 'user_id' => $user->id,
                 'date' => $date->copy()->startOfDay(),
-                'status' => $state['status'] === 'off' ? 'weekly_off' : ($state['status'] === 'bday' || $state['status'] === 'planned' || $state['status'] === 'upa' || $state['status'] === 'hdp' || $state['status'] === 'hd_upa' ? 'on_leave' : $state['status']),
+                'status' => $state['status'],
                 'automatic_status' => $state['automatic_status'],
                 'classification' => $state['classification'],
                 'automatic_classification' => $state['automatic_classification'],
@@ -236,13 +236,7 @@ class AttendanceService
             ]);
         } else {
             // Ensure status/classification matches single source of truth
-            $mappedStatus = $state['status'];
-            if ($mappedStatus === 'off') {
-                $mappedStatus = 'weekly_off';
-            } elseif (in_array($mappedStatus, ['planned', 'upa', 'hdp', 'hd_upa', 'bday'])) {
-                $mappedStatus = 'on_leave';
-            }
-            $attendance->status = $mappedStatus;
+            $attendance->status = $state['status'];
             $attendance->classification = $state['classification'];
         }
 

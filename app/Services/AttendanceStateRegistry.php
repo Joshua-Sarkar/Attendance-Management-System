@@ -118,7 +118,7 @@ class AttendanceStateRegistry
         if ($status === 'late') {
             return 'present';
         }
-        if ($status === 'paid_leave') {
+        if ($status === 'paid_leave' || $status === 'on_leave' || $status === 'leave') {
             return 'planned';
         }
         if ($status === 'unpaid_leave') {

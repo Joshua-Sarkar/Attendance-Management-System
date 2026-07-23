@@ -19,6 +19,120 @@ class PayrollService
 {
     public static $currentRequestId = null;
     /**
+     * Resolve exactly one canonical attendance-to-payroll status mapping.
+     */
+    public static function resolvePayrollClassification(string $status, float &$availableBalance, float $dailyRate, string $notes = ''): array
+    {
+        $deductionFactor = 0.0;
+        $paidUnplanned = 0.0;
+        $unpaidUnplanned = 0.0;
+        $presentDays = 0.0;
+        $absentDays = 0.0;
+        $leaveDays = 0.0;
+        $birthdayLeaveDays = 0.0;
+
+        $canonicalLabels = [
+            'present' => 'Present',
+            'wfh' => 'Work From Home',
+            'late' => 'Late Arrival',
+            'off' => 'Weekly Off',
+            'planned' => 'Planned Leave · Paid',
+            'hdp' => 'HDP · Paid Leave',
+            'bday' => 'Birthday Leave · Paid',
+            'half' => 'HALF DAY · Unpaid',
+            'hd_upr' => 'HD-UPR · Unpaid',
+            'absent' => 'ABSENT · Unpaid',
+            'upr' => 'UPR · Unpaid',
+        ];
+
+        $typeLabel = $canonicalLabels[$status] ?? ucfirst($status);
+
+        if (in_array($status, ['present', 'wfh', 'late'])) {
+            $deductionFactor = 0.0;
+            $presentDays = 1.0;
+        } elseif ($status === 'off') {
+            $deductionFactor = 0.0;
+            $presentDays = 1.0;
+        } elseif ($status === 'bday') {
+            $deductionFactor = 0.0;
+            $birthdayLeaveDays = 1.0;
+            $presentDays = 1.0;
+        } elseif ($status === 'planned') {
+            $deductionFactor = 0.0;
+            $leaveDays = 1.0;
+        } elseif ($status === 'hdp') {
+            $deductionFactor = 0.0;
+            $presentDays = 0.5;
+            $leaveDays = 0.5;
+        } elseif ($status === 'upa') {
+            $leaveDays = 1.0;
+            $paidPortion = min(max(0.0, $availableBalance), 1.0);
+            $unpaidPortion = 1.0 - $paidPortion;
+
+            $availableBalance -= $paidPortion;
+            $paidUnplanned = $paidPortion;
+            $unpaidUnplanned = $unpaidPortion;
+
+            $deductionFactor = $unpaidPortion;
+            if ($paidPortion > 0) {
+                if ($unpaidPortion > 0) {
+                    $typeLabel = 'UPA · Unpaid Portion';
+                    $notes = "Unplanned Approved (0.5d paid from balance, 0.5d unpaid)";
+                } else {
+                    $typeLabel = 'UPA · Paid Leave';
+                    $notes = "Unplanned Approved (Paid from leave balance)";
+                }
+            } else {
+                $typeLabel = 'UPA · Unpaid Leave';
+                $notes = "Unplanned Approved (Unpaid)";
+            }
+        } elseif ($status === 'hd_upa') {
+            $presentDays = 0.5;
+            $leaveDays = 0.5;
+
+            $paidPortion = min(max(0.0, $availableBalance), 0.5);
+            $unpaidPortion = 0.5 - $paidPortion;
+
+            $availableBalance -= $paidPortion;
+            $paidUnplanned = $paidPortion;
+            $unpaidUnplanned = $unpaidPortion;
+
+            $deductionFactor = $unpaidPortion;
+            if ($paidPortion > 0) {
+                $typeLabel = 'HD-UPA · Paid Leave';
+                $notes = "Half Day Unplanned Approved (Paid from leave balance)";
+            } else {
+                $typeLabel = 'HD-UPA · Unpaid Leave';
+                $notes = "Half Day Unplanned Approved (Unpaid)";
+            }
+        } elseif (in_array($status, ['half', 'hd_upr'])) {
+            $presentDays = 0.5;
+            $deductionFactor = 0.5;
+            if ($status === 'hd_upr') {
+                $unpaidUnplanned = 0.5;
+            }
+        } elseif (in_array($status, ['absent', 'upr'])) {
+            $absentDays = 1.0;
+            $deductionFactor = 1.0;
+        }
+
+        $deductedAmount = round($deductionFactor * $dailyRate, 2);
+
+        return [
+            'deduction_factor' => $deductionFactor,
+            'deducted_amount' => $deductedAmount,
+            'paid_unplanned_leaves' => $paidUnplanned,
+            'unpaid_leave_days' => $unpaidUnplanned,
+            'present_days' => $presentDays,
+            'absent_days' => $absentDays,
+            'leave_days' => $leaveDays,
+            'birthday_leave_days' => $birthdayLeaveDays,
+            'type_label' => $typeLabel,
+            'notes' => $notes,
+        ];
+    }
+
+    /**
      * Calculate monthly payroll details for an employee.
      * Consumes finalized attendance and leave states.
      */
@@ -135,6 +249,7 @@ class PayrollService
         $lateDays = 0;
         $wfhDays = 0;
         $totalOvertimeHours = 0.00;
+        $paidUnplannedCount = 0.00;
 
         if ($workingDays === 0) {
             $hasMissingSalary = true;
@@ -150,6 +265,8 @@ class PayrollService
         if (str_contains($otPolicy['cap'] ?? '', 'h')) {
             $otCap = (float) str_replace('h', '', $otPolicy['cap']);
         }
+
+        $availableBalance = (float) $user->leave_balance;
 
         foreach ($states as $dateStr => $state) {
             $date = Carbon::parse($dateStr);
@@ -169,51 +286,40 @@ class PayrollService
 
             $dailyRate = $dailyBaseRate; // Allowances is 0.00
 
-            $deductionFactor = (float) ($state['salary_deduction'] ?? 0.0);
-            $deductedAmount = round($deductionFactor * $dailyRate, 2);
+            $status = $state['status'];
+
+            $classification = self::resolvePayrollClassification($status, $availableBalance, $dailyRate, $state['notes'] ?? '');
+            
+            $deductionFactor = $classification['deduction_factor'];
+            $deductedAmount = $classification['deducted_amount'];
 
             if ($deductedAmount > 0.0) {
                 $attendanceDeductions += $deductedAmount;
             }
 
             // Track days count and categories based on state status
-            $status = $state['status'];
+            $presentDays += $classification['present_days'];
+            $absentDays += $classification['absent_days'];
+            $leaveDays += $classification['leave_days'];
+            $unpaidLeaveDays += $classification['unpaid_leave_days'];
+            $birthdayLeaveDays += $classification['birthday_leave_days'];
+            $paidUnplannedCount += $classification['paid_unplanned_leaves'];
+
             if (in_array($status, ['present', 'wfh', 'late'])) {
-                $presentDays += 1.0;
                 if ($status === 'wfh') $wfhDays += 1;
                 if ($status === 'late') $lateDays += 1;
-            } elseif (in_array($status, ['half', 'hd_upr'])) {
-                $presentDays += 0.5;
+            } elseif (in_array($status, ['half', 'hd_upr', 'hdp', 'hd_upa'])) {
                 $halfDays += 1;
-                if ($status === 'hd_upr') {
-                    $unpaidLeaveDays += 0.5;
-                }
-            } elseif (in_array($status, ['hdp', 'hd_upa'])) {
-                $presentDays += 0.5;
-                $halfDays += 1;
-                $leaveDays += 0.5;
-                if ($status === 'hd_upa') {
-                    $unpaidLeaveDays += 0.5; 
-                    $leaveDeductions += round(0.5 * $dailyRate, 2);
-                }
-            } elseif (in_array($status, ['planned', 'upa'])) {
-                $leaveDays += 1.0;
-                if ($status === 'upa') {
-                    $unpaidLeaveDays += 1.0;
-                    $leaveDeductions += round($dailyRate, 2);
-                }
-            } elseif ($status === 'bday') {
-                $birthdayLeaveDays += 1.0;
-                $presentDays += 1.0;
-            } elseif ($status === 'absent' || $status === 'upr') {
-                $absentDays += 1.0;
-            } elseif ($status === 'off') {
-                $presentDays += 1.0;
+            }
+
+            if ($classification['unpaid_leave_days'] > 0.0) {
+                $leaveDeductions += $deductedAmount;
             }
 
             // Calculate Overtime for this day
             $checkIn = $state['check_in_time'];
             $checkOut = $state['check_out_time'];
+            $hoursWorked = 0.00;
             if ($checkIn && $checkOut) {
                 $checkInTime = Carbon::parse($checkIn);
                 $checkOutTime = Carbon::parse($checkOut);
@@ -227,14 +333,15 @@ class PayrollService
                 'status' => $status,
                 'deduction_factor' => $deductionFactor,
                 'deducted_amount' => $deductedAmount,
-                'notes' => $state['notes'] ?? '',
+                'notes' => $classification['notes'] ?: ($state['notes'] ?? ''),
                 'has_conflict' => ($checkIn && $state['leave_type']) ? true : false,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'hours_worked' => $hoursWorked ?? 0.00,
+                'hours_worked' => $hoursWorked,
                 'leave_type' => $state['leave_type'] ?? null,
                 'is_override' => $state['is_override'] ?? false,
                 'original_status' => $state['original_status'] ?? $status,
+                'type_label' => $classification['type_label'],
             ];
         }
 
@@ -335,6 +442,7 @@ class PayrollService
             'daily_rate' => round($lastDaySalary / ($lastDayDaysInMonth ?: 30), 2),
             'hourly_rate' => round($lastDaySalary / (($lastDayDaysInMonth ?: 30) * 8), 2),
             'calendar_days' => 30,
+            'paid_unplanned_leaves' => round($paidUnplannedCount, 2),
         ];
     }
 
@@ -513,6 +621,7 @@ class PayrollService
                         'fingerprint_inputs' => $fingerprintInputs,
                         'historical_approvals' => $historicalApprovals,
                         'reopen_history' => $record ? ($record->calculation_metadata['reopen_history'] ?? []) : [],
+                        'paid_unplanned_leaves' => $calc['paid_unplanned_leaves'] ?? 0.0,
                     ],
                 ];
 
@@ -823,6 +932,22 @@ class PayrollService
             $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)->get();
 
             foreach ($records as $record) {
+                $metadata = $record->calculation_metadata ?? [];
+                $paidUnplanned = (float) ($metadata['paid_unplanned_leaves'] ?? 0.0);
+
+                if ($paidUnplanned > 0.0) {
+                    \App\Services\LeaveBalanceService::adjustBalance(
+                        $record->user,
+                        -$paidUnplanned,
+                        'deduction',
+                        "Unplanned leave consumed during payroll lock for {$cycle->period}",
+                        null
+                    );
+                    $metadata['paid_unplanned_leaves_deducted'] = $paidUnplanned;
+                    $record->calculation_metadata = $metadata;
+                    $record->save();
+                }
+
                 $snapshot = $record->locked_snapshot ?: self::buildSnapshotForRecord($record, $actor);
 
                 $record->update([
@@ -940,9 +1065,29 @@ class PayrollService
                 'locked_by_id' => null,
             ]);
 
-            PayrollRecord::where('payroll_cycle_id', $cycle->id)->update([
-                'locked' => false,
-            ]);
+            $records = PayrollRecord::where('payroll_cycle_id', $cycle->id)->get();
+
+            foreach ($records as $record) {
+                $metadata = $record->calculation_metadata ?? [];
+                $deducted = (float) ($metadata['paid_unplanned_leaves_deducted'] ?? 0.0);
+
+                if ($deducted > 0.0) {
+                    \App\Services\LeaveBalanceService::adjustBalance(
+                        $record->user,
+                        $deducted,
+                        'refund',
+                        "Refund for unlocked payroll cycle {$cycle->period}",
+                        null
+                    );
+                    $metadata['paid_unplanned_leaves_deducted'] = 0.0;
+                    $record->calculation_metadata = $metadata;
+                    $record->save();
+                }
+
+                $record->update([
+                    'locked' => false,
+                ]);
+            }
         });
 
         PayrollAuditLog::record(
@@ -1643,6 +1788,8 @@ class PayrollService
                 'calendar_days' => $calc['calendar_days'],
                 'fingerprint_inputs' => $fingerprintInputs,
                 'historical_approvals' => $historicalApprovals,
+                'reopen_history' => $record->calculation_metadata['reopen_history'] ?? [],
+                'paid_unplanned_leaves' => $calc['paid_unplanned_leaves'] ?? 0.0,
             ],
         ]);
 
@@ -1769,30 +1916,51 @@ class PayrollService
             $isOverride = (bool) ($dayData['is_override'] ?? false);
             $formattedDate = \Carbon\Carbon::parse($dateStr)->format('d M Y');
 
-            if (in_array($status, ['half', 'hd_upr', 'hd_upa', 'hdp'])) {
-                $halfDaysCount++;
-                $halfDayDates[] = $formattedDate;
-                $amt = $deducted > 0 ? $deducted : round($dailyRate * 0.5, 2);
-                $halfDaysAmount += $amt;
-                $dateBreakdownItems[] = [
-                    'date' => $formattedDate,
-                    'raw_date' => $dateStr,
-                    'type' => 'Half Day',
-                    'reason' => $isOverride ? 'Manual Override (Half Day)' : 'Half Day Worked',
-                    'amount' => $amt,
-                ];
-            } elseif (in_array($status, ['upa', 'absent', 'upr'])) {
-                $unpaidCount++;
-                $unpaidDates[] = $formattedDate;
-                $amt = $deducted > 0 ? $deducted : round($dailyRate, 2);
-                $unpaidAmount += $amt;
-                $typeLabel = $status === 'upa' ? 'Unpaid Leave' : 'Unexcused Absence';
+            $typeLabel = $dayData['type_label'] ?? null;
+            $reason = $dayData['notes'] ?? '';
+
+            if (is_null($typeLabel)) {
+                $dummyBalance = ($status === 'upa' || $status === 'hd_upa') ? ($deducted == 0.00 ? 10.0 : 0.0) : 0.0;
+                $classification = self::resolvePayrollClassification($status, $dummyBalance, $dailyRate, $reason);
+                $typeLabel = $classification['type_label'];
+                if (empty($reason)) {
+                    $reason = $classification['notes'];
+                }
+            }
+
+            if (in_array($status, ['planned', 'upa', 'upr', 'hdp', 'hd_upa', 'hd_upr', 'absent', 'bday'])) {
+                if (in_array($status, ['hdp', 'hd_upa', 'hd_upr'])) {
+                    $halfDaysCount++;
+                    $halfDayDates[] = $formattedDate;
+                    $halfDaysAmount += $deducted;
+                } else {
+                    if ($status === 'upa' && $deducted == 0.00) {
+                        // Paid leave! Do not increment unpaidCount or unpaidAmount.
+                    } else {
+                        $portion = $dailyRate > 0 ? ($deducted / $dailyRate) : 1.0;
+                        $unpaidCount += $portion;
+                        $unpaidDates[] = $formattedDate;
+                        $unpaidAmount += $deducted;
+                    }
+                }
+
                 $dateBreakdownItems[] = [
                     'date' => $formattedDate,
                     'raw_date' => $dateStr,
                     'type' => $typeLabel,
-                    'reason' => $isOverride ? 'Manual Override (' . $typeLabel . ')' : 'Absence / Unpaid Leave',
-                    'amount' => $amt,
+                    'reason' => $isOverride ? 'Manual Override (' . $reason . ')' : $reason,
+                    'amount' => $deducted,
+                ];
+            } elseif ($status === 'half') {
+                $halfDaysCount++;
+                $halfDayDates[] = $formattedDate;
+                $halfDaysAmount += $deducted;
+                $dateBreakdownItems[] = [
+                    'date' => $formattedDate,
+                    'raw_date' => $dateStr,
+                    'type' => $typeLabel,
+                    'reason' => $isOverride ? 'Manual Override (Half Day)' : ($reason ?: 'Half Day Worked'),
+                    'amount' => $deducted,
                 ];
             } elseif ($status === 'late' && $deducted > 0) {
                 $lateCount++;
@@ -1801,7 +1969,7 @@ class PayrollService
                 $dateBreakdownItems[] = [
                     'date' => $formattedDate,
                     'raw_date' => $dateStr,
-                    'type' => 'Late Penalty',
+                    'type' => $typeLabel,
                     'reason' => 'Late Arrival Penalty',
                     'amount' => $deducted,
                 ];
@@ -1812,8 +1980,8 @@ class PayrollService
                 $dateBreakdownItems[] = [
                     'date' => $formattedDate,
                     'raw_date' => $dateStr,
-                    'type' => 'Override Adjustment',
-                    'reason' => $dayData['notes'] ?? 'Attendance Override',
+                    'type' => $typeLabel,
+                    'reason' => $reason ?: 'Attendance Override',
                     'amount' => $deducted,
                 ];
             }

@@ -107,14 +107,14 @@
 
                 <!-- Status -->
                 <td class="py-4 px-4 text-right">
-                    <span class="tag {{ $record->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-0.5 rounded border
-                        @if($record->status === 'present') bg-forest-bg text-forest border-transparent
-                        @elseif($record->status === 'late') bg-cognac-bg text-cognac border-transparent
-                        @elseif($record->status === 'on_leave' || $record->status === 'leave' || $record->status === 'paid_leave' || $record->status === 'unpaid_leave') bg-slate-bg text-slate border-transparent
-                        @elseif($record->status === 'wfh') bg-forest-bg text-forest border-transparent
-                        @elseif($record->status === 'weekly_off') bg-transparent text-vellum-muted border-hairline-strong
-                        @else bg-burgundy-bg text-burgundy border-transparent @endif">
-                        @if($record->status === 'on_leave' || $record->status === 'leave') Leave @elseif($record->status === 'paid_leave') Paid Leave @elseif($record->status === 'unpaid_leave') Unpaid Leave @elseif($record->status === 'weekly_off') Weekly Off @else {{ str_replace('_', ' ', $record->status) }} @endif
+                    @php
+                        $displayStatus = \App\Services\AttendanceStateRegistry::getDisplayStatus($record->status);
+                        $details = \App\Services\AttendanceStateRegistry::getStates()[$displayStatus] ?? null;
+                        $style = $details ? "background-color: {$details['bg_color']}; color: {$details['text_color']}; border-color: transparent;" : "";
+                        $label = \App\Services\AttendanceStateRegistry::getLabel($record->status);
+                    @endphp
+                    <span class="tag {{ $record->status }} text-[11px] font-mono uppercase tracking-[0.8px] px-2.5 py-0.5 rounded border" style="{{ $style }}">
+                        {{ $label }}
                     </span>
             </tr>
         @empty

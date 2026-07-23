@@ -99,7 +99,7 @@ class LeaveAuthorizationModelTest extends TestCase
         $employeeRecord = $employees->firstWhere('id', $this->employee->id);
         
         $this->assertNotNull($employeeRecord->today_attendance);
-        $this->assertEquals('on_leave', $employeeRecord->today_attendance->status);
+        $this->assertEquals('planned', $employeeRecord->today_attendance->status);
     }
 
     /** @test */
@@ -266,9 +266,9 @@ class LeaveAuthorizationModelTest extends TestCase
 
         $attendanceService = resolve(\App\Services\AttendanceService::class);
         
-        // Before check-in: dynamic resolves as on_leave
+        // Before check-in: dynamic resolves as planned
         $recordBefore = $attendanceService->getTodayAttendance($this->employee);
-        $this->assertEquals('on_leave', $recordBefore->status);
+        $this->assertEquals('planned', $recordBefore->status);
 
         // Clock in physically
         $attendanceService->checkIn($this->employee);
