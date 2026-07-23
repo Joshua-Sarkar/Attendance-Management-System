@@ -247,19 +247,21 @@ class EmployeePayrollController extends Controller
         ]);
 
         $record = PayrollRecord::findOrFail($request->input('record_id'));
+        $period = $record->payrollCycle->period;
+
         if ($record->user_id !== Auth::id()) {
-            return back()->with('error', 'Unauthorized access.');
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Unauthorized access.');
         }
 
         if ($record->locked) {
-            return back()->with('error', 'Cannot approve locked payroll.');
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Cannot approve locked payroll.');
         }
 
         try {
             PayrollService::approveEmployeeRecord($record, Auth::user());
-            return back()->with('success', 'Payroll statement confirmed & approved successfully.');
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('success', 'Payroll statement confirmed & approved successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', $e->getMessage());
         }
     }
 
@@ -277,19 +279,21 @@ class EmployeePayrollController extends Controller
         ]);
 
         $record = PayrollRecord::findOrFail($request->input('record_id'));
+        $period = $record->payrollCycle->period;
+
         if ($record->user_id !== Auth::id()) {
-            return back()->with('error', 'Unauthorized access.');
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Unauthorized access.');
         }
 
         if ($record->locked) {
-            return back()->with('error', 'Cannot dispute. Payroll is locked.');
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', 'Cannot dispute. Payroll is locked.');
         }
 
         try {
             PayrollService::disputeEmployeeRecord($record, Auth::user(), $request->all());
-            return back()->with('success', 'Dispute raised successfully. HR/Admin will review it.');
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('success', 'Dispute raised successfully. HR/Admin will review it.');
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            return redirect()->route('employee.payroll.index', ['period' => $period])->with('error', $e->getMessage());
         }
     }
 

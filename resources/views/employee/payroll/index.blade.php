@@ -62,9 +62,9 @@
                     <div class="flex items-center gap-3">
                         <select x-model="selectedPeriod" @change="changePeriod()"
                                 class="text-[12.5px] bg-cream border border-line rounded-xl px-3.5 py-2 outline-none focus:border-brass font-mono font-semibold text-walnut">
-                            <template x-for="p in allPeriods" :key="p">
-                                <option :value="p" x-text="p"></option>
-                            </template>
+                            @foreach($allPeriods as $p)
+                                <option value="{{ $p }}" {{ $p === $period ? 'selected' : '' }}>{{ $p }}</option>
+                            @endforeach
                         </select>
                         <div class="flex items-center gap-2">
                             <button class="w-9 h-9 rounded-full bg-brass-dark text-cream font-display text-[13px] flex items-center justify-center font-bold">
@@ -75,8 +75,21 @@
                 </div>
             </header>
 
-            <main class="px-5 lg:px-9 py-7 space-y-7 flex-1">
+            <main class="px-5 lg:px-9 py-5 space-y-5 flex-1">
                 
+                @if ($errors->any())
+                    <div class="p-4 bg-burgundy/10 border border-burgundy/20 text-burgundy rounded-2xl text-xs font-mono space-y-1">
+                        <div class="flex items-center gap-2 font-bold">
+                            <span>⚠</span> <span>Validation Errors:</span>
+                        </div>
+                        <ul class="list-disc pl-5">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 @if (session('success'))
                     <div class="p-4 bg-forest/10 border border-forest/20 text-forest rounded-2xl text-xs font-mono flex items-center gap-2">
                         <span>✓</span> <span>{{ session('success') }}</span>
@@ -97,15 +110,15 @@
                 </template>
 
                 <template x-if="record">
-                    <div class="space-y-7">
+                    <div class="space-y-5">
                         
                         <!-- ================= 1. PAYROLL HERO SUMMARY ================= -->
-                        <div class="panel bg-cream border border-line p-7 lg:p-8 rounded-3xl relative overflow-hidden shadow-soft">
+                        <div class="panel bg-cream border border-line p-5 lg:p-6 rounded-2xl relative overflow-hidden shadow-soft">
                             <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-brass/5"></div>
                             
                             <div class="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                                <div class="space-y-2.5">
-                                    <div class="flex flex-wrap items-center gap-2.5">
+                                <div class="space-y-2">
+                                    <div class="flex flex-wrap items-center gap-2">
                                         <span class="text-[10px] font-bold uppercase tracking-wider text-brass font-mono bg-brass-light/20 border border-brass/25 px-3 py-1 rounded-full">
                                             Payroll Statement
                                         </span>
@@ -115,7 +128,7 @@
                                             <span x-text="record.locked ? 'LOCKED & FINALISED' : (record.employee_review_status === 'approved' ? 'EMPLOYEE APPROVED' : 'REVIEW PENDING')"></span>
                                         </span>
                                     </div>
-                                    <h2 class="font-display text-3xl font-bold text-walnut" x-text="selectedPeriod"></h2>
+                                    <h2 class="font-display text-2xl font-bold text-walnut" x-text="selectedPeriod"></h2>
                                     <p class="text-xs text-vellum-faint">
                                         Employee: <span class="font-semibold text-walnut" x-text="record.name"></span>
                                         <span class="mx-1 text-vellum-faint">·</span>
@@ -128,14 +141,14 @@
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 lg:text-right">
                                     <div class="space-y-1">
                                         <p class="text-[10px] font-bold text-vellum-faint uppercase tracking-wider font-mono">Net Disbursement Payout</p>
-                                        <p class="font-display text-4xl font-black text-forest tracking-tight" x-text="'₹' + record.net.toLocaleString('en-IN')"></p>
+                                        <p class="font-display text-3xl font-black text-forest tracking-tight" x-text="'₹' + record.net.toLocaleString('en-IN')"></p>
                                         <p class="text-[11px] text-vellum-muted">Scheduled Disbursement: <span class="font-semibold text-walnut">07th of next month</span></p>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Summary Pills Bar -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-line/60 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-5 border-t border-line/60 text-xs">
                                 <div class="bg-surface/50 border border-line p-3 rounded-2xl">
                                     <span class="block text-[9.5px] font-mono uppercase font-bold text-vellum-faint">Base Salary</span>
                                     <span class="font-mono font-bold text-walnut text-sm mt-0.5 block" x-text="'₹' + record.baseSalary.toLocaleString('en-IN')"></span>
@@ -151,118 +164,8 @@
                             </div>
                         </div>
 
-                        <!-- ================= 2. WORKFLOW STEPPER & APPROVAL CARD ================= -->
-                        <div class="panel bg-cream border border-line p-6 lg:p-7 rounded-3xl space-y-6 shadow-soft">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-line pb-4">
-                                <div>
-                                    <h3 class="font-display font-bold text-base text-walnut">Payroll Approval & Sign-Off Lifecycle</h3>
-                                    <p class="text-[11px] text-vellum-muted">Track stage progression from attendance resolution to final disbursement lock.</p>
-                                </div>
-                                <span class="px-3 py-1 rounded-xl text-[10px] font-bold font-mono uppercase tracking-wider border"
-                                      :class="{
-                                          approved: 'bg-forest/10 border-forest/20 text-forest',
-                                          pending: 'bg-brass/10 border-brass/20 text-brass-dark',
-                                          stale: 'bg-burgundy/10 border-burgundy/20 text-burgundy',
-                                          disputed: 'bg-burgundy/10 border-burgundy/20 text-burgundy'
-                                      }[record.employee_review_status]"
-                                      x-text="'Review State: ' + record.employee_review_status"></span>
-                            </div>
-
-                            <!-- 4-Stage Horizontal Stepper -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <!-- Stage 1 -->
-                                <div class="p-4 bg-surface/40 border border-line rounded-2xl space-y-1.5">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 1</span>
-                                        <span class="text-forest text-[11px] font-bold">✓ Ready</span>
-                                    </div>
-                                    <p class="text-xs font-bold text-walnut">Attendance Basis</p>
-                                    <p class="text-[10px] text-vellum-muted">Shifts, check-ins, and leave requests resolved.</p>
-                                </div>
-
-                                <!-- Stage 2 -->
-                                <div class="p-4 bg-surface/40 border border-line rounded-2xl space-y-1.5">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 2</span>
-                                        <span class="text-forest text-[11px] font-bold">✓ Generated</span>
-                                    </div>
-                                    <p class="text-xs font-bold text-walnut">Payroll Calculation</p>
-                                    <p class="text-[10px] text-vellum-muted">Base salary and attendance deductions mapped.</p>
-                                </div>
-
-                                <!-- Stage 3 -->
-                                <div class="p-4 border rounded-2xl space-y-1.5"
-                                     :class="record.employee_review_status === 'approved' ? 'bg-forest/5 border-forest/25' : (record.employee_review_status === 'disputed' ? 'bg-burgundy/5 border-burgundy/25' : 'bg-brass/5 border-brass/25')">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 3</span>
-                                        <span class="text-[11px] font-bold"
-                                              :class="record.employee_review_status === 'approved' ? 'text-forest' : (record.employee_review_status === 'disputed' ? 'text-burgundy' : 'text-brass-dark')"
-                                              x-text="record.employee_review_status === 'approved' ? '✓ Approved' : (record.employee_review_status === 'disputed' ? '⚠ Disputed' : '• Action Required')"></span>
-                                    </div>
-                                    <p class="text-xs font-bold text-walnut">Employee Sign-off</p>
-                                    <p class="text-[10px] text-vellum-muted"
-                                       x-text="record.employee_approved_at ? 'Signed off on ' + record.employee_approved_at : (record.employee_review_status === 'disputed' ? 'Dispute raised for HR review' : 'Please review and confirm calculation')"></p>
-                                </div>
-
-                                <!-- Stage 4 -->
-                                <div class="p-4 border rounded-2xl space-y-1.5"
-                                     :class="record.locked ? 'bg-forest/5 border-forest/25' : 'bg-surface/30 border-line'">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 4</span>
-                                        <span class="text-[11px] font-bold" :class="record.locked ? 'text-forest' : 'text-vellum-faint'" x-text="record.locked ? '🔒 Locked' : 'Pending Lock'"></span>
-                                    </div>
-                                    <p class="text-xs font-bold text-walnut">Admin Lock & Release</p>
-                                    <p class="text-[10px] text-vellum-muted" x-text="record.locked ? 'Finalized for disbursement' : 'Awaiting HR/Admin cycle lock'"></p>
-                                </div>
-                            </div>
-
-                            <!-- Stepper Actions Box -->
-                            <template x-if="record.employee_review_status !== 'approved' && !record.locked">
-                                <div class="bg-surface/60 border border-brass/30 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div class="space-y-1 max-w-lg">
-                                        <p class="text-xs font-bold text-walnut">Employee Sign-Off Required</p>
-                                        <p class="text-[11.5px] text-vellum-muted leading-relaxed">
-                                            Review the earnings breakdown, attendance basis metrics, and daily log snapshot below. Click <span class="font-bold text-forest">Confirm & Approve</span> if accurate, or <span class="font-bold text-burgundy">Raise Dispute</span> if there is an error.
-                                        </p>
-                                    </div>
-                                    <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto">
-                                        <button @click="openDisputeModal = true" class="flex-1 sm:flex-none text-center px-4 py-2.5 border border-burgundy/60 text-burgundy hover:bg-burgundy/5 rounded-xl font-bold uppercase tracking-wider text-[10px] font-mono transition">
-                                            Raise Dispute
-                                        </button>
-                                        <form method="POST" action="{{ route('employee.payroll.approve') }}" class="flex-1 sm:flex-none">
-                                            @csrf
-                                            <input type="hidden" name="record_id" :value="record.record_id">
-                                            <button type="submit" class="w-full text-center px-5 py-2.5 bg-forest hover:bg-forest-dark text-cream rounded-xl font-bold uppercase tracking-wider text-[10px] font-mono transition shadow-soft">
-                                                Confirm & Approve
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </template>
-
-                            <template x-if="record.employee_review_status === 'approved' && !record.locked">
-                                <div class="bg-forest/5 border border-forest/20 p-4.5 rounded-2xl text-[12px] text-forest flex items-start gap-3">
-                                    <span class="text-lg">✓</span>
-                                    <div>
-                                        <p class="font-bold">You approved this payroll statement on <span x-text="record.employee_approved_at"></span>.</p>
-                                        <p class="text-[11px] text-forest/80 mt-0.5">Your sign-off has been registered. The statement is now awaiting final administrative lock by HR before payslip release.</p>
-                                    </div>
-                                </div>
-                            </template>
-
-                            <template x-if="record.locked">
-                                <div class="bg-surface/75 border border-line p-4.5 rounded-2xl text-[12px] text-vellum-muted flex items-start gap-3">
-                                    <span class="text-lg">🔒</span>
-                                    <div>
-                                        <p class="font-bold text-walnut">Payroll Statement Locked & Immutable.</p>
-                                        <p class="text-[11px] text-vellum-muted mt-0.5">This statement has been sealed by Payroll Administration. Calculations are frozen for financial disbursement.</p>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-
-                        <!-- ================= 3. PAYSLIP RELEASE CARD ================= -->
-                        <div class="panel bg-cream border border-line p-6 rounded-3xl shadow-soft flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
+                        <!-- ================= 2. PAYSLIP RELEASE CARD ================= -->
+                        <div class="panel bg-cream border border-line p-4 rounded-2xl shadow-soft flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div class="space-y-1">
                                 <div class="flex items-center gap-2">
                                     <h3 class="font-display font-bold text-base text-walnut">Official Payslip Document</h3>
@@ -278,7 +181,7 @@
                             <div class="shrink-0">
                                 <template x-if="record.locked">
                                     <a :href="'/my-payslip/' + record.record_id + '/download'" 
-                                       class="inline-flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider font-mono bg-forest hover:bg-forest-dark text-cream px-6 py-3 rounded-xl transition shadow-soft">
+                                       class="inline-flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider font-mono bg-forest hover:bg-forest-dark text-cream px-5 py-2.5 rounded-xl transition shadow-soft">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                         </svg>
@@ -287,7 +190,7 @@
                                 </template>
                                 <template x-if="!record.locked">
                                     <button disabled
-                                            class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono bg-surface text-vellum-faint border border-line px-5 py-3 rounded-xl cursor-not-allowed opacity-75">
+                                            class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono bg-surface text-vellum-faint border border-line px-4 py-2.5 rounded-xl cursor-not-allowed opacity-75">
                                         <svg class="w-4 h-4 text-vellum-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                         </svg>
@@ -297,11 +200,11 @@
                             </div>
                         </div>
 
-                        <!-- ================= 4. EARNINGS & DEDUCTIONS BREAKDOWN ================= -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- ================= 3. EARNINGS & DEDUCTIONS BREAKDOWN ================= -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                             
                             <!-- SALARY SUMMARY CARD -->
-                            <div class="panel bg-cream border border-line p-6 rounded-3xl shadow-soft flex flex-col justify-between space-y-5">
+                            <div class="panel bg-cream border border-line p-5 rounded-2xl shadow-soft flex flex-col justify-between space-y-4">
                                 <div>
                                     <div class="flex justify-between items-center border-b border-line pb-3">
                                         <h3 class="font-display font-bold text-base text-walnut">Salary Summary</h3>
@@ -331,7 +234,7 @@
                             </div>
 
                             <!-- ATTENDANCE DEDUCTIONS BREAKDOWN CARD -->
-                            <div class="panel bg-cream border border-line p-6 rounded-3xl shadow-soft flex flex-col justify-between space-y-5">
+                            <div class="panel bg-cream border border-line p-5 rounded-2xl shadow-soft flex flex-col justify-between space-y-4">
                                 <div>
                                     <div class="flex justify-between items-center border-b border-line pb-3">
                                         <h3 class="font-display font-bold text-base text-walnut">Attendance Deductions</h3>
@@ -410,31 +313,31 @@
                             </div>
                         </div>
 
-                        <!-- ================= 5. ATTENDANCE BASIS & IMPACT SUMMARY ================= -->
-                        <div class="panel bg-cream border border-line p-6 lg:p-7 rounded-3xl space-y-6 shadow-soft">
+                        <!-- ================= 4. ATTENDANCE BASIS & IMPACT SUMMARY ================= -->
+                        <div class="panel bg-cream border border-line p-5 lg:p-6 rounded-2xl space-y-5 shadow-soft">
                             <div class="border-b border-line pb-3">
                                 <h3 class="font-display font-bold text-base text-walnut">Attendance Basis Metrics</h3>
                                 <p class="text-[11px] text-vellum-muted">Summary of shift counts and attendance metrics resolved by the engine for this cycle.</p>
                             </div>
                             
-                             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-                                <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                <div class="bg-surface/50 border border-line p-3 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">Working Days</span>
                                     <span class="block font-mono text-lg font-bold text-walnut" x-text="record.workingDays + ' Days'"></span>
                                 </div>
-                                <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
+                                <div class="bg-surface/50 border border-line p-3 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">Present Days</span>
                                     <span class="block font-mono text-lg font-bold text-forest" x-text="record.present + ' Days'"></span>
                                 </div>
-                                <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
+                                <div class="bg-surface/50 border border-line p-3 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">Late Arrivals</span>
                                     <span class="block font-mono text-lg font-bold text-brass-dark" x-text="record.late + ' Day(s)'"></span>
                                 </div>
-                                <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
+                                <div class="bg-surface/50 border border-line p-3 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">Half Days</span>
                                     <span class="block font-mono text-lg font-bold text-brass-dark" x-text="record.halfDay + ' Day(s)'"></span>
                                 </div>
-                                <div class="bg-surface/50 border border-line p-3.5 rounded-2xl text-center space-y-1">
+                                <div class="bg-surface/50 border border-line p-3 rounded-2xl text-center space-y-1">
                                     <span class="block text-[9px] font-bold text-vellum-faint uppercase font-mono tracking-wider">WFH Days</span>
                                     <span class="block font-mono text-lg font-bold text-forest" x-text="record.wfh + ' Day(s)'"></span>
                                 </div>
@@ -447,9 +350,9 @@
                                     <p class="text-[11px] text-vellum-muted">Day-by-day shift states and direct financial deduction impacts.</p>
                                 </div>
 
-                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
                                     <template x-for="day in record.attendanceSnapshot" :key="day.day">
-                                        <div class="p-3 border border-line rounded-2xl text-center bg-surface/35 hover:border-brass/35 transition flex flex-col justify-between min-h-[105px]">
+                                        <div class="p-2.5 border border-line rounded-xl text-center bg-surface/35 hover:border-brass/35 transition flex flex-col justify-between min-h-[90px]">
                                             <div>
                                                  <div class="flex justify-between items-center text-[9px] font-bold text-vellum-faint uppercase font-mono">
                                                      <span x-text="day.date"></span>
@@ -457,7 +360,7 @@
                                                  <span class="block text-[11px] font-semibold text-walnut mt-0.5" x-text="'Day ' + day.day"></span>
                                             </div>
                                             
-                                             <div class="mt-2">
+                                             <div class="mt-1.5">
                                                  <span class="inline-block text-[8.5px] px-2 py-0.5 font-bold uppercase rounded-lg font-mono border"
                                                        :class="{
                                                           present: 'bg-forest/10 text-forest border-forest/15',
@@ -487,8 +390,8 @@
                             </div>
                         </div>
 
-                        <!-- ================= 6. DISPUTE RESOLUTION HISTORY ================= -->
-                        <div class="panel bg-cream border border-line p-6 rounded-3xl space-y-4 shadow-soft">
+                        <!-- ================= 5. DISPUTE RESOLUTION HISTORY ================= -->
+                        <div class="panel bg-cream border border-line p-5 rounded-2xl space-y-4 shadow-soft">
                             <h3 class="font-display font-bold text-base text-walnut border-b border-line pb-3">Dispute Resolution History</h3>
                             <div class="space-y-3">
                                 @forelse($disputes as $d)
@@ -518,6 +421,116 @@
                                     </div>
                                 @endforelse
                             </div>
+                        </div>
+
+                        <!-- ================= 6. WORKFLOW STEPPER & APPROVAL CARD ================= -->
+                        <div class="panel bg-cream border border-line p-5 lg:p-6 rounded-2xl space-y-5 shadow-soft">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-line pb-4">
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-walnut">Payroll Approval & Sign-Off Lifecycle</h3>
+                                    <p class="text-[11px] text-vellum-muted">Track stage progression from attendance resolution to final disbursement lock.</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-xl text-[10px] font-bold font-mono uppercase tracking-wider border"
+                                      :class="{
+                                          approved: 'bg-forest/10 border-forest/20 text-forest',
+                                          pending: 'bg-brass/10 border-brass/20 text-brass-dark',
+                                          stale: 'bg-burgundy/10 border-burgundy/20 text-burgundy',
+                                          disputed: 'bg-burgundy/10 border-burgundy/20 text-burgundy'
+                                      }[record.employee_review_status]"
+                                      x-text="'Review State: ' + record.employee_review_status"></span>
+                            </div>
+
+                            <!-- 4-Stage Horizontal Stepper -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <!-- Stage 1 -->
+                                <div class="p-3 bg-surface/40 border border-line rounded-xl space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 1</span>
+                                        <span class="text-forest text-[11px] font-bold">✓ Ready</span>
+                                    </div>
+                                    <p class="text-xs font-bold text-walnut">Attendance Basis</p>
+                                    <p class="text-[10px] text-vellum-muted">Shifts, check-ins, and leave requests resolved.</p>
+                                </div>
+
+                                <!-- Stage 2 -->
+                                <div class="p-3 bg-surface/40 border border-line rounded-xl space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 2</span>
+                                        <span class="text-forest text-[11px] font-bold">✓ Generated</span>
+                                    </div>
+                                    <p class="text-xs font-bold text-walnut">Payroll Calculation</p>
+                                    <p class="text-[10px] text-vellum-muted">Base salary and attendance deductions mapped.</p>
+                                </div>
+
+                                <!-- Stage 3 -->
+                                <div class="p-3 border rounded-xl space-y-1"
+                                     :class="record.employee_review_status === 'approved' ? 'bg-forest/5 border-forest/25' : (record.employee_review_status === 'disputed' ? 'bg-burgundy/5 border-burgundy/25' : 'bg-brass/5 border-brass/25')">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 3</span>
+                                        <span class="text-[11px] font-bold"
+                                              :class="record.employee_review_status === 'approved' ? 'text-forest' : (record.employee_review_status === 'disputed' ? 'text-burgundy' : 'text-brass-dark')"
+                                              x-text="record.employee_review_status === 'approved' ? '✓ Approved' : (record.employee_review_status === 'disputed' ? '⚠ Disputed' : '• Action Required')"></span>
+                                    </div>
+                                    <p class="text-xs font-bold text-walnut">Employee Sign-off</p>
+                                    <p class="text-[10px] text-vellum-muted"
+                                       x-text="record.employee_approved_at ? 'Signed off on ' + record.employee_approved_at : (record.employee_review_status === 'disputed' ? 'Dispute raised for HR review' : 'Please review and confirm calculation')"></p>
+                                </div>
+
+                                <!-- Stage 4 -->
+                                <div class="p-3 border rounded-xl space-y-1"
+                                     :class="record.locked ? 'bg-forest/5 border-forest/25' : 'bg-surface/30 border-line'">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[9px] font-mono font-bold text-vellum-faint">STAGE 4</span>
+                                        <span class="text-[11px] font-bold" :class="record.locked ? 'text-forest' : 'text-vellum-faint'" x-text="record.locked ? '🔒 Locked' : 'Pending Lock'"></span>
+                                    </div>
+                                    <p class="text-xs font-bold text-walnut">Admin Lock & Release</p>
+                                    <p class="text-[10px] text-vellum-muted" x-text="record.locked ? 'Finalized for disbursement' : 'Awaiting HR/Admin cycle lock'"></p>
+                                </div>
+                            </div>
+
+                            <!-- Stepper Actions Box -->
+                            <template x-if="record.employee_review_status !== 'approved' && !record.locked">
+                                <div class="bg-surface/60 border border-brass/30 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                    <div class="space-y-1 max-w-lg">
+                                        <p class="text-xs font-bold text-walnut">Employee Sign-Off Required</p>
+                                        <p class="text-[11.5px] text-vellum-muted leading-relaxed">
+                                            Review the earnings breakdown, attendance basis metrics, and daily log snapshot below. Click <span class="font-bold text-forest">Confirm & Approve</span> if accurate, or <span class="font-bold text-burgundy">Raise Dispute</span> if there is an error.
+                                        </p>
+                                    </div>
+                                    <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                                        <button @click="openDisputeModal = true" class="flex-1 sm:flex-none text-center px-4 py-2.5 border border-burgundy/60 text-burgundy hover:bg-burgundy/5 rounded-xl font-bold uppercase tracking-wider text-[10px] font-mono transition">
+                                            Raise Dispute
+                                        </button>
+                                        <form method="POST" action="{{ route('employee.payroll.approve') }}" class="flex-1 sm:flex-none">
+                                            @csrf
+                                            <input type="hidden" name="record_id" :value="record ? record.record_id : ''">
+                                            <button type="submit" class="w-full text-center px-5 py-2.5 bg-forest hover:bg-forest-dark text-cream rounded-xl font-bold uppercase tracking-wider text-[10px] font-mono transition shadow-soft">
+                                                Confirm & Approve
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="record.employee_review_status === 'approved' && !record.locked">
+                                <div class="bg-forest/5 border border-forest/20 p-4.5 rounded-2xl text-[12px] text-forest flex items-start gap-3">
+                                    <span class="text-lg">✓</span>
+                                    <div>
+                                        <p class="font-bold">You approved this payroll statement on <span x-text="record.employee_approved_at"></span>.</p>
+                                        <p class="text-[11px] text-forest/80 mt-0.5">Your sign-off has been registered. The statement is now awaiting final administrative lock by HR before payslip release.</p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="record.locked">
+                                <div class="bg-surface/75 border border-line p-4.5 rounded-2xl text-[12px] text-vellum-muted flex items-start gap-3">
+                                    <span class="text-lg">🔒</span>
+                                    <div>
+                                        <p class="font-bold text-walnut">Payroll Statement Locked & Immutable.</p>
+                                        <p class="text-[11px] text-vellum-muted mt-0.5">This statement has been sealed by Payroll Administration. Calculations are frozen for financial disbursement.</p>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
 
                     </div>
