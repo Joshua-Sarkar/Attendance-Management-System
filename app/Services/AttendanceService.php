@@ -328,32 +328,43 @@ class AttendanceService
 
             $status = $statusName;
 
-            // Map deductions and classification for all current states
-            if (in_array($status, ['hdp', 'hd_upa'])) {
-                $classification = 'half_day';
-                $salaryDeduction = 0.5;
-                $leaveDeduction = 0.0;
-            } elseif ($status === 'hd_upr') {
-                $classification = 'half_day';
-                $salaryDeduction = 0.5;
-                $leaveDeduction = 0.0;
-            } elseif ($status === 'half') {
-                $classification = 'half_day';
-                $salaryDeduction = 0.5;
-                $leaveDeduction = 0.0;
-            } elseif ($status === 'planned' || $status === 'upa') {
-                $classification = 'full_day';
-                $salaryDeduction = 1.0;
-                $leaveDeduction = 0.0;
-            } elseif ($status === 'absent' || $status === 'upr') {
-                $classification = 'full_day';
-                $salaryDeduction = 1.0;
-                $leaveDeduction = 0.0;
-            } else { // present, late, wfh, bday, off, future
-                $classification = 'full_day';
-                $salaryDeduction = 0.0;
-                $leaveDeduction = 0.0;
+            // Resolve canonical half day statuses based on classification stored in DB
+            if ($record->classification === 'half_day') {
+                if ($statusName === 'present') {
+                    $status = 'half';
+                } elseif ($statusName === 'planned') {
+                    $status = 'hdp';
+                } elseif ($statusName === 'upa') {
+                    $status = 'hd_upa';
+                } elseif ($statusName === 'absent') {
+                    $status = 'hd_upr';
+                }
             }
+
+            // Determine salary deduction factor (raw domain classification, not payroll cash deduction)
+            if (in_array($status, ['hdp', 'planned'])) {
+                $salaryDeduction = 0.0;
+            } elseif ($status === 'bday') {
+                $salaryDeduction = 0.0;
+            } elseif ($status === 'hd_upa') {
+                $salaryDeduction = ($user->leave_balance >= 0.5) ? 0.0 : 0.5;
+            } elseif ($status === 'upa') {
+                $salaryDeduction = ($user->leave_balance >= 1.0) ? 0.0 : 1.0;
+            } elseif (in_array($status, ['half', 'hd_upr'])) {
+                $salaryDeduction = 0.5;
+            } elseif (in_array($status, ['absent', 'upr'])) {
+                $salaryDeduction = 1.0;
+            } else {
+                $salaryDeduction = 0.0;
+            }
+
+            // Determine classification based on canonical status
+            if (in_array($status, ['half', 'hdp', 'hd_upa', 'hd_upr'])) {
+                $classification = 'half_day';
+            } else {
+                $classification = 'full_day';
+            }
+            $leaveDeduction = 0.0;
         }
         // 2. Attendance
         elseif ($checkInTime) {
@@ -1063,18 +1074,8 @@ class AttendanceService
             }
         }
 
-        // Map registry status to database status
-        if ($status === 'half') {
-            $status = 'present';
-        } elseif ($status === 'planned' || $status === 'hdp') {
-            $status = 'paid_leave';
-        } elseif ($status === 'upa' || $status === 'hd_upa') {
-            $status = 'unpaid_leave';
-        } elseif ($status === 'upr' || $status === 'hd_upr') {
-            $status = 'absent';
-        } elseif ($status === 'off') {
-            $status = 'weekly_off';
-        }
+        // Store canonical status key directly in the database status column without simplified mapping.
+
 
         $reason = $params['override_reason'] ?? '';
         if (strlen($reason) < 5) {
@@ -1088,10 +1089,13 @@ class AttendanceService
         }
 
         $appliedCount = 0;
+        $skippedDueToLeaves = 0;
+        $skippedDueToOverrides = 0;
 
         DB::transaction(function () use (
             $users, $dates, $dateStrings, $skipLeaves, $skipOverrides, $conflictHandling,
-            $status, $classification, $reason, $overrideType, $admin, $now, &$appliedCount, $userIds
+            $status, $classification, $reason, $overrideType, $admin, $now, &$appliedCount,
+            &$skippedDueToLeaves, &$skippedDueToOverrides, $userIds
         ) {
             $minDate = collect($dates)->first()->format('Y-m-d') . ' 00:00:00';
             $maxDate = collect($dates)->last()->format('Y-m-d') . ' 23:59:59';
@@ -1126,9 +1130,11 @@ class AttendanceService
                     }
 
                     if ($skipLeaves && $leave) {
+                        $skippedDueToLeaves++;
                         continue;
                     }
                     if ($skipOverrides && $attendance && $attendance->is_overridden) {
+                        $skippedDueToOverrides++;
                         continue;
                     }
 
@@ -1235,6 +1241,8 @@ class AttendanceService
 
         return [
             'applied_count' => $appliedCount,
+            'skipped_due_to_leaves' => $skippedDueToLeaves,
+            'skipped_due_to_overrides' => $skippedDueToOverrides,
         ];
     }
 }

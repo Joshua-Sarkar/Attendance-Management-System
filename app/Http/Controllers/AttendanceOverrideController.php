@@ -184,6 +184,15 @@ class AttendanceOverrideController extends Controller
 
         try {
             $result = $this->attendanceService->applyBulkOverride($validated, $request->user());
+            if ($result['applied_count'] === 0) {
+                $reason = "No records were modified. ";
+                if (($result['skipped_due_to_leaves'] ?? 0) > 0 || ($result['skipped_due_to_overrides'] ?? 0) > 0) {
+                    $reason .= "Skipped {$result['skipped_due_to_leaves']} record(s) with approved leave and {$result['skipped_due_to_overrides']} record(s) with existing overrides.";
+                } else {
+                    $reason .= "No active employee profiles or dates matched the scope parameters.";
+                }
+                return back()->withInput()->withErrors(['override_reason' => $reason]);
+            }
             return back()->with('success', "Applied overrides successfully to {$result['applied_count']} record(s).");
         } catch (\Exception $e) {
             return back()->withInput()->withErrors(['override_reason' => $e->getMessage()]);

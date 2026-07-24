@@ -593,6 +593,16 @@ class AttendanceLedgerController extends Controller
                 ];
             }
 
+            if ($result['applied_count'] === 0) {
+                $reason = "No records were modified. ";
+                if (($result['skipped_due_to_leaves'] ?? 0) > 0 || ($result['skipped_due_to_overrides'] ?? 0) > 0) {
+                    $reason .= "Skipped {$result['skipped_due_to_leaves']} record(s) with approved leave and {$result['skipped_due_to_overrides']} record(s) with existing overrides.";
+                } else {
+                    $reason .= "No active employee profiles or dates matched the scope parameters.";
+                }
+                return response()->json(['error' => $reason], 422);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Attendance override applied successfully.',
@@ -741,6 +751,16 @@ class AttendanceLedgerController extends Controller
 
         try {
             $result = $this->attendanceService->applyBulkOverride($params, $user);
+            if ($result['applied_count'] === 0) {
+                $reason = "No records were modified. ";
+                if (($result['skipped_due_to_leaves'] ?? 0) > 0 || ($result['skipped_due_to_overrides'] ?? 0) > 0) {
+                    $reason .= "Skipped {$result['skipped_due_to_leaves']} record(s) with approved leave and {$result['skipped_due_to_overrides']} record(s) with existing overrides.";
+                } else {
+                    $reason .= "No active employee profiles or dates matched the scope parameters.";
+                }
+                return response()->json(['error' => $reason], 422);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Bulk attendance override applied successfully.',

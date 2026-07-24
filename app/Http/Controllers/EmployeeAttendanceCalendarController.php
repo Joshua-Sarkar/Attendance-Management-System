@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Attendance;
+use App\Models\PayrollRecord;
 use App\Services\AttendanceTimingResolver;
+use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,6 +68,13 @@ class EmployeeAttendanceCalendarController extends Controller
         $attendanceService = app(\App\Services\AttendanceService::class);
         $states = $attendanceService->getAttendanceStatesForRange($employee, $gridStart, $gridEnd);
 
+        $payroll = PayrollRecord::where('user_id', $employee->id)
+            ->whereHas('payrollCycle', function ($q) use ($gridStart, $gridEnd) {
+                $q->where('start_date', '<=', $gridEnd->format('Y-m-d'))
+                  ->where('end_date', '>=', $gridStart->format('Y-m-d'));
+            })
+            ->first();
+
         $gridDays = [];
         foreach ($states as $dateStr => $state) {
             $currentDate = Carbon::parse($dateStr);
@@ -125,6 +134,25 @@ class EmployeeAttendanceCalendarController extends Controller
                 $classification = 'Leave';
             }
 
+            // Resolve payroll impact dynamically in the UI layer
+            $payrollImpact = 'None';
+            if ($payroll) {
+                $breakdown = $payroll->calculation_metadata['daily_breakdown'] ?? [];
+                if (isset($breakdown[$dateStr])) {
+                    $deduction = (float)($breakdown[$dateStr]['deduction_factor'] ?? 0.0);
+                    if ($deduction > 0.0) {
+                        $payrollImpact = 'Deduction applied';
+                    }
+                }
+            } else {
+                $dummyBalance = (float) $employee->leave_balance;
+                $dailyRate = 1.0;
+                $pClassification = PayrollService::resolvePayrollClassification($status, $dummyBalance, $dailyRate);
+                if ($pClassification['deduction_factor'] > 0.0) {
+                    $payrollImpact = 'Deduction applied';
+                }
+            }
+
             $gridDays[] = [
                 'iso' => $dateStr,
                 'num' => $currentDate->day,
@@ -153,7 +181,7 @@ class EmployeeAttendanceCalendarController extends Controller
                 'shift' => $shiftStart && $shiftEnd ? $shiftStart->format('h:i A') . ' – ' . $shiftEnd->format('h:i A') : '09:00 AM – 05:30 PM',
                 'grace' => $graceMinutes . ' minutes',
                 'lateThreshold' => $timings && $timings['grace_threshold'] ? $timings['grace_threshold']->format('h:i A') : '—',
-                'payrollImpact' => $state['payroll_impact'],
+                'payrollImpact' => $payrollImpact,
                 'notes' => $state['notes'] ?? 'No irregularities recorded.',
                 'dateLabel' => $currentDate->format('F j, Y'),
                 'dayName' => $currentDate->format('l'),

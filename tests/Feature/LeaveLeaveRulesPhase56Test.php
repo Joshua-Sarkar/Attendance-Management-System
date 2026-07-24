@@ -219,7 +219,7 @@ class LeaveLeaveRulesPhase56Test extends TestCase
 
         $attendance = Attendance::where('user_id', $this->employee->id)->first();
         $this->assertNotNull($attendance);
-        $this->assertEquals('present', $attendance->status);
+        $this->assertEquals('half', $attendance->status);
         $this->assertEquals('half_day', $attendance->classification);
         $this->assertTrue($attendance->is_overridden);
     }
